@@ -5,3 +5,5 @@ This is a tool for pentesting web security flaws in sites and web servers.
 Instructions:
 later ;)
 ```
+
+# **CREATED BY RAZ KISSOS AND DROR WEISS**
