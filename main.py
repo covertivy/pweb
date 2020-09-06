@@ -24,6 +24,8 @@ def main(url="http://192.168.56.101//dvwa/"):
         import checker  # Even if the file was removed the code will still compile
 
         checker.main(pages)  # Start the checker from here will catch further exceptions
+
+        # Delete temporary checker file.
         os.remove("checker.py")
     except Exception as e:
         # Print each error in a fancy format.
