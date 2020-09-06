@@ -1,3 +1,4 @@
+#!/bin/python3
 import argparse
 import sys
 
@@ -39,6 +40,14 @@ def parse_args() -> dict:
         help="Limit the amount of pages checked to a specific amount.",
     )
     parser.add_argument(
+        "-L",
+        "--login",
+        default=list(),
+        type=list,
+        nargs=2,
+        help="Specify a username and password to be used in any login form on the website.",
+    )
+    parser.add_argument(
         "-o",
         "--output",
         default="",
@@ -47,6 +56,14 @@ def parse_args() -> dict:
     )
     args = parser.parse_args()
     to_ret = dict()
+    if type(args.login) != None:
+        if len(args.login) != 0:
+            creds = [args.login[0], args.login[1]]  # Username. Password.
+        else:
+            creds = list()
+    else:
+        creds = list()
+
     if args.url == "":
         # IP will be used.
         to_ret = {
@@ -56,6 +73,7 @@ def parse_args() -> dict:
             "IS_URL": False,
             "url": "",
             "num_of_pages": args.number_of_pages,
+            "credentials": creds,
             "output": args.output,
         }
     else:
@@ -67,6 +85,8 @@ def parse_args() -> dict:
             "IS_URL": True,
             "url": args.url,
             "num_of_pages": args.number_of_pages,
+            "credentials": creds,
             "output": args.output,
         }
+    print(to_ret)  # for debugging purposes.
     return to_ret

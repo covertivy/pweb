@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/bin/python3
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import requests
@@ -25,7 +25,13 @@ class Pages:
         self.session = requests.session()  # To keep the conversation we need a session
         self.url = url  # Just in case we will need it in the future
         self.__max = pages  # More convenient to store it that way
-        print(COLOR_MANAGER.ORANGE + COLOR_MANAGER.UNDERLINE + COLOR_MANAGER.BOLD + "Website pages:" + COLOR_MANAGER.ENDC)
+        print(
+            COLOR_MANAGER.ORANGE
+            + COLOR_MANAGER.UNDERLINE
+            + COLOR_MANAGER.BOLD
+            + "Website pages:"
+            + COLOR_MANAGER.ENDC
+        )
         self.__get_all_pages(url)
 
     def __get_all_pages(self, current_page):
@@ -42,8 +48,16 @@ class Pages:
         page = self.session.get(current_page)
         if page.url not in self.pages:
             # Appending the url to the list
-            print("\t[" + COLOR_MANAGER.ORANGE + "+" + COLOR_MANAGER.ENDC + "] " +
-                  COLOR_MANAGER.ORANGE + page.url + COLOR_MANAGER.ENDC)
+            print(
+                "\t["
+                + COLOR_MANAGER.ORANGE
+                + "+"
+                + COLOR_MANAGER.ENDC
+                + "] "
+                + COLOR_MANAGER.ORANGE
+                + page.url
+                + COLOR_MANAGER.ENDC
+            )
             self.pages.append(page.url)
         else:
             # If the url is in the list,
@@ -53,10 +67,10 @@ class Pages:
             return
 
         # Creating a BeautifulSoup object
-        soup = BeautifulSoup(page.text, 'html.parser')
+        soup = BeautifulSoup(page.text, "html.parser")
 
         # Getting every link in the page
-        for href in soup.find_all('a'):
+        for href in soup.find_all("a"):
             href = urljoin(current_page, href.get("href"))  # Full URL
             if self.__check_href(current_page, href):
                 self.__get_all_pages(href)
@@ -71,8 +85,14 @@ class Pages:
         :return: none
         """
         # Attempting to log into the page
-        after_login = self.session.post(current_page,
-                        data={"username": self.username, "password": self.password, "Login": "Login"}).url
+        after_login = self.session.post(
+            current_page,
+            data={
+                "username": self.username,
+                "password": self.password,
+                "Login": "Login",
+            },
+        ).url
         if after_login != current_page:
             # The login worked
             # Appending this page to the list and checking it:

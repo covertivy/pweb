@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/bin/python3
 import os
 import colors
 from configparser import ConfigParser
@@ -55,10 +55,24 @@ def get_files():
         )
 
     # Print fancy plugin fetcher with color and cool stuff.
-    print(COLOR_MANAGER.GREEN + COLOR_MANAGER.UNDERLINE + COLOR_MANAGER.BOLD + "Fetching plugins:" + COLOR_MANAGER.ENDC)
+    print(
+        COLOR_MANAGER.GREEN
+        + COLOR_MANAGER.UNDERLINE
+        + COLOR_MANAGER.BOLD
+        + "Fetching plugins:"
+        + COLOR_MANAGER.ENDC
+    )
     for path in plugin_path_list:
-        print("\t[" + COLOR_MANAGER.GREEN + "+" + COLOR_MANAGER.ENDC + "] "
-                    + COLOR_MANAGER.GREEN + path + COLOR_MANAGER.ENDC)
+        print(
+            "\t["
+            + COLOR_MANAGER.GREEN
+            + "+"
+            + COLOR_MANAGER.ENDC
+            + "] "
+            + COLOR_MANAGER.GREEN
+            + path
+            + COLOR_MANAGER.ENDC
+        )
 
     return plugin_path_list
 
