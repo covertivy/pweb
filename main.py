@@ -1,13 +1,37 @@
 #!/usr/bin/python
+import requests
 import os
 import colors
 import get_plugins
 from get_pages import Pages
+from parse_args import parse_args
 
 COLOR_MANAGER = colors.Colors()
 
 
-def main(url="http://192.168.56.101//dvwa/"):
+def main(
+    ip: str,
+    port: int,
+    ALL_PORTS: bool,
+    url: str,
+    IS_URL: bool,
+    max_page_num: int,
+    username: str,
+    password: str,
+    output_folder: str,
+):
+    # Check if url is up.
+    try:
+        response = requests.get(url)
+    except Exception as timeout:
+        print(
+            COLOR_MANAGER.RED
+            + "ERROR: "
+            + COLOR_MANAGER.ENDC
+            + "Timeout! host may be down or may not exist!"
+        )
+        print(COLOR_MANAGER.BRIGHT_YELLOW + "Exiting..." + COLOR_MANAGER.ENDC)
+        exit(code=-1)
     try:
         plugin_path_list = get_plugins.get_files()  # Gets the list of plugin paths
         pages = Pages(url)  # Gets the list of pages
@@ -34,4 +58,6 @@ def main(url="http://192.168.56.101//dvwa/"):
 
 
 if __name__ == "__main__":
+    args = parse_args()  # Get arguments from command line.
+    # TODO: send parsed args to main and check them in parse_args file.
     main()
