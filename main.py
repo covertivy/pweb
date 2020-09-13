@@ -60,4 +60,4 @@ def main(
 if __name__ == "__main__":
     args = parse_args()  # Get arguments from command line.
     # TODO: send parsed args to main and check them in parse_args file.
-    main()
+    # main()

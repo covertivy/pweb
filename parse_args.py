@@ -1,6 +1,26 @@
 #!/usr/bin/python3
 import argparse
+import colors
 import sys
+
+COLOR_MANAGER = colors.Colors()
+
+
+def validIPAddress(IP):
+    """
+      :type IP: str
+      :rtype: str
+      """
+
+    def isIPv4(s):
+        try:
+            return str(int(s)) == s and 0 <= int(s) <= 255
+        except:
+            return False
+
+    if IP.count(".") == 3 and all(isIPv4(i) for i in IP.split(".")):
+        return True
+    return False
 
 
 def parse_args() -> dict:
@@ -55,14 +75,27 @@ def parse_args() -> dict:
         help="Specify a directory path in which the output will be stored.",
     )
     args = parser.parse_args()
+
     to_ret = dict()
     if type(args.login) != None:
-        if len(args.login) != 0:
-            creds = [args.login[0], args.login[1]]  # Username. Password.
+        if len(args.login) == 2:
+            creds = {
+                "username": string(args.login[0]),
+                "password": string(args.login[1]),
+            }
+            # Username. Password.
         else:
-            creds = list()
+            creds = dict()
     else:
-        creds = list()
+        creds = dict()
+
+    if not validIPAddress(args.ip):
+        print(
+            COLOR_MANAGER.BRIGHT_YELLOW
+            + "[!] Invalid IP address, using default localhost."
+            + COLOR_MANAGER.ENDC
+        )
+        args.ip = "127.0.0.1"
 
     if args.url == "":
         # IP will be used.
