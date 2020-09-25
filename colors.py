@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 class Colors:
     """
     common use of the class methods:
