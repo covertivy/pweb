@@ -14,6 +14,9 @@ def get_pages(data, curr_url, session_page=False):
     :param curr_url: the current url the function checks
     :param session_page: True- if the current page is in a special session False- else
     """
+    if len(data.pages) + len(data.session_pages) == data.max_pages:
+        # In case of mentioned amount of pages, the function will stop
+        return
     # Opening the current url
     data.session.open(curr_url)
     # Adding the url to the data list
@@ -73,7 +76,6 @@ def get_pages(data, curr_url, session_page=False):
             pass
 
 
-"""
 print(
         COLOR_MANAGER.ORANGE
         + COLOR_MANAGER.UNDERLINE
@@ -81,9 +83,8 @@ print(
         + "Website pages:"
         + COLOR_MANAGER.ENDC
         )
-data = Data.Data(url="http://192.168.56.102/dvwa/", username="admin", password="admin")
+data = Data.Data(url="http://192.168.56.102/dvwa/", username="admin", password="admin", max_pages=30)
 # Data object
 get_pages(data, data.address)
 print(COLOR_MANAGER.CYAN + "Pages with no login: " + COLOR_MANAGER.BOLD + str(len(data.pages)) + COLOR_MANAGER.ENDC)
 print(COLOR_MANAGER.ORANGE + "Pages with login: " + COLOR_MANAGER.BOLD + str(len(data.session_pages)) + COLOR_MANAGER.ENDC)
-"""
