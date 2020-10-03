@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-import mechanize
-import http.cookiejar
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import Data
@@ -10,10 +8,17 @@ COLOR_MANAGER = colors.Colors()
 
 
 def get_pages(data, curr_url, session_page=False):
+    """
+    this function gets the lists of pages to the data object
+    :param data: the data object of the program
+    :param curr_url: the current url the function checks
+    :param session_page: True- if the current page is in a special session False- else
+    """
     # Opening the current url
     data.session.open(curr_url)
     # Adding the url to the data list
     if session_page:
+        # Page requires a session
         if data.session.geturl() not in data.session_pages \
                 and data.session.geturl() not in data.pages:
             print(
@@ -30,14 +35,15 @@ def get_pages(data, curr_url, session_page=False):
         else:
             return
     else:
+        # Page doesn't require a session
         if data.session.geturl() not in data.pages:
             print(
                 "\t["
-                + COLOR_MANAGER.BRIGHT_BLUE
+                + COLOR_MANAGER.CYAN
                 + "+"
                 + COLOR_MANAGER.ENDC
                 + "] "
-                + COLOR_MANAGER.BRIGHT_BLUE
+                + COLOR_MANAGER.CYAN
                 + data.session.geturl()
                 + COLOR_MANAGER.ENDC
             )
@@ -53,18 +59,21 @@ def get_pages(data, curr_url, session_page=False):
             # Only URLs that belongs to the website
             get_pages(data, href, session_page)
 
-    if len(data.username) != 0 and len(data.password) != 0:
+    if data.username and data.password:
+        # If there are username and password
         try:
+            # Trying to get the page with login details
             data.session.select_form(nr=0)
             data.session.form['username'] = data.username
             data.session.form['password'] = data.password
             data.session.submit()
-
+            # Trying to get the page with the new login details
             get_pages(data, data.session.geturl(), True)
         except Exception as e:
             pass
 
 
+"""
 print(
         COLOR_MANAGER.ORANGE
         + COLOR_MANAGER.UNDERLINE
@@ -73,8 +82,8 @@ print(
         + COLOR_MANAGER.ENDC
         )
 data = Data.Data(url="http://192.168.56.102/dvwa/", username="admin", password="admin")
+# Data object
 get_pages(data, data.address)
-print("Pages with no login: " + str(len(data.pages)))
-print("Pages with login: " + str(len(data.session_pages)))
-data.session.open("http://192.168.56.102/dvwa/vulnerabilities/xss_r/")
-print(data.session.response().read().decode())
+print(COLOR_MANAGER.CYAN + "Pages with no login: " + COLOR_MANAGER.BOLD + str(len(data.pages)) + COLOR_MANAGER.ENDC)
+print(COLOR_MANAGER.ORANGE + "Pages with login: " + COLOR_MANAGER.BOLD + str(len(data.session_pages)) + COLOR_MANAGER.ENDC)
+"""
