@@ -68,7 +68,6 @@ class Pages:
 
         # Creating a BeautifulSoup object
         soup = BeautifulSoup(page.text, "html.parser")
-
         # Getting every link in the page
         for href in soup.find_all("a"):
             href = urljoin(current_page, href.get("href"))  # Full URL
@@ -118,3 +117,7 @@ class Pages:
             if href not in self.pages:
                 return True
         return False
+
+
+p = Pages(url="http://192.168.56.102/dvwa/")
+print(len(p.pages))
