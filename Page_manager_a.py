@@ -72,8 +72,8 @@ def get_pages(data, curr_url, session_page=False):
             data.session.submit()
             # Trying to get the page with the new login details
             get_pages(data, data.session.geturl(), True)
-        except Exception as e:
-            pass
+        except Exception:
+            return
 
 
 print(
@@ -83,7 +83,7 @@ print(
         + "Website pages:"
         + COLOR_MANAGER.ENDC
         )
-data = Data.Data(url="http://192.168.56.102/dvwa/", username="admin", password="admin", max_pages=30)
+data = Data.Data(url="http://192.168.56.101/dvwa/", username="admin", password="admin", max_pages=30)
 # Data object
 get_pages(data, data.address)
 print(COLOR_MANAGER.CYAN + "Pages with no login: " + COLOR_MANAGER.BOLD + str(len(data.pages)) + COLOR_MANAGER.ENDC)
