@@ -25,7 +25,7 @@ def get_files():
     cfg_parser = ConfigParser()
 
     # Check if config file exists.
-    if not os.path.isfile(CONFIG_FILE_PATH):
+    if not os.path.exists(CONFIG_FILE_PATH):
         raise Exception('Config file "{}" was not found!'.format(CONFIG_FILE_PATH))
     # Read config file:
     cfg_parser.read(CONFIG_FILE_PATH)

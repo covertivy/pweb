@@ -88,7 +88,7 @@ def parse_args() -> dict:
         "--output",
         default="",
         type=str,
-        help="Specify a directory path in which the output will be stored.",
+        help="Specify a directory path in which the outputs will be stored.",
     )
     args = parser.parse_args()
 
