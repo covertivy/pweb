@@ -1,13 +1,11 @@
 import nmap
-
-IP = "192.168.56.101"
-PORTS = 80
+import Data
 
 
-def scan():
-    nm = nmap.PortScanner() # instantiate nmap.PortScanner object
-    nm.scan(hosts=IP, ports=str(PORTS)) # scan host, ports from 22 to 443
-    print("Command: " + nm.command_line()) # get command line used for the scan
+def scan(data: Data.Data):
+    nm = nmap.PortScanner()  # instantiate nmap.PortScanner object
+    nm.scan(hosts=data.address, ports=str(data.port))  # scan host, ports from 22 to 443
+    print("Command: " + nm.command_line())  # get command line used for the scan
 
     if len(nm.all_hosts()) == 0:
         raise Exception("[!] Error! No hosts found!")
@@ -36,25 +34,27 @@ def print_scan(nm: nmap.PortScanner):
         print('└----------------------------------------------------')
 
 
-def check_for_http(nm) -> bool:
-    if IP not in nm.all_hosts() or nm[IP]['status']['state'] != 'up':
+def check_for_http(nm, data: Data.Data) -> bool:
+    if data.address not in nm.all_hosts() or nm[data.address]['status']['state'] != 'up':
         return False
-    host = nm[IP]
+    host = nm[data.address]
     proto_list = host.all_protocols()
     for proto in proto_list:
         ports = list(host[proto].keys())
         ports.sort()
         for port in ports:
             port_obj = host[proto][port]
-            if port == PORTS and port_obj['name'] == 'http':
+            if port == data.port and port_obj['name'] == 'http':
                 return True
             else:
                 pass
     return False
 
+
 if __name__ == '__main__':
-    nm_scan = scan()
-    if check_for_http(nm_scan):
+    data = Data.Data(address="http://192.168.56.102/dvwa/", username="admin", password="admin", max_pages=30)
+    nm_scan = scan(data)
+    if check_for_http(nm_scan, data):
         print("HTTP Port exists!")
     else:
         print("HTTP port specified doesn't exist!")
