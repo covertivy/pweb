@@ -3,6 +3,59 @@ import nmap
 import Data
 import colors
 
+    """
+    if not validIPAddress(args.ip):
+        print(
+            COLOR_MANAGER.BRIGHT_YELLOW
+            + "[!] Invalid IP address, using default localhost."
+            + COLOR_MANAGER.ENDC
+        )
+        args.ip = "127.0.0.1"
+    """
+def url_port(url: str, existing_port: int):
+    try:
+        token = urllib.parse.urlparse(url)
+        port = token.port
+    except ValueError as e:
+        print(
+            COLOR_MANAGER.BRIGHT_YELLOW
+            + f"[!] {e}, using port {existing_port}."
+            + COLOR_MANAGER.ENDC
+        )
+        return existing_port
+    if not port:
+        return existing_port
+    return port
+
+
+def validIPAddress(IP: str) -> bool:
+    """
+      :type IP: str
+      :rtype: str
+      """
+
+    def isIPv4(s):
+        try:
+            return str(int(s)) == s and 0 <= int(s) <= 255
+        except:
+            return False
+
+    if IP.count(".") == 3 and all(isIPv4(i) for i in IP.split(".")):
+        return True
+    return False
+
+
+def valid_url(url: str) -> bool:
+    token = urllib.parse.urlparse(url)
+
+    min_attributes = ("scheme", "netloc")  # protocol and domain
+    if not all([getattr(token, attr) for attr in min_attributes]):
+        return False
+    elif "." not in str(getattr(token, "netloc")):
+        return False
+    else:
+        return True
+
 
 def scan(data: Data.Data, url=False):
     nm = nmap.PortScanner()  # instantiate nmap.PortScanner object
