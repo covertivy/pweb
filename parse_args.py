@@ -49,7 +49,7 @@ def parse_args() -> dict:
     parser.add_argument(
         "-o",
         "--output",
-        default="",
+        default=str(),
         type=str,
         help="Specify a directory path in which the outputs will be stored.",
     )
