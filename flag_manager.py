@@ -98,3 +98,4 @@ def get_final_args(args) -> Data.Data:
     output_obj.folder = args.output
     
     return output_obj
+    
