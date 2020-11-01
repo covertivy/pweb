@@ -21,7 +21,7 @@ def get_data():
 
 def main():
     # print magestic logo.
-    os.system("cls")
+    os.system("clear")
     print(COLOR_MANAGER.BRIGHT_GREEN + """
                            __        
                           /\ \       
