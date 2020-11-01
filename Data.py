@@ -27,3 +27,14 @@ class Data:
         self.cookies = http.cookiejar.CookieJar()  # Session cookies
         self.session = mechanize.Browser()  # Session object
         self.session.set_cookiejar(self.cookies)  # Setting the cookies
+
+    def __str__(self):
+        return f"""IP: {self.ip}
+URL: {self.address}
+PORT: {self.port}
+ALL PORTS: {self.all_ports}
+PAGE NUM: {self.max_pages}
+OUTPUT: {self.folder}
+USERNAME: {self.username}
+PASSWORD: {self.password}
+"""

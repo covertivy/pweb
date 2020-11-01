@@ -6,6 +6,7 @@ import OutputManager
 import VulnerabilityManager
 import colors
 
+
 COLOR_MANAGER = colors.Colors()
 
 
