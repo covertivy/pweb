@@ -4,7 +4,7 @@ import colors
 import Data
 
 
-def charr_to_string(arr: list) -> str:
+def charr_to_string(arr: list) -> str: # convert char array to string
     to_ret = ""
     for item in arr:
         to_ret += str(item)
