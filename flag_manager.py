@@ -4,9 +4,6 @@ import colors
 import Data
 
 
-ARGS = None
-
-
 def charr_to_string(arr: list) -> str:
     to_ret = ""
     for item in arr:
@@ -14,7 +11,7 @@ def charr_to_string(arr: list) -> str:
     return to_ret
 
 
-def parse_args() -> dict:
+def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-i",
@@ -66,7 +63,6 @@ def parse_args() -> dict:
         help="Specify a directory path in which the outputs will be stored.",
     )
     args = parser.parse_args()
-    ARGS = args
     return args
 
 
@@ -98,4 +94,3 @@ def get_final_args(args) -> Data.Data:
     output_obj.folder = args.output
     
     return output_obj
-    

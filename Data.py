@@ -31,4 +31,11 @@ class Data:
         self.session.set_cookiejar(self.cookies)  # Setting the cookies
     
     def __str__(self):
-        return f"""{self.ip}\n{self.address}\n{self.port}\n{self.all_ports}\n{self.max_pages}\n{self.folder}\n{self.username}\n{self.password}"""
+        return f"""IP: {self.ip}
+URL: {self.address}
+PORT: {self.port}
+ALL PORTS: {self.all_ports}
+PAGE NUM: {self.max_pages}
+OUTPUT: {self.folder}
+USERNAME: {self.username}
+PASSWORD: {self.password}"""
