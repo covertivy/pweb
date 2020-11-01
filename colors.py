@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import random
 class Colors:
     """
     common use of the class methods:
@@ -30,7 +31,7 @@ class Colors:
     BRIGHT_WHITE =      '\u001b[37;1m'
 
     @staticmethod
-    def color(red, green, blue, text):
+    def color(red:int, green:int, blue:int, text:str):
         """
         function paints the text
         :param red: int, 0-255
@@ -40,3 +41,7 @@ class Colors:
         :return: painted text
         """
         return "\033[38;2;{};{};{}m{} \033[38;2;255;255;255m".format(red, green, blue, text)
+    
+    @staticmethod
+    def randcolor():
+        return "\033[38;2;{};{};{}m".format(random.choice(range(255)), random.choice(range(255)), random.choice(range(255)))
