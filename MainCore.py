@@ -4,6 +4,7 @@ import FlagManager
 import PluginManager
 import OutputManager
 import VulnerabilityManager
+import os
 import colors
 
 
@@ -11,17 +12,28 @@ COLOR_MANAGER = colors.Colors()
 
 
 def get_data():
-    Data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
-    print(Data)
+    data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
+    
     # TODO: update the data through page manager and address manager.
+
+    return data
 
 
 def main():
     # print magestic logo.
-    print(COLOR_MANAGER.BRIGHT_GREEN + "██████╗ ██╗    ██╗███████╗██████╗ \n██╔══██╗██║    ██║██╔════╝██╔══██╗\n██████╔╝██║ █╗ ██║█████╗  ██████╔╝\n██╔═══╝ ██║███╗██║██╔══╝  ██╔══██╗\n██║     ╚███╔███╔╝███████╗██████╔╝\n╚═╝      ╚══╝╚══╝ ╚══════╝╚═════╝ \n" + COLOR_MANAGER.ENDC)
-    get_data()
+    os.system("cls")
+    print(COLOR_MANAGER.BRIGHT_GREEN + """
+                           __        
+                          /\ \       
+ _____   __  __  __     __\ \ \____  
+/\ '__`\/\ \/\ \/\ \  /'__`\ \ '__`\ 
+\ \ \L\ \ \ \_/ \_/ \/\  __/\ \ \L\ \\
+ \ \ ,__/\ \___x___/'\ \____\\\ \_,__/
+  \ \ \/  \/__//__/   \/____/ \/___/ 
+   \ \_\                             
+    \/_/   """ + COLOR_MANAGER.ENDC)
+    data = get_data()
     # TODO:
-    # data = Flag Manager's return object
     # Plugin Manager actions
     # Vulnerabilities Manager actions (needs data)
     # Output Manager actions (needs data)
