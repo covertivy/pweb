@@ -11,7 +11,7 @@ def charr_to_string(arr: list) -> str:
     return to_ret
 
 
-def parse_args():
+def parse_args(): # Get command line arguments using argsparse.
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-i",
@@ -67,6 +67,13 @@ def parse_args():
 
 
 def get_final_args(args) -> Data.Data:
+    """
+    Args:
+        args: All the command line arguments.
+
+    Returns:
+        Data.Data: The returned data object, will be processed furthermore in the Main Core.
+    """
     COLOR_MANAGER = colors.Colors()
     output_obj = Data.Data()
 
@@ -79,6 +86,7 @@ def get_final_args(args) -> Data.Data:
     output_obj.ip = args.ip
     output_obj.address = args.url
 
+    # Check if port is valid
     if args.port < 1 or args.port > 65535:
         print(
             COLOR_MANAGER.BRIGHT_YELLOW
