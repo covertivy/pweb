@@ -108,20 +108,3 @@ def generate_check_device():
     
     checker.write("]\n")
     checker.close()
-
-if __name__ == '__main__':
-    generate_check_device()
-    if os.path.exists(os.getcwd() + f'\{CHECK_DEVICE_NAME}.py'):
-        try:
-            import CheckDevice
-        except Exception as e:
-            COLOR_MANAGER.print_error('Plugin files missing from the specified plugin folder!')
-            exit()
-        
-        functions = CheckDevice.ALL_FUNCS
-        for check_func in functions:
-            check_func()
-
-    else:
-        COLOR_MANAGER.print_error('Check device does not exist!')
-        exit()
