@@ -36,7 +36,7 @@ def get_plugin_funcs():
             COLOR_MANAGER.print_error(f'ERROR!\n\t( {e} )\nAborting...')
             exit()
 
-        return CheckDevice.ALL_FUNCS
+        return CheckDevice.ALL_FUNCS # Get and return the list of all plugin functions from Check Device.
 
     else: # Check file does not exist.
         COLOR_MANAGER.print_error(f'Check device does not exist!\n\t( {PluginManager.CHECK_DEVICE_NAME}.py )\nAborting...')
@@ -56,20 +56,22 @@ def main():
     os.system("clear")
     for char in LOGO:
         print(COLOR_MANAGER.randcolor() + char, end='')
-    print(COLOR_MANAGER.ENDC)
+    print(COLOR_MANAGER.ENDC + '\n')
 
     # Get data through flag manager, address manager and page manager.
     data = get_data()
     print(data)
+    print('\n')
 
     plugin_funcs = get_plugin_funcs() # Get all plugin functions from the Check Device.
     for func in plugin_funcs:
-        func('halo')
+        func('pages') # Should be pages received from the data object.
+    
     # TODO:
-    # Plugin Manager actions
     # Vulnerabilities Manager actions (needs data)
     # Output Manager actions (needs data)
-    os.remove(f'{os.getcwd()}/{PluginManager.CHECK_DEVICE_NAME}.py')
+
+    os.remove(f'{os.getcwd()}/{PluginManager.CHECK_DEVICE_NAME}.py') # Delete Check device for this run.
 
 if __name__ == "__main__":
     main()

@@ -11,10 +11,12 @@ CONFIG_FILE_NAME = "pluginconfig.ini"
 CONFIG_FILE_PATH = os.path.join(
     THIS_FOLDER, CONFIG_FILE_NAME
 )  # Create path of config file. (name can be changed)
-PLUGINS_FOLDER = 'plugins'
-PLUGIN_PATH_SECTION = "plugins"
-GENERIC_FUNC_NAME = 'check'
-CHECK_DEVICE_NAME = 'CheckDevice'
+PLUGINS_FOLDER = 'plugins' # local plugin folder name.
+PLUGIN_PATH_SECTION = "plugins" # the config file section in which the plugins are stored.
+GENERIC_FUNC_NAME = 'check' # name of the generic function each file has to implement.
+CHECK_DEVICE_NAME = 'CheckDevice' # The name of the Check Device.
+CONFIG_PATHS_KEY = 'paths'
+
 COLOR_MANAGER = colors.Colors()
 
 
@@ -30,7 +32,7 @@ def fetch_plugins():
 
     # Check if config file exists.
     if not os.path.exists(CONFIG_FILE_PATH):
-        raise Exception('Config file "{}" was not found!'.format(CONFIG_FILE_PATH))
+        raise Exception('Config file "{CONFIG_FILE_PATH}" was not found!')
     # Read config file:
     cfg_parser.read(CONFIG_FILE_PATH)
 
@@ -38,25 +40,23 @@ def fetch_plugins():
     # For more information check out "https://docs.python.org/3/library/configparser.html"
     if PLUGIN_PATH_SECTION not in cfg_parser.sections():
         raise Exception(
-            'Section "{}" was not found in config file "{}"'.format(
-                PLUGIN_PATH_SECTION, CONFIG_FILE_NAME
-            )
+            f'Section "{PLUGIN_PATH_SECTION}" was not found in config file "{CONFIG_FILE_NAME}"'
         )
 
-    # Check if the mandatory key "paths" exists inside the desired section.
+    # Check if the mandatory key CONFIG_PATHS_KEY exists inside the desired section.
     # For more information check out "https://docs.python.org/3/library/configparser.html"
-    if "paths" not in cfg_parser[PLUGIN_PATH_SECTION]:
+    if CONFIG_PATHS_KEY not in cfg_parser[PLUGIN_PATH_SECTION]:
         raise Exception(
-            'Key "paths" was not found in section "{}"'.format(PLUGIN_PATH_SECTION)
+            f'Key "{CONFIG_PATHS_KEY}" was not found in section "{PLUGIN_PATH_SECTION}"'
         )
 
     # Save paths from the config file.
-    plugin_path_list = cfg_parser[PLUGIN_PATH_SECTION]["paths"].split(",\n")
+    plugin_path_list = cfg_parser[PLUGIN_PATH_SECTION][CONFIG_PATHS_KEY].split(",\n")
 
-    # Check if there are paths inside the section under the key "paths".
+    # Check if there are paths inside the section under the key CONFIG_PATHS_KEY.
     if len(plugin_path_list) == 0:
         raise Exception(
-            'No plugin paths were found in config file "{}"'.format(CONFIG_FILE_NAME)
+            f'No plugin paths were found in config file "{CONFIG_FILE_NAME}"'
         )
 
     # Print fancy plugin fetcher with color and cool stuff.
