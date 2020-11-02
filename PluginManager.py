@@ -11,7 +11,10 @@ CONFIG_FILE_NAME = "pluginconfig.ini"
 CONFIG_FILE_PATH = os.path.join(
     THIS_FOLDER, CONFIG_FILE_NAME
 )  # Create path of config file. (name can be changed)
+PLUGINS_FOLDER = 'plugins'
 PLUGIN_PATH_SECTION = "plugins"
+GENERIC_FUNC_NAME = 'check'
+CHECK_DEVICE_NAME = 'CheckDevice'
 COLOR_MANAGER = colors.Colors()
 
 
@@ -79,23 +82,39 @@ def fetch_plugins():
     return plugin_path_list
 
 
-def write_checker():
+def generate_check_device():
     """
     this function writes to the checker.py file the plugins that were collected
     :return: none
     """
-    paths = fetch_plugins()
-    checker = open("checker.py", "w")
-    checker.write("")  # Deleting the file's content
+    try:
+        paths = fetch_plugins() # get all paths from the plugin config file.
+    except Exception as e: # Make sure no errors exist.
+        pass
+
+    checker = open(f"{CHECK_DEVICE_NAME}.py", "w") # Generate a new check device.
+
+    # Get each plugin file name so we can import each one into the check device.
+    plugins_names = [path.split("/")[-1].split(".")[0] for path in paths]
+
+    # Write all the plugin imports into the check device.
+    for plugin in plugins_names:
+        checker.write(f"import {PLUGINS_FOLDER}.{plugin} as {plugin}\n")
+
+    # Store all plugin functions in a list.
+    checker.write(f'\nALL_FUNCS = [{plugins_names[0]}.{GENERIC_FUNC_NAME}')
+    for plugin in plugins_names[1:]:
+        checker.write(f", {plugin}.{GENERIC_FUNC_NAME}")
+    
+    checker.write("]\n")
     checker.close()
 
-    plugins_names = [path.split("/")[-1].split(".")[0] for path in plugin_path_list]
-
-    checker = open("checker.py", "a")
-    for plugin in plugins_names:
-        checker.write(f"import {PLUGIN_PATH_SECTION}.{plugin} as {plugin}\n")
-    checker.write("\n\ndef main(pages):\n")
-    for plugin in plugins_names:
-        checker.write(f"\t{plugin}.check(pages)\n")
-    checker.write("\n")
-    checker.close()
+if __name__ == '__main__':
+    generate_check_device()
+    if os.path.exists(os.getcwd() + f'\{CHECK_DEVICE_NAME}.py'):
+        try:
+            import CheckDevice
+        except Exception as e:
+            pass
+    
+    os.remove(os.getcwd() + f'\{CHECK_DEVICE_NAME}.py')
