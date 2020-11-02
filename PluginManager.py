@@ -15,7 +15,7 @@ PLUGINS_FOLDER = 'plugins' # local plugin folder name.
 PLUGIN_PATH_SECTION = "plugins" # the config file section in which the plugins are stored.
 GENERIC_FUNC_NAME = 'check' # name of the generic function each file has to implement.
 CHECK_DEVICE_NAME = 'CheckDevice' # The name of the Check Device.
-CONFIG_PATHS_KEY = 'paths'
+CONFIG_PATHS_KEY = 'paths' # The name of the paths key in the config file.
 
 COLOR_MANAGER = colors.Colors()
 
@@ -84,7 +84,8 @@ def fetch_plugins():
 
 def generate_check_device():
     """
-    this function writes to the checker.py file the plugins that were collected
+    this function generates the Check Device file and imports the plugins that were collected,
+    then stores their functions in a list.
     :return: none
     """
     try:
