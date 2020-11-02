@@ -15,7 +15,7 @@ PLUGIN_PATH_SECTION = "plugins"
 COLOR_MANAGER = colors.Colors()
 
 
-def get_files():
+def fetch_plugins():
     """
     this function obtains the config file containing the path of each plugin,
     parses it into a list of plugin paths and returns it. while also handeling errors.
@@ -47,6 +47,7 @@ def get_files():
             'Key "paths" was not found in section "{}"'.format(PLUGIN_PATH_SECTION)
         )
 
+    # Save paths from the config file.
     plugin_path_list = cfg_parser[PLUGIN_PATH_SECTION]["paths"].split(",\n")
 
     # Check if there are paths inside the section under the key "paths".
@@ -78,12 +79,12 @@ def get_files():
     return plugin_path_list
 
 
-def write_checker(plugin_path_list):
+def write_checker():
     """
     this function writes to the checker.py file the plugins that were collected
-    :param plugin_path_list: list of plugins paths
     :return: none
     """
+    paths = fetch_plugins()
     checker = open("checker.py", "w")
     checker.write("")  # Deleting the file's content
     checker.close()
