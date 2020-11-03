@@ -83,7 +83,14 @@ def scan(data: Data.Data, url=False):
     return nm
 
 
-def check_for_http(nm, data: Data.Data) -> bool:
+def check_for_http(nm: nmap.PortScanner, data: Data.Data) -> bool:
+    """
+    This function takes an existing nmap PortScanner object that scanned the host machine and checks if the host has
+    a http port open on the port that was specified to the data object.
+    
+    :nm: (nmap.PortScanner) the object that stores the nmap scan.
+    :data: (Data.Data) the object that stores the user input data.
+    """
     # Check if the address of the scan is the same in the data object and also that the host is up.
     if data.address not in nm.all_hosts() or nm[data.address]['status']['state'] != 'up':
         raise Exception("Host address does not match the data object's address attribute or host is down!") # The host's address does not match the data object's address or host is down.
