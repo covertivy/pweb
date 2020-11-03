@@ -84,20 +84,24 @@ def scan(data: Data.Data, url=False):
 
 
 def check_for_http(nm, data: Data.Data) -> bool:
+    # Check if the address of the scan is the same in the data object and also that the host is up.
     if data.address not in nm.all_hosts() or nm[data.address]['status']['state'] != 'up':
-        return False
+        raise Exception("Host address does not match the data object's address attribute or host is down!") # The host's address does not match the data object's address or host is down.
+
+    # Get the nmap host object from the scan.
     host = nm[data.address]
+    # Get all protocols that are running on the host.
     proto_list = host.all_protocols()
     for proto in proto_list:
-        ports = list(host[proto].keys())
+        ports = list(host[proto].keys()) # Get all port numbers as a list.
         ports.sort()
         for port in ports:
-            port_obj = host[proto][port]
-            if port == data.port and port_obj['name'] == 'http':
+            port_obj = host[proto][port] # Get the port object.
+            if port == data.port and port_obj['name'] == 'http': # Check for a http port that matches the data object's port.
                 return True
             else:
                 pass
-    return False
+    return False # We didn't find a valid http port.
 
 
 
