@@ -45,3 +45,7 @@ class Colors:
     @staticmethod
     def randcolor():
         return "\033[38;2;{};{};{}m".format(random.choice(range(255)), random.choice(range(255)), random.choice(range(255)))
+    
+    @staticmethod
+    def print_error(error:str='ERROR!'):
+        print('[' + Colors.BRIGHT_RED + '!' + Colors.ENDC + '] ' + Colors.BRIGHT_RED + error + Colors.ENDC)

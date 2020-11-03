@@ -11,11 +11,16 @@ CONFIG_FILE_NAME = "pluginconfig.ini"
 CONFIG_FILE_PATH = os.path.join(
     THIS_FOLDER, CONFIG_FILE_NAME
 )  # Create path of config file. (name can be changed)
-PLUGIN_PATH_SECTION = "plugins"
+PLUGINS_FOLDER = 'plugins' # local plugin folder name.
+PLUGIN_PATH_SECTION = "plugins" # the config file section in which the plugins are stored.
+GENERIC_FUNC_NAME = 'check' # name of the generic function each file has to implement.
+CHECK_DEVICE_NAME = 'CheckDevice' # The name of the Check Device.
+CONFIG_PATHS_KEY = 'paths' # The name of the paths key in the config file.
+
 COLOR_MANAGER = colors.Colors()
 
 
-def get_files():
+def fetch_plugins():
     """
     this function obtains the config file containing the path of each plugin,
     parses it into a list of plugin paths and returns it. while also handeling errors.
@@ -27,7 +32,7 @@ def get_files():
 
     # Check if config file exists.
     if not os.path.exists(CONFIG_FILE_PATH):
-        raise Exception('Config file "{}" was not found!'.format(CONFIG_FILE_PATH))
+        raise Exception('Config file "{CONFIG_FILE_PATH}" was not found!')
     # Read config file:
     cfg_parser.read(CONFIG_FILE_PATH)
 
@@ -35,24 +40,23 @@ def get_files():
     # For more information check out "https://docs.python.org/3/library/configparser.html"
     if PLUGIN_PATH_SECTION not in cfg_parser.sections():
         raise Exception(
-            'Section "{}" was not found in config file "{}"'.format(
-                PLUGIN_PATH_SECTION, CONFIG_FILE_NAME
-            )
+            f'Section "{PLUGIN_PATH_SECTION}" was not found in config file "{CONFIG_FILE_NAME}"'
         )
 
-    # Check if the mandatory key "paths" exists inside the desired section.
+    # Check if the mandatory key CONFIG_PATHS_KEY exists inside the desired section.
     # For more information check out "https://docs.python.org/3/library/configparser.html"
-    if "paths" not in cfg_parser[PLUGIN_PATH_SECTION]:
+    if CONFIG_PATHS_KEY not in cfg_parser[PLUGIN_PATH_SECTION]:
         raise Exception(
-            'Key "paths" was not found in section "{}"'.format(PLUGIN_PATH_SECTION)
+            f'Key "{CONFIG_PATHS_KEY}" was not found in section "{PLUGIN_PATH_SECTION}"'
         )
 
-    plugin_path_list = cfg_parser[PLUGIN_PATH_SECTION]["paths"].split(",\n")
+    # Save paths from the config file.
+    plugin_path_list = cfg_parser[PLUGIN_PATH_SECTION][CONFIG_PATHS_KEY].split(",\n")
 
-    # Check if there are paths inside the section under the key "paths".
+    # Check if there are paths inside the section under the key CONFIG_PATHS_KEY.
     if len(plugin_path_list) == 0:
         raise Exception(
-            'No plugin paths were found in config file "{}"'.format(CONFIG_FILE_NAME)
+            f'No plugin paths were found in config file "{CONFIG_FILE_NAME}"'
         )
 
     # Print fancy plugin fetcher with color and cool stuff.
@@ -78,23 +82,30 @@ def get_files():
     return plugin_path_list
 
 
-def write_checker(plugin_path_list):
+def generate_check_device():
     """
-    this function writes to the checker.py file the plugins that were collected
-    :param plugin_path_list: list of plugins paths
+    this function generates the Check Device file and imports the plugins that were collected,
+    then stores their functions in a list.
     :return: none
     """
-    checker = open("checker.py", "w")
-    checker.write("")  # Deleting the file's content
-    checker.close()
+    try:
+        paths = fetch_plugins() # get all paths from the plugin config file.
+    except Exception as e: # Make sure no errors exist.
+        COLOR_MANAGER.print_error(e)
 
-    plugins_names = [path.split("/")[-1].split(".")[0] for path in plugin_path_list]
+    checker = open(f"{CHECK_DEVICE_NAME}.py", "w") # Generate a new check device.
 
-    checker = open("checker.py", "a")
+    # Get each plugin file name so we can import each one into the check device.
+    plugins_names = [path.split("/")[-1].split(".")[0] for path in paths]
+
+    # Write all the plugin imports into the check device.
     for plugin in plugins_names:
-        checker.write(f"import {PLUGIN_PATH_SECTION}.{plugin} as {plugin}\n")
-    checker.write("\n\ndef main(pages):\n")
-    for plugin in plugins_names:
-        checker.write(f"\t{plugin}.check(pages)\n")
-    checker.write("\n")
+        checker.write(f"import {PLUGINS_FOLDER}.{plugin} as {plugin}\n")
+
+    # Store all plugin functions in a list.
+    checker.write(f'\nALL_FUNCS = [{plugins_names[0]}.{GENERIC_FUNC_NAME}')
+    for plugin in plugins_names[1:]:
+        checker.write(f", {plugin}.{GENERIC_FUNC_NAME}")
+    
+    checker.write("]\n")
     checker.close()
