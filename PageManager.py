@@ -1,9 +1,7 @@
 #!/usr/bin/python3
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-import colors
-
-COLOR_MANAGER = colors.Colors()
+from colors import COLOR_MANAGER
 
 
 def get_pages(data, curr_url, session_page=False):
