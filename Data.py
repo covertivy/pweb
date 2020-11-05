@@ -23,7 +23,7 @@ class Data:
         return f"IP: {self.ip}\n" \
                f"URL: {self.url}\n" \
                f"PORT: {self.port}\n" \
-               f"PAGE MAXIMUM: {self.max_pages}\n" \
+               f"MAXIMUM PAGES: {self.max_pages}\n" \
                f"OUTPUT FOLDER: {self.folder}\n" \
                f"USERNAME: {self.username}\n" \
                f"PASSWORD: {self.password}"
