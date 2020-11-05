@@ -6,10 +6,10 @@ import AddressManager
 import OutputManager
 import VulnerabilityManager
 import os
+import datetime
 from colors import COLOR_MANAGER
 
-
-LOGO = """                           __    
+LOGO = """                           __        
                           /\ \       
  _____   __  __  __     __\ \ \____  
 /\ '__`\/\ \/\ \/\ \  /'__`\ \ '__`\ 
@@ -17,7 +17,14 @@ LOGO = """                           __
  \ \ ,__/\ \___x___/'\ \____\\\ \_,__/
   \ \ \/  \/__//__/   \/____/ \/___/ 
    \ \_\                             
-    \/_/   """
+    \/_/                             """
+
+def print_startup():
+    # print magestic logo.
+    for char in LOGO:
+        print(COLOR_MANAGER.randcolor() + char, end='')
+    print(COLOR_MANAGER.ENDC + '\n')
+    print(f'{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}')
 
 
 def get_plugin_funcs():
@@ -49,14 +56,10 @@ def get_data():
 
 
 def main():
-    # print magestic logo.
-    for char in LOGO:
-        print(COLOR_MANAGER.randcolor() + char, end='')
-    print(COLOR_MANAGER.ENDC + '\n')
-
-    # Get data through flag manager, address manager and page manager.
+    print_startup() # Print startup logo and current time.
+    
     try:
-        data = get_data()
+        data = get_data() # Get data through flag manager, address manager and page manager.
         if type(data.port) is not int:
             return
         print(data, end="\n\n")
@@ -69,6 +72,11 @@ def main():
         print("\n", end="")
     except Exception as e:
         COLOR_MANAGER.print_error(str(e))
+    finally:
+        pass
+        #TODO:
+        #os.remove('CheckDevice.py')
+        # DELETE THE CHECK DEVICE BECAUSE HE SUUUUUPER NOT COOL.
 
 
 if __name__ == "__main__":
