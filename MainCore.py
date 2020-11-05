@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from Data import Data
+import Data
 import FlagManager
 import PluginManager
 import AddressManager
@@ -19,8 +19,11 @@ LOGO = """                           __
    \ \_\                             
     \/_/                             """
 
+
 def print_startup():
-    # print magestic logo.
+    """
+    print majestic logo.
+    """
     for char in LOGO:
         print(COLOR_MANAGER.randcolor() + char, end='')
     print(COLOR_MANAGER.ENDC + '\n')
@@ -28,8 +31,8 @@ def print_startup():
 
 
 def get_plugin_funcs():
-    PluginManager.generate_check_device() # Generate Check Device in our directory.
-    if os.path.exists(os.getcwd() + f'/{PluginManager.CHECK_DEVICE_NAME}.py'): # Check if it actually exists.
+    PluginManager.generate_check_device()  # Generate Check Device in our directory.
+    if os.path.exists(os.getcwd() + f'/{PluginManager.CHECK_DEVICE_NAME}.py'):  # Check if it actually exists.
         try:
             from CheckDevice import ALL_FUNCS  # Try to import.
         except ModuleNotFoundError as e:  # Error in Check Device plugin imports.
@@ -47,22 +50,25 @@ def get_plugin_funcs():
         exit()
 
 
-def get_data():
+def get_data() -> Data.Data:
+    """
+    Function sets the Data object variables for the check process
+    :return: basic Data object
+    """
     data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
     AddressManager.set_target(data)
-    # TODO: update the data through page manager.
-
     return data
 
 
 def main():
-    print_startup() # Print startup logo and current time.
+    print_startup()  # Print startup logo and current time.
     
     try:
-        data = get_data() # Get data through flag manager, address manager and page manager.
+        data = get_data()  # Get data through flag manager, address manager and page manager.
         if type(data.port) is not int:
             return
         print(data, end="\n\n")
+        # TODO: Page manager function
         plugin_funcs = get_plugin_funcs()  # Get all plugin functions from the Check Device.
         for func in plugin_funcs:
             func(data)  # Should be pages received from the data object.
@@ -74,9 +80,7 @@ def main():
         COLOR_MANAGER.print_error(str(e))
     finally:
         pass
-        #TODO:
-        #os.remove('CheckDevice.py')
-        # DELETE THE CHECK DEVICE BECAUSE HE SUUUUUPER NOT COOL.
+        # os.remove('CheckDevice.py')
 
 
 if __name__ == "__main__":

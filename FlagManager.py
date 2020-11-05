@@ -84,12 +84,16 @@ def get_final_args(args) -> Data.Data:
         # Username. Password.
 
     output_obj.ip = args.ip
+
     output_obj.url = args.url
+    if output_obj.url is not None and output_obj.url[-1] != '/':
+        output_obj.url += '/'
 
     # Check if all ports flag is set.
+
     if args.ALL_PORTS:
         output_obj.port = "1-65534"
-    else: # Not all ports scan.
+    else:  # Not all ports scan.
         # Check if port is valid.
         if args.port < 1 or args.port > 65535:
             COLOR_MANAGER.print_error("Invalid port number, using default port 80.")
@@ -99,5 +103,4 @@ def get_final_args(args) -> Data.Data:
 
     output_obj.max_pages = args.number_of_pages
     output_obj.folder = args.output
-
     return output_obj

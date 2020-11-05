@@ -2,51 +2,71 @@
 import nmap
 import Data
 from colors import COLOR_MANAGER
-import urllib.parse
+import requests
+from scapy.all import *
 
 
-def url_port(url: str, existing_port: int):
-    try:
-        token = urllib.parse.urlparse(url)
-        port = token.port
-    except ValueError as e:
-        COLOR_MANAGER.print_error(f"{e}, using port {existing_port}.")
-        return existing_port
-    if not port:
-        return existing_port
-    return port
-
-
-def validIPAddress(ip: str) -> bool:
+def valid_ip(ip: str) -> bool:
     """
-      :type IP: str
-      :rtype: str
-      """
+    Function checks if the IP is valid
+    :param ip: the IP string
+    :return: True - valid IP, False - invalid IP
+    """
+    def isIPv4(field: str) -> bool:
+        """
+        Function checks if a string is a number and between 0-255
+        :param field: a field from the IP address
+        :return: True - valid field, False - invalid field
+        """
+        return field.isnumeric() and 0 <= int(field) <= 255
 
-    def isIPv4(s):
-        try:
-            return str(int(s)) == s and 0 <= int(s) <= 255
-        except:
-            return False
-
-    if ip.count(".") == 3 and all(isIPv4(i) for i in ip.split(".")):
+    if ip.count(".") == 3 \
+            and all(isIPv4(field) for field in ip.split(".")):
+        # if there are 4 fields in the IP and they all are in range 0-255
         return True
     return False
 
 
-def valid_url(url: str) -> bool:
-    token = urllib.parse.urlparse(url)
+def valid_url(data: Data.Data) -> bool:
+    """
+    Function checks if the url is valid
+    :param data: the data object of the program
+    :return: True - the URL is valid, False - the URL is invalid
+    """
+    address = data.url[7:].split('/')[0].split(":")  # address = [ip, port]
+    if len(address) == 1:
+        # ip only, no port specified
+        data.port = 80  # default port for http
+    if len(address) == 2:
+        # ip and port
+        port = address[1]
+        if port.isnumeric():
+            # if port is a number
+            port = int(port)
+            if 65535 > port > 1:
+                # if port is in range
+                data.port = port
+            else:
+                # port out of range
+                return False
+        else:
+            # port is not a number
+            return False
 
-    min_attributes = ("scheme", "netloc")  # protocol and domain
-    if not all([getattr(token, attr) for attr in min_attributes]):
+    data.ip = address[0]
+
+    if not valid_ip(data.ip):
+        # if the IP in the URL is invalid
         return False
-    elif "." not in str(getattr(token, "netloc")):
-        return False
-    else:
-        return True
+
+    return requests.get(data.url).status_code == 200  # if the url is responding
 
 
-def scan_ports(data: Data.Data) -> nmap.PortScanner:
+def scan_ports(data: Data.Data):
+    """
+    Function scans the host on the specified port/s
+    :param data: the data object of the program
+    """
     nm = nmap.PortScanner()  # instantiate nmap.PortScanner object
     nm.scan(hosts=data.ip, ports=str(data.port))  # scan host, ports from 22 to 443
 
@@ -67,7 +87,7 @@ def scan_ports(data: Data.Data) -> nmap.PortScanner:
                 if host[proto][port]['name'] == "http":
                     # we are looking for http ports only
                     message += f"\tPort: {port} | State: {host[proto][port]['state']} " \
-                                f"| Service: {nm[host][proto][port]['product']}\n"
+                                f"| Service: {host[proto][port]['product']}\n"
         if len(message) != 0:
             # if there are open http ports on the host
             message = COLOR_MANAGER.UNDERLINE + \
@@ -83,21 +103,61 @@ def scan_ports(data: Data.Data) -> nmap.PortScanner:
         exists = False
         proto_list = host.all_protocols()
         for proto in proto_list:
+            # checking each protocol
             ports = list(host[proto].keys())  # Get all port numbers as a list.
             for port in ports:
                 port_obj = host[proto][port]  # Get the port object.
                 if port == data.port and port_obj['name'] == 'http':
+                    # if the specified port is http and open
                     exists = True
                     break
         if exists:
-            data.url = f"http://{data.ip}:{data.port}"
+            # if the specified port is good
+            if data.url is None:
+                # if the url field is empty
+                data.url = f"http://{data.ip}:{data.port}/"
         else:
+            # if the specified port is not good
             raise Exception(f"port {data.port} isn't open on your host. please try another port or check your host.")
-    return nm
+
+
+def ping(data: Data.Data) -> bool:
+    """
+    Function checks if the host is up and in the local network
+    :param data: the data object of the program
+    :return: True - the host is up and local, False - otherwise
+    """
+    icmp = IP(dst=data.ip, ttl=3)/ICMP()  # ICMP object using scapy
+    # ignore the red lines under IP and ICMP
+    resp = sr1(icmp, timeout=2, verbose=0)
+    if resp is None:
+        # the host is unreachable
+        return False
+    else:
+        # the host is reachable
+        return True
 
 
 def set_target(data: Data.Data):
-    if validIPAddress(data.ip):
-        scan_ports(data)
-    else:
-        COLOR_MANAGER.print_error("Invalid IP address")
+    """
+    Function sets the address details in the Data object, checks ports, IP or URL.
+    :param data: the data object of the program
+    """
+    if data.url is not None:
+        # if the user specified URL
+        if not valid_url(data):
+            # if the url is not valid
+            raise Exception(f"The URL {data.url} is not in the right format or exists.\n\t"
+                            f"Try again with the right format:\n\t"
+                            f" -u http://xxx.xxx.xxx.xxx/\n\t"
+                            f" -u http://xxx.xxx.xxx.xxx:xxxx/")
+    elif not valid_ip(data.ip):
+        # if the user didn't specified URL and the IP is invalid
+        raise Exception(f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx")
+    # at this point there has to be a valid IP
+    if not ping(data):
+        # if the IP of the host is too far
+        raise Exception("The host you are looking for is not in your local network or down")
+    # The IP is valid, now ports check
+    scan_ports(data)
+
