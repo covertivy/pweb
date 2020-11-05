@@ -37,7 +37,7 @@ def parse_args():  # Get command line arguments using argsparse.
     parser.add_argument(
         "-u",
         "--url",
-        default="",
+        default=None,
         type=str,
         help="Instead of specifying an ip address you can specifically specify a url.",
     )
@@ -94,7 +94,7 @@ def get_final_args(args) -> Data.Data:
         output_obj.port = args.port
 
     if args.ALL_PORTS:
-        output_obj.port = -1
+        output_obj.port = "1-65534"
 
     output_obj.max_pages = args.number_of_pages
     output_obj.folder = args.output
