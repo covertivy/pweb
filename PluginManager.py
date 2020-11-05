@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-#!/usr/bin/python3
 import os
-import colors
+import time
+from colors import COLOR_MANAGER
 from configparser import ConfigParser
 
 THIS_FOLDER = os.path.dirname(
@@ -11,13 +11,11 @@ CONFIG_FILE_NAME = "pluginconfig.ini"
 CONFIG_FILE_PATH = os.path.join(
     THIS_FOLDER, CONFIG_FILE_NAME
 )  # Create path of config file. (name can be changed)
-PLUGINS_FOLDER = 'plugins' # local plugin folder name.
-PLUGIN_PATH_SECTION = "plugins" # the config file section in which the plugins are stored.
-GENERIC_FUNC_NAME = 'check' # name of the generic function each file has to implement.
-CHECK_DEVICE_NAME = 'CheckDevice' # The name of the Check Device.
-CONFIG_PATHS_KEY = 'paths' # The name of the paths key in the config file.
-
-COLOR_MANAGER = colors.Colors()
+PLUGINS_FOLDER = 'plugins'  # local plugin folder name.
+PLUGIN_PATH_SECTION = "plugins"  # the config file section in which the plugins are stored.
+GENERIC_FUNC_NAME = 'check'  # name of the generic function each file has to implement.
+CHECK_DEVICE_NAME = 'CheckDevice'  # The name of the Check Device.
+CONFIG_PATHS_KEY = 'paths'  # The name of the paths key in the config file.
 
 
 def fetch_plugins():
@@ -78,7 +76,7 @@ def fetch_plugins():
             + path
             + COLOR_MANAGER.ENDC
         )
-
+    print("\n", end="")
     return plugin_path_list
 
 
@@ -89,11 +87,11 @@ def generate_check_device():
     :return: none
     """
     try:
-        paths = fetch_plugins() # get all paths from the plugin config file.
-    except Exception as e: # Make sure no errors exist.
+        paths = fetch_plugins()  # get all paths from the plugin config file.
+    except Exception as e:  # Make sure no errors exist.
         COLOR_MANAGER.print_error(e)
 
-    checker = open(f"{CHECK_DEVICE_NAME}.py", "w") # Generate a new check device.
+    checker = open(f"{CHECK_DEVICE_NAME}.py", "w")  # Generate a new check device.
 
     # Get each plugin file name so we can import each one into the check device.
     plugins_names = [path.split("/")[-1].split(".")[0] for path in paths]

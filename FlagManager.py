@@ -1,17 +1,17 @@
 #!/usr/bin/python3
 import argparse
-import colors
 import Data
+from colors import COLOR_MANAGER
 
 
-def charr_to_string(arr: list) -> str: # convert char array to string
+def char_arr_to_string(arr: list) -> str:  # convert char array to string
     to_ret = ""
     for item in arr:
         to_ret += str(item)
     return to_ret
 
 
-def parse_args(): # Get command line arguments using argsparse.
+def parse_args():  # Get command line arguments using argsparse.
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-i",
@@ -25,7 +25,8 @@ def parse_args(): # Get command line arguments using argsparse.
         "--port",
         default=80,
         type=int,
-        help="Specify a known port on which a web server is serving, if not specified, default port would be 80.\n You can use flag -P to force an all-port scan.",
+        help="Specify a known port on which a web server is serving, if not specified, default port would be 80.\n "
+             "You can use flag -P to force an all-port scan.",
     )
     parser.add_argument(
         "-P",
@@ -58,7 +59,7 @@ def parse_args(): # Get command line arguments using argsparse.
     parser.add_argument(
         "-o",
         "--output",
-        default=str(),
+        default=None,
         type=str,
         help="Specify a directory path in which the outputs will be stored.",
     )
@@ -74,31 +75,28 @@ def get_final_args(args) -> Data.Data:
     Returns:
         Data.Data: The returned data object, will be processed furthermore in the Main Core.
     """
-    COLOR_MANAGER = colors.Colors()
     output_obj = Data.Data()
 
-    if type(args.login) != None:
+    if type(args.login) is not None:
         if len(args.login) == 2:
-                output_obj.username = charr_to_string(args.login[0])
-                output_obj.password = charr_to_string(args.login[1])
-            # Username. Password.
-    
+            output_obj.username = char_arr_to_string(args.login[0])
+            output_obj.password = char_arr_to_string(args.login[1])
+        # Username. Password.
+
     output_obj.ip = args.ip
-    output_obj.address = args.url
+    output_obj.url = args.url
 
     # Check if port is valid
     if args.port < 1 or args.port > 65535:
-        print(
-            COLOR_MANAGER.BRIGHT_YELLOW
-            + "[!] Invalid port number, using default port 80."
-            + COLOR_MANAGER.ENDC
-        )
+        COLOR_MANAGER.print_error("Invalid port number, using default port 80.")
         output_obj.port = 80
     else:
         output_obj.port = args.port
 
-    output_obj.all_ports = args.ALL_PORTS
+    if args.ALL_PORTS:
+        output_obj.port = -1
+
     output_obj.max_pages = args.number_of_pages
     output_obj.folder = args.output
-    
+
     return output_obj

@@ -5,7 +5,7 @@ import PluginManager
 import OutputManager
 import VulnerabilityManager
 import os
-import colors
+from colors import COLOR_MANAGER
 
 
 LOGO = """                           __    
@@ -19,27 +19,23 @@ LOGO = """                           __
     \/_/   """
 
 
-COLOR_MANAGER = colors.Colors()
-
-
 def get_plugin_funcs():
     PluginManager.generate_check_device() # Generate Check Device in our directory.
-    if os.path.exists(os.getcwd() + f'\{PluginManager.CHECK_DEVICE_NAME}.py'): # Check if it actually exists.
+    if os.path.exists(os.getcwd() + f'/{PluginManager.CHECK_DEVICE_NAME}.py'): # Check if it actually exists.
         try:
-            import CheckDevice # Try to import.
-        except ModuleNotFoundError as e: # Error in Check Device plugin imports.
+            from CheckDevice import ALL_FUNCS  # Try to import.
+        except ModuleNotFoundError as e:  # Error in Check Device plugin imports.
             COLOR_MANAGER.print_error(f'Plugin files missing from the specified plugin folder!\n\t( {e} )\nAborting...')
-            os.remove(os.getcwd() + f'\{PluginManager.CHECK_DEVICE_NAME}.py')
             exit()
         # Catch any other error (could be function 'check' does not exist in a plugin module)
         except Exception as e:
             COLOR_MANAGER.print_error(f'ERROR!\n\t( {e} )\nAborting...')
             exit()
 
-        return CheckDevice.ALL_FUNCS # Get and return the list of all plugin functions from Check Device.
+        return ALL_FUNCS  # Get and return the list of all plugin functions from Check Device.
 
-    else: # Check file does not exist.
-        COLOR_MANAGER.print_error(f'Check device does not exist!\n\t( {PluginManager.CHECK_DEVICE_NAME}.py )\nAborting...')
+    else:  # Check file does not exist.
+        COLOR_MANAGER.print_error(f'Check device does not exist!\n\t( {PluginManager.CHECK_DEVICE_NAME}.py)\nAborting...')
         exit()
 
 
@@ -53,25 +49,24 @@ def get_data():
 
 def main():
     # print magestic logo.
-    os.system("clear")
     for char in LOGO:
         print(COLOR_MANAGER.randcolor() + char, end='')
     print(COLOR_MANAGER.ENDC + '\n')
 
     # Get data through flag manager, address manager and page manager.
     data = get_data()
-    print(data)
-    print('\n')
+    print(data, end="\n\n")
 
-    plugin_funcs = get_plugin_funcs() # Get all plugin functions from the Check Device.
+    plugin_funcs = get_plugin_funcs()  # Get all plugin functions from the Check Device.
     for func in plugin_funcs:
-        func('pages') # Should be pages received from the data object.
-    
+        func(data)  # Should be pages received from the data object.
+
+    print("\n", end="")
+
     # TODO:
     # Vulnerabilities Manager actions (needs data)
     # Output Manager actions (needs data)
 
-    os.remove(f'{os.getcwd()}/{PluginManager.CHECK_DEVICE_NAME}.py') # Delete Check device for this run.
 
 if __name__ == "__main__":
     main()

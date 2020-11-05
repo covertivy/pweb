@@ -4,23 +4,14 @@ import http.cookiejar
 
 
 class Data:
-    def __init__(self, address="127.0.0.1",
-                 username=None, password=None,
-                 max_pages=-1, port=80, output_folder=None):
-        """
-        :param address: the address of the target
-        :param username: the user's username
-        :param password: the user's password
-        :param max_pages: the maximum pages amount
-        :param port: the port of the target
-        :param output_folder: the folder of the output files
-        """
-        self.address = address
-        self.port = port
-        self.max_pages = max_pages
-        self.folder = output_folder
-        self.username = username
-        self.password = password
+    def __init__(self):
+        self.ip = None
+        self.url = None
+        self.port = None
+        self.max_pages = None
+        self.folder = None
+        self.username = None
+        self.password = None
         self.pages = list()  # normal pages
         self.session_pages = list()  # session pages
         self.results = list()  # vulnerabilities results
@@ -29,12 +20,10 @@ class Data:
         self.session.set_cookiejar(self.cookies)  # Setting the cookies
 
     def __str__(self):
-        return f"""IP: {self.ip}
-URL: {self.address}
-PORT: {self.port}
-ALL PORTS: {self.all_ports}
-PAGE NUM: {self.max_pages}
-OUTPUT: {self.folder}
-USERNAME: {self.username}
-PASSWORD: {self.password}
-"""
+        return f"IP: {self.ip}\n" \
+               f"URL: {self.url}\n" \
+               f"PORT: {self.port}\n" \
+               f"PAGE MAXIMUM: {self.max_pages}\n" \
+               f"OUTPUT FOLDER: {self.folder}\n" \
+               f"USERNAME: {self.username}\n" \
+               f"PASSWORD: {self.password}"

@@ -1,5 +1,9 @@
 #!/usr/bin/python3
 import random
+
+FORMAT = "\033[38;2;{};{};{}m"
+
+
 class Colors:
     """
     common use of the class methods:
@@ -31,21 +35,23 @@ class Colors:
     BRIGHT_WHITE =      '\u001b[37;1m'
 
     @staticmethod
-    def color(red:int, green:int, blue:int, text:str):
+    def color(red: int, green: int, blue: int):
         """
         function paints the text
         :param red: int, 0-255
         :param green: int, 0-255
         :param blue: int, 0-255
-        :param text: string
-        :return: painted text
+        :return: paint format
         """
-        return "\033[38;2;{};{};{}m{} \033[38;2;255;255;255m".format(red, green, blue, text)
+        return FORMAT.format(red, green, blue)
     
     @staticmethod
     def randcolor():
-        return "\033[38;2;{};{};{}m".format(random.choice(range(255)), random.choice(range(255)), random.choice(range(255)))
+        return FORMAT.format(random.choice(range(255)), random.choice(range(255)), random.choice(range(255)))
     
     @staticmethod
-    def print_error(error:str='ERROR!'):
+    def print_error(error: str = 'ERROR!'):
         print('[' + Colors.BRIGHT_RED + '!' + Colors.ENDC + '] ' + Colors.BRIGHT_RED + error + Colors.ENDC)
+
+
+COLOR_MANAGER = Colors()
