@@ -239,5 +239,5 @@ dkms.conf
 
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,linux
 
-.vscode
-.idea
+.vscode/
+.idea/
