@@ -17,7 +17,7 @@ def url_port(url: str, existing_port: int):
     return port
 
 
-def validIPAddress(IP: str) -> bool:
+def validIPAddress(ip: str) -> bool:
     """
       :type IP: str
       :rtype: str
@@ -29,7 +29,7 @@ def validIPAddress(IP: str) -> bool:
         except:
             return False
 
-    if IP.count(".") == 3 and all(isIPv4(i) for i in IP.split(".")):
+    if ip.count(".") == 3 and all(isIPv4(i) for i in ip.split(".")):
         return True
     return False
 
@@ -46,64 +46,58 @@ def valid_url(url: str) -> bool:
         return True
 
 
-def scan(data: Data.Data, url=False):
+def scan_ports(data: Data.Data) -> nmap.PortScanner:
     nm = nmap.PortScanner()  # instantiate nmap.PortScanner object
-    nm.scan(hosts=data.url, ports=str(data.port))  # scan host, ports from 22 to 443
-    # print("Command: " + nm.command_line())  # get command line used for the scan
+    nm.scan(hosts=data.ip, ports=str(data.port))  # scan host, ports from 22 to 443
 
     if len(nm.all_hosts()) == 0:
-        raise Exception("[!] Error! No hosts found!")
+        raise Exception(f"No hosts found on {data.ip}")
 
-    for host in nm.all_hosts():
-        for proto in nm[host].all_protocols():
-            lport = list(nm[host][proto].keys())
-            lport.sort()
+    host = nm[nm.all_hosts()[0]]  # usually there is one host in the list, the one we want to check
 
-            for port in lport:
-                # print(nm[host][proto][port])
-                print('┌----------------------------------------------------')
-                print('|\tPort: {} | Protocol: {}'.format(port, nm[host][proto][port]['name']))
-                print(f"|\tState:   {nm[host][proto][port]['state']}")
-                print(f"|\tService: {nm[host][proto][port]['product']}")
-                # print(f"|\tVersion: {nm[host][proto][port]['version']}")
-                # print(f"|\tSystem:  {nm[host][proto][port]['extrainfo']}")
+    if type(data.port) is not int:
+        # if the user used -P for all ports scan
+        message = str()
+        for proto in host.all_protocols():
+            # for every protocol that the host is using
+            ports = list(host[proto].keys())
+            ports.sort()
 
-        print('└----------------------------------------------------')
+            for port in ports:
+                if host[proto][port]['name'] == "http":
+                    # we are looking for http ports only
+                    message += f"\tPort: {port} | State: {host[proto][port]['state']} " \
+                                f"| Service: {nm[host][proto][port]['product']}\n"
+        if len(message) != 0:
+            # if there are open http ports on the host
+            message = COLOR_MANAGER.UNDERLINE + \
+                      "List of the open http ports on your host:\n\n" \
+                      + COLOR_MANAGER.ENDC + COLOR_MANAGER.CYAN + message + COLOR_MANAGER.ENDC + \
+                      "\nPlease choose one of the ports above and try again (-p <port>).\n"
+            print(message)
+        else:
+            # if there are no open http ports on the host
+            raise Exception("There are no open http ports on your host, please check the host.")
+    else:
+        # if the user used -p or used the default port 80
+        exists = False
+        proto_list = host.all_protocols()
+        for proto in proto_list:
+            ports = list(host[proto].keys())  # Get all port numbers as a list.
+            for port in ports:
+                port_obj = host[proto][port]  # Get the port object.
+                if port == data.port and port_obj['name'] == 'http':
+                    exists = True
+                    break
+        if exists:
+            data.url = f"http://{data.ip}:{data.port}"
+        else:
+            raise Exception(f"port {data.port} isn't open on your host. please try another port or check your host.")
     return nm
 
 
-def check_for_http(nm, data: Data.Data) -> bool:
-    # Check if the address of the scan is the same in the data object and also that the host is up.
-    if data.url not in nm.all_hosts() or nm[data.url]['status']['state'] != 'up':
-        raise Exception("Host address does not match the data object's address attribute or host is down!") # The host's address does not match the data object's address or host is down.
-
-    # Get the nmap host object from the scan.
-    host = nm[data.url]
-    # Get all protocols that are running on the host.
-    proto_list = host.all_protocols()
-    for proto in proto_list:
-        ports = list(host[proto].keys()) # Get all port numbers as a list.
-        ports.sort()
-        for port in ports:
-            port_obj = host[proto][port] # Get the port object.
-            if port == data.port and port_obj['name'] == 'http': # Check for a http port that matches the data object's port.
-                return True
-            else:
-                pass
-    return False # We didn't find a valid http port.
-
-
-if __name__ == '__main__':
-    try:
-        data = Data.Data()
-        nm_scan = scan(data=data)
-        if check_for_http(nm_scan, data):
-            print("HTTP Port exists!")
-        else:
-            print("HTTP port specified doesn't exist!")
-    except Exception as e:
-        print(e)
-
-
-def get_target(data: Data.Data):
-    pass
+def set_target(data: Data.Data):
+    if validIPAddress(data.ip):
+        scan_ports(data)
+    else:
+        COLOR_MANAGER.print_error("Invalid IP address")

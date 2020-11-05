@@ -7,7 +7,7 @@ FORMAT = "\033[38;2;{};{};{}m"
 class Colors:
     """
     common use of the class methods:
-        print(Colors.color(0, 0, 0, "hello"))
+        print(Colors.color(0, 0, 0) + "hello")
         # or
         print(Colors.BOLD + "hello" + Colors.ENDC)
         # or

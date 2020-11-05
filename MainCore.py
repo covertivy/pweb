@@ -2,6 +2,7 @@
 from Data import Data
 import FlagManager
 import PluginManager
+import AddressManager
 import OutputManager
 import VulnerabilityManager
 import os
@@ -41,8 +42,8 @@ def get_plugin_funcs():
 
 def get_data():
     data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
-    
-    # TODO: update the data through page manager and address manager.
+    AddressManager.set_target(data)
+    # TODO: update the data through page manager.
 
     return data
 
@@ -54,18 +55,20 @@ def main():
     print(COLOR_MANAGER.ENDC + '\n')
 
     # Get data through flag manager, address manager and page manager.
-    data = get_data()
-    print(data, end="\n\n")
-
-    plugin_funcs = get_plugin_funcs()  # Get all plugin functions from the Check Device.
-    for func in plugin_funcs:
-        func(data)  # Should be pages received from the data object.
-
-    print("\n", end="")
-
-    # TODO:
-    # Vulnerabilities Manager actions (needs data)
-    # Output Manager actions (needs data)
+    try:
+        data = get_data()
+        if type(data.port) is not int:
+            return
+        print(data, end="\n\n")
+        plugin_funcs = get_plugin_funcs()  # Get all plugin functions from the Check Device.
+        for func in plugin_funcs:
+            func(data)  # Should be pages received from the data object.
+        # TODO:
+        # Vulnerabilities Manager actions (needs data)
+        # Output Manager actions (needs data)
+        print("\n", end="")
+    except Exception as e:
+        COLOR_MANAGER.print_error(str(e))
 
 
 if __name__ == "__main__":
