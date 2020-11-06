@@ -2,62 +2,55 @@
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from colors import COLOR_MANAGER
+from Data import Data, SessionPage, Page
 
 
-def get_pages(data, curr_url, session_page=False):
+def get_pages(data: Data, curr_url, session_page=False):
     """
-    this function gets the lists of pages to the data object
+    Function gets the lists of pages to the data object
     :param data: the data object of the program
-    :param curr_url: the current url the function checks
+    :param curr_url: the current URL the function checks
     :param session_page: True- if the current page is in a special session False- else
     """
-    if len(data.pages) + len(data.session_pages) == data.max_pages:
-        # In case of mentioned amount of pages, the function will stop
+    if len(data.pages) == data.max_pages:
+        # In case of specified amount of pages, the function will stop
         return
-    # Opening the current url
-    data.session.open(curr_url)
-    # Adding the url to the data list
-    if session_page:
-        # Page requires a session
-        if data.session.geturl() not in data.session_pages \
-                and data.session.geturl() not in data.pages:
-            print(
-                "\t["
-                + COLOR_MANAGER.ORANGE
-                + "+"
-                + COLOR_MANAGER.ENDC
-                + "] "
-                + COLOR_MANAGER.ORANGE
-                + data.session.geturl()
-                + COLOR_MANAGER.ENDC
-            )
-            data.session_pages.append(data.session.geturl())
+    try:
+        # Opening the current URL
+        data.session.open(curr_url)
+        # Creating a BeautifulSoup object
+        soup = BeautifulSoup(data.session.response().read().decode(), "html.parser")
+    except Exception as e:
+        return
+    # Adding the URL to the data list
+    if all(data.session.geturl() != page.url for page in data.pages):
+        # If the page is not in the page list
+        if session_page:
+            # Page requires a session
+            color = COLOR_MANAGER.ORANGE
+            page = SessionPage(data.session.geturl(), data.session.response().code,
+                               data.session.response().read().decode(), data.cookies)
         else:
-            return
+            # Page doesn't require a session
+            color = COLOR_MANAGER.BLUE
+            page = Page(data.session.geturl(), data.session.response().code,
+                        data.session.response().read().decode())
     else:
-        # Page doesn't require a session
-        if data.session.geturl() not in data.pages:
-            print(
-                "\t["
-                + COLOR_MANAGER.CYAN
-                + "+"
-                + COLOR_MANAGER.ENDC
-                + "] "
-                + COLOR_MANAGER.CYAN
-                + data.session.geturl()
-                + COLOR_MANAGER.ENDC
-            )
-            data.pages.append(data.session.geturl())
-        else:
-            return
-    # Creating a BeautifulSoup object
-    soup = BeautifulSoup(data.session.response().read().decode(), "html.parser")
+        # The page is already in the page list
+        return
+
+    # Adding to the list
+    print(f"\t[{color}+{COLOR_MANAGER.ENDC}] {color}{data.session.geturl()}{COLOR_MANAGER.ENDC}")
+    data.pages.append(page)
+
     # Getting every link in the page
     for href in soup.find_all("a"):
         href = urljoin(curr_url, href.get("href"))  # Full URL
-        if str(href).startswith(data.address):
+        if str(href).startswith(data.url):
             # Only URLs that belongs to the website
-            get_pages(data, href, session_page)
+            if all(href != page.url for page in data.pages):
+                # If the page is not in the page list
+                get_pages(data, href, session_page)
 
     if data.username and data.password:
         # If there are username and password
@@ -67,7 +60,18 @@ def get_pages(data, curr_url, session_page=False):
             data.session.form['username'] = data.username
             data.session.form['password'] = data.password
             data.session.submit()
-            # Trying to get the page with the new login details
-            get_pages(data, data.session.geturl(), True)
+
+            if all(data.session.geturl() != page.url for page in data.pages):
+                # If the new URL was not in the page list try to get the page with the new login details
+                get_pages(data, data.session.geturl(), True)
         except Exception:
             return
+
+
+def logic(data: Data):
+    """
+    Function prints the header of the scan, scans and prints \n
+    """
+    print(COLOR_MANAGER.BLUE + COLOR_MANAGER.HEADER + "Scraping pages:" + COLOR_MANAGER.ENDC)
+    get_pages(data, data.url)
+    print("\n", end="")

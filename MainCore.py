@@ -3,6 +3,7 @@ import Data
 import FlagManager
 import PluginManager
 import AddressManager
+import PageManager
 import OutputManager
 import VulnerabilityManager
 import os
@@ -22,10 +23,10 @@ LOGO = """                           __
 
 def print_startup():
     """
-    print majestic logo.
+    Print majestic logo.
     """
     for char in LOGO:
-        print(COLOR_MANAGER.randcolor() + char, end='')
+        print(COLOR_MANAGER.rand_color() + char, end='')
     print(COLOR_MANAGER.ENDC + '\n')
     print(f'{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}')
 
@@ -46,7 +47,8 @@ def get_plugin_funcs():
         return ALL_FUNCS  # Get and return the list of all plugin functions from Check Device.
 
     else:  # Check file does not exist.
-        COLOR_MANAGER.print_error(f'Check device does not exist!\n\t( {PluginManager.CHECK_DEVICE_NAME}.py)\nAborting...')
+        COLOR_MANAGER.print_error(
+            f'Check device does not exist!\n\t( {PluginManager.CHECK_DEVICE_NAME}.py)\nAborting...')
         exit()
 
 
@@ -62,16 +64,17 @@ def get_data() -> Data.Data:
 
 def main():
     print_startup()  # Print startup logo and current time.
-    
+
     try:
         data = get_data()  # Get data through flag manager, address manager and page manager.
         if type(data.port) is not int:
+            # If the user asked for ports scan (-P) there is no need to continue the run
             return
         print(data, end="\n\n")
-        # TODO: Page manager function
+        PageManager.logic(data)  # Get all pages from website
         plugin_funcs = get_plugin_funcs()  # Get all plugin functions from the Check Device.
         for func in plugin_funcs:
-            func(data)  # Should be pages received from the data object.
+            func(data)
         # TODO:
         # Vulnerabilities Manager actions (needs data)
         # Output Manager actions (needs data)

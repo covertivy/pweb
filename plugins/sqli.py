@@ -2,7 +2,7 @@
 from colors import COLOR_MANAGER
 import Data
 
-COLOR = COLOR_MANAGER.color(255, 100, 0)
+COLOR = COLOR_MANAGER.rgb(255, 100, 0)
 
 
 def check(data: Data.Data):

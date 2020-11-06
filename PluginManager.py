@@ -59,23 +59,14 @@ def fetch_plugins():
 
     # Print fancy plugin fetcher with color and cool stuff.
     print(
-        COLOR_MANAGER.GREEN
-        + COLOR_MANAGER.UNDERLINE
-        + COLOR_MANAGER.BOLD
+        COLOR_MANAGER.LIGHT_GREEN
+        + COLOR_MANAGER.HEADER
         + "Fetching plugins:"
         + COLOR_MANAGER.ENDC
     )
     for path in plugin_path_list:
-        print(
-            "\t["
-            + COLOR_MANAGER.GREEN
-            + "+"
-            + COLOR_MANAGER.ENDC
-            + "] "
-            + COLOR_MANAGER.GREEN
-            + path
-            + COLOR_MANAGER.ENDC
-        )
+        print(f"\t[{COLOR_MANAGER.LIGHT_GREEN}+{COLOR_MANAGER.ENDC}]"
+              f" {COLOR_MANAGER.LIGHT_GREEN}{path}{COLOR_MANAGER.ENDC}")
     print("\n", end="")
     return plugin_path_list
 

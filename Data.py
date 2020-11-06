@@ -12,8 +12,7 @@ class Data:
         self.folder = None
         self.username = None
         self.password = None
-        self.pages = list()  # normal pages
-        self.session_pages = list()  # session pages
+        self.pages = list()  # pages
         self.results = list()  # vulnerabilities results
         self.cookies = http.cookiejar.CookieJar()  # Session cookies
         self.session = mechanize.Browser()  # Session object
@@ -27,3 +26,21 @@ class Data:
                f"OUTPUT FOLDER: {self.folder}\n" \
                f"USERNAME: {self.username}\n" \
                f"PASSWORD: {self.password}"
+
+
+class Page:
+    def __init__(self, url, status, content):
+        self.url = url
+        self.status = status
+        self.content = content
+
+    def __str__(self):
+        return f"URL: {self.url}\n" \
+               f"STATUS: {self.status}\n" \
+               f"CONTENT: {self.content}\n"
+
+
+class SessionPage(Page):
+    def __init__(self, url, status, content, cookies):
+        super(SessionPage, self).__init__(url, status, content)
+        self.cookies = cookies
