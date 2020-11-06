@@ -69,7 +69,7 @@ def main():
         data = get_data()  # Get data through flag manager, address manager and page manager.
         if type(data.port) is not int:
             # If the user asked for ports scan (-P) there is no need to continue the run
-            return
+            exit()
         print(data, end="\n\n")
         PageManager.logic(data)  # Get all pages from website
         plugin_funcs = get_plugin_funcs()  # Get all plugin functions from the Check Device.
@@ -82,8 +82,8 @@ def main():
     except Exception as e:
         COLOR_MANAGER.print_error(str(e))
     finally:
-        pass
         # os.remove('CheckDevice.py')
+        exit()
 
 
 if __name__ == "__main__":
