@@ -27,12 +27,24 @@ def valid_ip(ip: str) -> bool:
     return False
 
 
-def valid_url(data: Data.Data) -> bool:
+def valid_url(data: Data.Data):
     """
     Function checks if the url is valid
     :param data: the data object of the program
-    :return: True - the URL is valid, False - the URL is invalid
     """
+    if not str(data.url).lower().startswith("http://"):
+        # If the URL does not start with "http://
+        raise Exception("URL must start with 'http://'")
+
+    try:
+        name = str(data.url).replace('http://', '')[:-1]
+        ip = socket.gethostbyname(name)
+        data.ip = ip
+        data.port = 80
+        return
+    except Exception:
+        pass
+
     address = data.url[7:].split('/')[0].split(":")  # address = [ip, port]
     if len(address) == 1:
         # ip only, no port specified
@@ -48,18 +60,21 @@ def valid_url(data: Data.Data) -> bool:
                 data.port = port
             else:
                 # port out of range
-                return False
+                raise Exception(f"Port in the URL is out of range ('{port}' is not between 0-255)")
         else:
             # port is not a number
-            return False
+            raise Exception(f"Port in the URL is not a number ('{port}' needs to be a number)")
 
     data.ip = address[0]
 
     if not valid_ip(data.ip):
         # if the IP in the URL is invalid
-        return False
+        raise Exception(f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx")
 
-    return requests.get(data.url).status_code == 200  # if the url is responding
+    code = requests.get(data.url).status_code
+    if code != 200:
+        # if the URL is not responding
+        raise Exception(f"The URL does not responds and returns status code: {code}")
 
 
 def scan_ports(data: Data.Data):
@@ -127,9 +142,10 @@ def ping(data: Data.Data) -> bool:
     :param data: the data object of the program
     :return: True - the host is up and local, False - otherwise
     """
-    icmp = IP(dst=data.ip, ttl=3)/ICMP()  # ICMP object using scapy
+    icmp = IP(dst=data.ip, ttl=2)/ICMP()  # ICMP object using scapy
     # ignore the red lines under IP and ICMP
     resp = sr1(icmp, timeout=2, verbose=0)
+    print(icmp.show())
     if resp is None:
         # the host is unreachable
         return False
@@ -144,20 +160,16 @@ def set_target(data: Data.Data):
     :param data: the data object of the program
     """
     if data.url is not None:
-        # if the user specified URL
-        if not valid_url(data):
-            # if the url is not valid
-            raise Exception(f"The URL {data.url} is not in the right format or exists.\n\t"
-                            f"Try again with the right format:\n\t"
-                            f" -u http://xxx.xxx.xxx.xxx/\n\t"
-                            f" -u http://xxx.xxx.xxx.xxx:xxxx/")
+        # If the user specified URL
+        valid_url(data)
     elif not valid_ip(data.ip):
-        # if the user didn't specified URL and the IP is invalid
+        # If the user didn't specified URL and the IP is invalid
         raise Exception(f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx")
-    # at this point there has to be a valid IP
+    # At this point there has to be a valid IP
+    """
     if not ping(data):
         # if the IP of the host is too far
         raise Exception("The host you are looking for is not in your local network or down")
+    """
     # The IP is valid, now ports check
     scan_ports(data)
-
