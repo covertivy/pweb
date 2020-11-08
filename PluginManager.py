@@ -77,10 +77,7 @@ def generate_check_device():
     then stores their functions in a list.
     :return: none
     """
-    try:
-        paths = fetch_plugins()  # get all paths from the plugin config file.
-    except Exception as e:  # Make sure no errors exist.
-        COLOR_MANAGER.print_error(e)
+    paths = fetch_plugins()  # get all paths from the plugin config file.
 
     checker = open(f"{CHECK_DEVICE_NAME}.py", "w")  # Generate a new check device.
 

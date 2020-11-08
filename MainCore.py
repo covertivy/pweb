@@ -31,27 +31,6 @@ def print_startup():
     print(f'{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}')
 
 
-def get_plugin_funcs():
-    PluginManager.generate_check_device()  # Generate Check Device in our directory.
-    if os.path.exists(os.getcwd() + f'/{PluginManager.CHECK_DEVICE_NAME}.py'):  # Check if it actually exists.
-        try:
-            from CheckDevice import ALL_FUNCS  # Try to import.
-        except ModuleNotFoundError as e:  # Error in Check Device plugin imports.
-            COLOR_MANAGER.print_error(f'Plugin files missing from the specified plugin folder!\n\t( {e} )\nAborting...')
-            exit()
-        # Catch any other error (could be function 'check' does not exist in a plugin module)
-        except Exception as e:
-            COLOR_MANAGER.print_error(f'ERROR!\n\t( {e} )\nAborting...')
-            exit()
-
-        return ALL_FUNCS  # Get and return the list of all plugin functions from Check Device.
-
-    else:  # Check file does not exist.
-        COLOR_MANAGER.print_error(
-            f'Check device does not exist!\n\t( {PluginManager.CHECK_DEVICE_NAME}.py)\nAborting...')
-        exit()
-
-
 def get_data() -> Data.Data:
     """
     Function sets the Data object variables for the check process
@@ -72,11 +51,7 @@ def main():
             exit()
         print(data, end="\n\n")
         PageManager.logic(data)  # Get all pages from website
-        plugin_funcs = get_plugin_funcs()  # Get all plugin functions from the Check Device.
-        for func in plugin_funcs:
-            func(data)
-        # TODO:
-        # Vulnerabilities Manager actions (needs data)
+        PluginManager.generate_check_device()  # Generate Check Device in our directory.
         # Output Manager actions (needs data)
         print("\n", end="")
     except Exception as e:
