@@ -4,6 +4,7 @@ import Data
 from colors import COLOR_MANAGER
 import requests
 from scapy.all import *
+import subprocess
 
 
 def valid_ip(ip: str) -> bool:
@@ -12,6 +13,7 @@ def valid_ip(ip: str) -> bool:
     :param ip: the IP string
     :return: True - valid IP, False - invalid IP
     """
+
     def isIPv4(field: str) -> bool:
         """
         Function checks if a string is a number and between 0-255
@@ -37,19 +39,19 @@ def valid_url(data: Data.Data):
         raise Exception("URL must start with 'http://'")
 
     try:
-        name = str(data.url).replace('http://', '')[:-1]
+        name = str(data.url).replace('http://', '').split("/")[0]
         ip = socket.gethostbyname(name)
         data.ip = ip
         data.port = 80
         return
-    except Exception:
+    except:
         pass
 
     address = data.url[7:].split('/')[0].split(":")  # address = [ip, port]
     if len(address) == 1:
         # ip only, no port specified
         data.port = 80  # default port for http
-    if len(address) == 2:
+    elif len(address) == 2:
         # ip and port
         port = address[1]
         if port.isnumeric():
@@ -102,7 +104,7 @@ def scan_ports(data: Data.Data):
                 if host[proto][port]['name'] == "http":
                     # we are looking for http ports only
                     message += f"\tPort: {port} | State: {host[proto][port]['state']} " \
-                                f"| Service: {host[proto][port]['product']}\n"
+                               f"| Service: {host[proto][port]['product']}\n"
         if len(message) != 0:
             # if there are open http ports on the host
             message = COLOR_MANAGER.UNDERLINE + \
@@ -136,22 +138,32 @@ def scan_ports(data: Data.Data):
             raise Exception(f"port {data.port} isn't open on your host. please try another port or check your host.")
 
 
-def ping(data: Data.Data) -> bool:
+def ping(data: Data.Data):
     """
     Function checks if the host is up and in the local network
     :param data: the data object of the program
-    :return: True - the host is up and local, False - otherwise
     """
-    icmp = IP(dst=data.ip, ttl=2)/ICMP()  # ICMP object using scapy
-    # ignore the red lines under IP and ICMP
-    resp = sr1(icmp, timeout=2, verbose=0)
-    print(icmp.show())
-    if resp is None:
-        # the host is unreachable
-        return False
+    result = subprocess.Popen(["ping", "-r", "9", "-n", "2", data.ip],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result.wait()  # Wait for the thread to finish the ping
+    out, err = result.communicate()  # out = The output of the ping
+    if out:
+        # If the ping made an output
+        if "Access denied." in out.decode():
+            # If the ping requires sudo privileges
+            raise Exception("The process requires administrative privileges")
+        elif "Lost = 0" in out.decode():
+            # If the host is up
+            if out.decode().count("->") > 2:
+                # Every "->" represents a router that the ping going through
+                # More than 2 routers are usually out of the local network
+                raise Exception(f"The host {data.ip} is not in your local network")
+        else:
+            # If the host is down
+            raise Exception(f"The host {data.ip} is down or too far")
     else:
-        # the host is reachable
-        return True
+        # Don't know when it can occur, just in case of unknown error
+        raise Exception("Some error has occurred")
 
 
 def set_target(data: Data.Data):
@@ -166,10 +178,7 @@ def set_target(data: Data.Data):
         # If the user didn't specified URL and the IP is invalid
         raise Exception(f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx")
     # At this point there has to be a valid IP
-    """
-    if not ping(data):
-        # if the IP of the host is too far
-        raise Exception("The host you are looking for is not in your local network or down")
-    """
+    # Ping the IP host, checks if the host is up and in our local network
+    ping(data)
     # The IP is valid, now ports check
     scan_ports(data)
