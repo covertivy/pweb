@@ -44,3 +44,12 @@ class SessionPage(Page):
     def __init__(self, url, status, content, cookies):
         super(SessionPage, self).__init__(url, status, content)
         self.cookies = cookies
+
+
+class Result:
+    def __init__(self, name: str, page: Page, problem: str, solution: str, color: str):
+        self.check_name = name
+        self.page = page
+        self.problem = problem
+        self.solution = solution
+        self.color = color  # In case of printing to the screen
