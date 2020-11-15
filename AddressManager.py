@@ -6,6 +6,9 @@ import requests
 from scapy.all import *
 import subprocess
 
+NUMBER_OF_PACKETS = 2
+TTL = 2
+
 
 def valid_ip(ip: str) -> bool:
     """
@@ -145,7 +148,7 @@ def ping(data: Data.Data):
     """
     if data.ip == "127.0.0.1":
         return  # Our computer, there is no need to ping
-    result = subprocess.Popen(["ping", "-r", "9", "-n", "4", data.ip],
+    result = subprocess.Popen(["ping", "-r", "9", "-n", f"{NUMBER_OF_PACKETS}", data.ip],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result.wait()  # Wait for the thread to finish the ping
     out, err = result.communicate()  # out = The output of the ping
@@ -156,7 +159,7 @@ def ping(data: Data.Data):
             raise Exception("The process requires administrative privileges")
         elif "Lost = 0" in out.decode():
             # If the host is up
-            if out.decode().count("->") > 2:
+            if out.decode().count("->") > NUMBER_OF_PACKETS * TTL:
                 # Every "->" represents a router that the ping going through
                 # More than 2 routers are usually out of the local network
                 raise Exception(f"The host {data.ip} is not in your local network")
