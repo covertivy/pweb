@@ -123,8 +123,8 @@ def scan_ports(data: Data.Data):
             # checking each protocol
             ports = list(host[proto].keys())  # Get all port numbers as a list.
             for port in ports:
-                port_obj = host[proto][port]  # Get the port object.
-                if port == data.port and port_obj['name'] == 'http':
+                if port == data.port and host[proto][port]['name'] == 'http' \
+                        and host[proto][port]['state'] == "open":
                     # if the specified port is http and open
                     exists = True
                     break
@@ -143,7 +143,9 @@ def ping(data: Data.Data):
     Function checks if the host is up and in the local network
     :param data: the data object of the program
     """
-    result = subprocess.Popen(["ping", "-r", "9", "-n", "2", data.ip],
+    if data.ip == "127.0.0.1":
+        return  # Our computer, there is no need to ping
+    result = subprocess.Popen(["ping", "-r", "9", "-n", "4", data.ip],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     result.wait()  # Wait for the thread to finish the ping
     out, err = result.communicate()  # out = The output of the ping
