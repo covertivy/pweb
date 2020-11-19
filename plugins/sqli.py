@@ -7,7 +7,8 @@ COLOR = COLOR_MANAGER.rgb(255, 100, 0)
 
 
 def check(data: Data.Data, lock: Lock):
+    results = Data.CheckResults("SQL Injection", COLOR)
+    results.results.append(Data.PageResult(Data.Page("", "", ""), "random problem", "random solution"))
     lock.acquire()
-    print(COLOR + COLOR_MANAGER.BOLD + "- SQL Injection check:" + COLOR_MANAGER.ENDC)
-    print(COLOR + "\tnope, nothing yet")
+    data.results.append(results)
     lock.release()
