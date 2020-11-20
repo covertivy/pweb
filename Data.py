@@ -55,6 +55,6 @@ class PageResult(Page):
 
 class CheckResults:
     def __init__(self, headline: str, color: str):
-        self.headline = headline
+        self.headline = headline  # The name of the plugin (xss, rfi, etc..)
         self.color = color  # In case of printing to the screen
-        self.results = list()  # List of page results
+        self.page_results = list()  # List of page results

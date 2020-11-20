@@ -7,8 +7,8 @@ COLOR = COLOR_MANAGER.rgb(0, 255, 0)
 
 
 def check(data: Data.Data, lock: Lock):
-    results = Data.CheckResults("Brute Force", COLOR)
-    results.results.append(Data.PageResult(Data.Page("", "", ""), "random problem", "random solution"))
+    bf_results = Data.CheckResults("Brute Force", COLOR)
+    bf_results.page_results.append(Data.PageResult(Data.Page("", "", ""), "random problem", "random solution"))
     lock.acquire()
-    data.results.append(results)
+    data.results.append(bf_results)
     lock.release()

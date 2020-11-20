@@ -3,12 +3,11 @@ import Data
 import os
 from os import path
 import threading
-import time
 
 
 def print_results(res_dict: Data.CheckResults) -> None:
     print(f"{res_dict.color}- {res_dict.headline}:")
-    [print(f"\tProblem: {r.problem}\n\tSolution: {r.solution}") for r in res_dict.results]
+    [print(f"\tProblem: {r.problem}\n\tSolution: {r.solution}") for r in res_dict.page_results]
 
 
 def save_results(res_dict: Data.CheckResults, path: str, clean_save: bool) -> None:
@@ -22,14 +21,16 @@ def save_results(res_dict: Data.CheckResults, path: str, clean_save: bool) -> No
     pass
 
 
-def logic(data: Data.Data, mutex: threading.Lock, num_of_checks: int) -> None:
+def logic(data: Data.Data, mutex: threading.Lock, num_of_checks: list) -> None:
     index = 0
-    while index != num_of_checks:
+    while index < num_of_checks[0]:
+        # While the number of results that were handled are less the number of plugins
         if len(data.results) == index:
+            #  There are no new results
             continue
         else:
             mutex.acquire()
-            results = data.results[index]
+            results = data.results[index]  # The recent results
             mutex.release()
             index += 1
             if data.folder is None:  # Check if output folder was given.

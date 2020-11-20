@@ -7,8 +7,8 @@ COLOR = COLOR_MANAGER.rgb(255, 0, 255)
 
 
 def check(data: Data.Data, lock: Lock):
-    results = Data.CheckResults("CSRF", COLOR)
-    results.results.append(Data.PageResult(Data.Page("", "", ""), "random problem", "random solution"))
+    csrf_results = Data.CheckResults("CSRF", COLOR)
+    csrf_results.page_results.append(Data.PageResult(Data.Page("", "", ""), "random problem", "random solution"))
     lock.acquire()
-    data.results.append(results)
+    data.results.append(csrf_results)
     lock.release()

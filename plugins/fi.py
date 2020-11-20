@@ -7,8 +7,8 @@ COLOR = COLOR_MANAGER.rgb(0, 200, 200)
 
 
 def check(data: Data.Data, lock: Lock):
-    results = Data.CheckResults("File Inclusion", COLOR)
-    results.results.append(Data.PageResult(Data.Page("", "", ""), "random problem", "random solution"))
+    fi_results = Data.CheckResults("File Inclusion", COLOR)
+    fi_results.page_results.append(Data.PageResult(Data.Page("", "", ""), "random problem", "random solution"))
     lock.acquire()
-    data.results.append(results)
+    data.results.append(fi_results)
     lock.release()
