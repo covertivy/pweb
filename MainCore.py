@@ -53,7 +53,6 @@ def main():
         PageManager.logic(data)  # Get all pages from website
         PluginManager.generate_check_device()  # Generate Check Device in our directory.
         VulnerabilityManager.logic(data)
-        # Output Manager actions (needs data)
         print("\n", end="")
     except Exception as e:
         COLOR_MANAGER.print_error(str(e))
