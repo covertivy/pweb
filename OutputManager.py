@@ -2,6 +2,15 @@
 import Data
 import os
 from os import path
+import threading
+
+
+def print_results(res_dict: Data.CheckResults) -> None:
+    print(f"{res_dict.color}- {res_dict.headline}:")
+    [
+        print(f"\tProblem: {r.problem}\n\tSolution: {r.solution}")
+        for r in res_dict.page_results
+    ]
 
 
 def print_results(res_dict: dict) -> None:
@@ -9,7 +18,7 @@ def print_results(res_dict: dict) -> None:
         pass
 
 
-def save_results(res_dict: dict, path: str, clean_save: bool) -> None:
+def save_results(res_dict: Data.CheckResults, path: str, clean_save: bool) -> None:
     """
     A function that saves the results to the output folder.
     Args:
@@ -21,26 +30,29 @@ def save_results(res_dict: dict, path: str, clean_save: bool) -> None:
         pass
 
 
-def logic(data: Data.Data) -> None:
-    res_dict = dict()
-    for (
-        result
-    ) in (
-        data.results
-    ):  # Create a dictionary with each script as the key and it's result list as the value.
-        if result.check_name not in res_dict.keys():
-            res_dict[result.check_name] = list(result)
+def logic(data: Data.Data, mutex: threading.Lock, info: list) -> None:
+    index = 0
+    while index < info[0]:
+        # While the number of results that were handled are less the number of plugins
+        if len(data.results) == index:
+            #  There are no new results
+            if info[1]:
+                #  info[1] is a bool, False = there are threads that are still running
+                #  True = all the threads have finished their run
+                break
+            else:
+                continue
         else:
-            res_dict[result.check_name].append(result)
-
-    # dict might look like : {'xss':[res, res, res], 'bf': [res], 'sqli': []}
-
-    if data.folder is None:  # Check if output folder was given.
-        print_results(res_dict)
-    elif not path.exists(data.folder):  # Check if given output folder exists
-        print(f"Creating Output Folder ({data.folder})...")
-        os.makedirs(data.folder)  # Create non existant dir tree.
-        save_results(res_dict, data.folder, True)
-    else:  # Output folder exists.
-        print(f"Saving to existing Output Folder ({data.folder})...")
-        save_results(res_dict, data.folder, False)
+            mutex.acquire()
+            results = data.results[index]  # The recent results
+            mutex.release()
+            index += 1
+            if data.folder is None:  # Check if output folder was given.
+                print_results(results)
+            elif not path.exists(data.folder):  # Check if given output folder exists
+                print(f"Creating Output Folder ({data.folder})...")
+                os.makedirs(data.folder)  # Create non existent dir tree.
+                save_results(results, data.folder, True)
+            else:  # Output folder exists.
+                print(f"Saving to existing Output Folder ({data.folder})...")
+                save_results(results, data.folder, False)
