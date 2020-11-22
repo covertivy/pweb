@@ -21,13 +21,18 @@ def save_results(res_dict: Data.CheckResults, path: str, clean_save: bool) -> No
     pass
 
 
-def logic(data: Data.Data, mutex: threading.Lock, num_of_checks: list) -> None:
+def logic(data: Data.Data, mutex: threading.Lock, info: list) -> None:
     index = 0
-    while index < num_of_checks[0]:
+    while index < info[0]:
         # While the number of results that were handled are less the number of plugins
         if len(data.results) == index:
             #  There are no new results
-            continue
+            if info[1]:
+                #  info[1] is a bool, False = there are threads that are still running
+                #  True = all the threads have finished their run
+                break
+            else:
+                continue
         else:
             mutex.acquire()
             results = data.results[index]  # The recent results
