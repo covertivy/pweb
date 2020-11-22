@@ -26,7 +26,7 @@ def parse_args():  # Get command line arguments using argsparse.
         default=80,
         type=int,
         help="Specify a known port on which a web server is serving, if not specified, default port would be 80.\n "
-             "You can use flag -P to force an all-port scan.",
+        "You can use flag -P to force an all-port scan.",
     )
     parser.add_argument(
         "-P",
@@ -61,7 +61,7 @@ def parse_args():  # Get command line arguments using argsparse.
         "--output",
         default=None,
         type=str,
-        help="Specify a directory path in which the outputs will be stored.",
+        help="Specify a file path in which the outputs will be stored (xml).",
     )
     args = parser.parse_args()
     return args
@@ -86,8 +86,8 @@ def get_final_args(args) -> Data.Data:
     output_obj.ip = args.ip
 
     output_obj.url = args.url
-    if output_obj.url is not None and output_obj.url[-1] != '/':
-        output_obj.url += '/'
+    if output_obj.url is not None and output_obj.url[-1] != "/":
+        output_obj.url += "/"
 
     # Check if all ports flag is set.
 
@@ -102,5 +102,11 @@ def get_final_args(args) -> Data.Data:
             output_obj.port = args.port
 
     output_obj.max_pages = args.number_of_pages
-    output_obj.folder = args.output
+    if args.output is not None:
+        if args.output.endswith(".xml"):
+            output_obj.output = args.output
+        else:
+            output_obj.output = args.output + ".xml"
+    else:
+        output_obj.output = args.output
     return output_obj

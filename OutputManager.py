@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 import Data
+from colors import *
 import os
 from os import path
 import threading
+import xml.etree.ElementTree as ET
 
 
 def print_results(res_dict: Data.CheckResults) -> None:
@@ -13,46 +15,58 @@ def print_results(res_dict: Data.CheckResults) -> None:
     ]
 
 
-def print_results(res_dict: dict) -> None:
-    for script in res_dict.keys():
-        pass
-
-
-def save_results(res_dict: Data.CheckResults, path: str, clean_save: bool) -> None:
+def save_results(res_list, path: str) -> None:
     """
-    A function that saves the results to the output folder.
+    A function that saves the results to the output file.
     Args:
         res_dict (dict): The dictionary of each script and it's results.
-        path (str): The output folder's path.
-        clean_save (bool): A flag to indicate if the save is occuring on a clean folder (True) or an existing one (False).
+        path (str): The output file's path.
     """
-    for result in res_dict.keys():
-        pass
+    root = ET.Element("root")
+    for thread_results in res_list:
+        script_element = ET.SubElement(root, thread_results.headline)
+        for page_res in thread_results.page_results:
+            page_result_element = ET.SubElement(script_element, page_res.url)
+            page_status = ET.SubElement(page_result_element, page_res.status)
+            page_result_problem = ET.SubElement(page_result_element, page_res.problem)
+            page_result_solution = ET.SubElement(page_result_element, page_res.solution)
+    tree = ET.ElementTree(root)
+    with open(path, "w") as f:
+        tree.write(f, encoding="unicode")
 
 
-def logic(data: Data.Data, mutex: threading.Lock, info: list) -> None:
+def logic(
+    data: Data.Data,
+    mutex: threading.Lock,
+    info: list,
+    all_threads_done_event: threading.Event,
+) -> None:
     index = 0
-    while index < info[0]:
-        # While the number of results that were handled are less the number of plugins
-        if len(data.results) == index:
-            #  There are no new results
-            if info[1]:
-                #  info[1] is a bool, False = there are threads that are still running
-                #  True = all the threads have finished their run
-                break
+    if data.output is None:  # Check if output file was given.
+        while index < info[0]:
+            # While the number of results that were handled are less the number of plugins
+            if len(data.results) == index:
+                #  There are no new results
+                if info[1]:
+                    #  info[1] is a bool, False = there are threads that are still running
+                    #  True = all the threads have finished their run
+                    break
+                else:
+                    continue
             else:
-                continue
-        else:
-            mutex.acquire()
-            results = data.results[index]  # The recent results
-            mutex.release()
-            index += 1
-            if data.folder is None:  # Check if output folder was given.
+                mutex.acquire()
+                results = data.results[index]  # The recent results.
+                mutex.release()
+                index += 1
+                # Print the current found results.
                 print_results(results)
-            elif not path.exists(data.folder):  # Check if given output folder exists
-                print(f"Creating Output Folder ({data.folder})...")
-                os.makedirs(data.folder)  # Create non existent dir tree.
-                save_results(results, data.folder, True)
-            else:  # Output folder exists.
-                print(f"Saving to existing Output Folder ({data.folder})...")
-                save_results(results, data.folder, False)
+    else:
+        all_threads_done_event.wait()
+        mutex.acquire()
+        all_results = data.results  # All the results.
+        mutex.release()
+
+        print(
+            f"{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Saving to Output File ({data.output})...{COLOR_MANAGER.ENDC}"
+        )
+        save_results(all_results, data.output)

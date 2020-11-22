@@ -26,9 +26,11 @@ def print_startup():
     Print majestic logo.
     """
     for char in LOGO:
-        print(COLOR_MANAGER.rand_color() + char, end='')
-    print(COLOR_MANAGER.ENDC + '\n')
-    print(f'{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}')
+        print(COLOR_MANAGER.rand_color() + char, end="")
+    print(COLOR_MANAGER.ENDC + "\n")
+    print(
+        f"{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}"
+    )
 
 
 def get_data() -> Data.Data:
@@ -36,7 +38,9 @@ def get_data() -> Data.Data:
     Function sets the Data object variables for the check process
     :return: basic Data object
     """
-    data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
+    data = FlagManager.get_final_args(
+        FlagManager.parse_args()
+    )  # Get arguments from command line.
     AddressManager.set_target(data)
     return data
 
@@ -45,7 +49,9 @@ def main():
     print_startup()  # Print startup logo and current time.
 
     try:
-        data = get_data()  # Get data through flag manager, address manager and page manager.
+        data = (
+            get_data()
+        )  # Get data through flag manager, address manager and page manager.
         if type(data.port) is not int:
             # If the user asked for ports scan (-P) there is no need to continue the run
             exit()
@@ -58,7 +64,7 @@ def main():
         COLOR_MANAGER.print_error(str(e))
     finally:
         # os.remove('CheckDevice.py')
-        exit()
+        exit(code=0)
 
 
 if __name__ == "__main__":

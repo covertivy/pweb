@@ -9,7 +9,7 @@ class Data:
         self.url = None
         self.port = None
         self.max_pages = None
-        self.folder = None
+        self.output = None
         self.username = None
         self.password = None
         self.pages = list()  # pages
@@ -19,13 +19,15 @@ class Data:
         self.session.set_cookiejar(self.cookies)  # Setting the cookies
 
     def __str__(self):
-        return f"IP: {self.ip}\n" \
-               f"URL: {self.url}\n" \
-               f"PORT: {self.port}\n" \
-               f"MAXIMUM PAGES: {self.max_pages}\n" \
-               f"OUTPUT FOLDER: {self.folder}\n" \
-               f"USERNAME: {self.username}\n" \
-               f"PASSWORD: {self.password}"
+        return (
+            f"IP: {self.ip}\n"
+            f"URL: {self.url}\n"
+            f"PORT: {self.port}\n"
+            f"MAXIMUM PAGES: {self.max_pages}\n"
+            f"OUTPUT FILE: {self.output}\n"
+            f"USERNAME: {self.username}\n"
+            f"PASSWORD: {self.password}"
+        )
 
 
 class Page:
@@ -35,9 +37,9 @@ class Page:
         self.content = content
 
     def __str__(self):
-        return f"URL: {self.url}\n" \
-               f"STATUS: {self.status}\n" \
-               f"CONTENT: {self.content}\n"
+        return (
+            f"URL: {self.url}\n" f"STATUS: {self.status}\n" f"CONTENT: {self.content}\n"
+        )
 
 
 class SessionPage(Page):
