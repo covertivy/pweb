@@ -46,12 +46,10 @@ def get_data() -> Data.Data:
 
 
 def main():
-    print_startup()  # Print startup logo and current time.
-
     try:
-        data = (
-            get_data()
-        )  # Get data through flag manager, address manager and page manager.
+        data = (get_data())  # Get data through flag manager, address manager and page manager.
+        if data.verbose:
+            print_startup()  # Print startup logo and current time.
         if type(data.port) is not int:
             # If the user asked for ports scan (-P) there is no need to continue the run
             exit()

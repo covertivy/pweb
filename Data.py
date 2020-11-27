@@ -12,6 +12,8 @@ class Data:
         self.output = None
         self.username = None
         self.password = None
+        self.nr = False
+        self.verbose = True
         self.pages = list()  # pages
         self.results = list()  # vulnerabilities results
         self.cookies = http.cookiejar.CookieJar()  # Session cookies
@@ -26,7 +28,8 @@ class Data:
             f"MAXIMUM PAGES: {self.max_pages}\n"
             f"OUTPUT FILE: {self.output}\n"
             f"USERNAME: {self.username}\n"
-            f"PASSWORD: {self.password}"
+            f"PASSWORD: {self.password}\n"
+            f"NON-RECURSIVE: {self.nr}"
         )
 
 
