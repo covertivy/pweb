@@ -29,7 +29,8 @@ class Data:
             f"OUTPUT FILE: {self.output}\n"
             f"USERNAME: {self.username}\n"
             f"PASSWORD: {self.password}\n"
-            f"NON-RECURSIVE: {self.nr}"
+            f"NON-RECURSIVE: {self.nr}\n"
+            f"VERBOSE: {self.verbose}"
         )
 
 
