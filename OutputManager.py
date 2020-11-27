@@ -22,14 +22,19 @@ def save_results(res_list, path: str) -> None:
         res_dict (dict): The dictionary of each script and it's results.
         path (str): The output file's path.
     """
-    root = ET.Element("root")
+    root = ET.Element("root", name="root")
     for thread_results in res_list:
-        script_element = ET.SubElement(root, thread_results.headline)
+        script_element = ET.SubElement(root, thread_results.headline.replace(" ", "_"))
         for page_res in thread_results.page_results:
-            page_result_element = ET.SubElement(script_element, page_res.url)
-            page_status = ET.SubElement(page_result_element, page_res.status)
-            page_result_problem = ET.SubElement(page_result_element, page_res.problem)
-            page_result_solution = ET.SubElement(page_result_element, page_res.solution)
+            page_element = ET.SubElement(script_element, "Page")
+            page_url_element = ET.SubElement(page_element, "url")
+            page_url_element.text = page_res.url
+            page_status_element = ET.SubElement(page_element, "status")
+            page_status_element.text = page_res.status
+            page_result_problem_element = ET.SubElement(page_element, "problem")
+            page_result_problem_element.text = page_res.problem
+            page_result_solution_element = ET.SubElement(page_element, "solution")
+            page_result_solution_element.text = page_res.solution
     tree = ET.ElementTree(root)
     with open(path, "w") as f:
         tree.write(f, encoding="unicode")

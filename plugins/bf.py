@@ -8,7 +8,15 @@ COLOR = COLOR_MANAGER.rgb(0, 255, 0)
 
 def check(data: Data.Data, lock: Lock):
     bf_results = Data.CheckResults("Brute Force", COLOR)
-    bf_results.page_results.append(Data.PageResult(Data.Page("", "", ""), "random problem", "random solution"))
+    bf_results.page_results.append(
+        Data.PageResult(
+            Data.Page(
+                "http://hackatry.com/bruteforceable.php", "200", "Hack me? Huh funnny!"
+            ),
+            "random problem",
+            "random solution",
+        )
+    )
     lock.acquire()
     data.results.append(bf_results)
     lock.release()
