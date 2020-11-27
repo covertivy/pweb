@@ -41,6 +41,8 @@ def get_data() -> Data.Data:
     data = FlagManager.get_final_args(
         FlagManager.parse_args()
     )  # Get arguments from command line.
+    if data.verbose:
+        print_startup()  # Print startup logo and current time.
     AddressManager.set_target(data)
     return data
 
@@ -48,8 +50,6 @@ def get_data() -> Data.Data:
 def main():
     try:
         data = (get_data())  # Get data through flag manager, address manager and page manager.
-        if data.verbose:
-            print_startup()  # Print startup logo and current time.
         if type(data.port) is not int:
             # If the user asked for ports scan (-P) there is no need to continue the run
             exit()
