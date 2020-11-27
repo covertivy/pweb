@@ -25,8 +25,7 @@ def valid_ip(ip: str) -> bool:
         """
         return field.isnumeric() and 0 <= int(field) <= 255
 
-    if ip.count(".") == 3 \
-            and all(isIPv4(field) for field in ip.split(".")):
+    if ip.count(".") == 3 and all(isIPv4(field) for field in ip.split(".")):
         # If there are 4 fields in the IP and they all are in range 0-255
         return True
     return False
@@ -42,20 +41,22 @@ def valid_url(data: Data.Data):
         raise Exception("URL must start with 'http://'")
 
     try:
-        name = str(data.url).replace('http://', '').split("/")[0]
+        name = str(data.url).replace("http://", "").split("/")[0]
         ip = socket.gethostbyname(name)
         data.url = str(data.url).replace(name, ip)
     except:
         pass
 
-    address = data.url[len("http://"):].split('/')[0].split(":")  # address = [ip, port]
+    address = (
+        data.url[len("http://") :].split("/")[0].split(":")
+    )  # address = [ip, port]
     if len(address) == 1:
         # IP only, no port specified in URL
         if data.port is None:
             # Port wasn't specified under -p
             data.port = 80  # default port for http
         else:
-            path = data.url[len("http://")+len(address[0]):]
+            path = data.url[len("http://") + len(address[0]) :]
             data.url = f"http://{address[0]}:{data.port}{path}"
     elif len(address) == 2:
         # IP and port
@@ -68,22 +69,29 @@ def valid_url(data: Data.Data):
                 data.port = port
             else:
                 # Port out of range
-                raise Exception(f"Port in the URL is out of range ('{port}' is not between 0-255)")
+                raise Exception(
+                    f"Port in the URL is out of range ('{port}' is not between 0-255)"
+                )
         else:
             # Port is not a number
-            raise Exception(f"Port in the URL is not a number ('{port}' needs to be a number)")
+            raise Exception(
+                f"Port in the URL is not a number ('{port}' needs to be a number)"
+            )
 
     data.ip = address[0]
-    print(data)
     if not valid_ip(data.ip):
         # if the IP in the URL is invalid
-        raise Exception(f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx")
+        raise Exception(
+            f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx"
+        )
 
     try:
         code = requests.get(data.url).status_code
         if code != 200:
             # If the URL is not responding
-            raise Exception(f"The URL does not responds and returns status code: {code}")
+            raise Exception(
+                f"The URL does not responds and returns status code: {code}"
+            )
     except:
         raise Exception(f"The Port {data.port} isn't open on the Host {data.ip}")
 
@@ -99,7 +107,9 @@ def scan_ports(data: Data.Data):
     if len(nm.all_hosts()) == 0:
         raise Exception(f"No hosts found on {data.ip}")
 
-    host = nm[nm.all_hosts()[0]]  # Usually there is one host in the list, the one we want to check
+    host = nm[
+        nm.all_hosts()[0]
+    ]  # Usually there is one host in the list, the one we want to check
 
     if type(data.port) is not int:
         # If the user used -P for all ports scan
@@ -110,20 +120,28 @@ def scan_ports(data: Data.Data):
             ports.sort()
 
             for port in ports:
-                if host[proto][port]['name'] == "http":
+                if host[proto][port]["name"] == "http":
                     # We are looking for http ports only
-                    message += f"\tPort: {port} | State: {host[proto][port]['state']} " \
-                               f"| Service: {host[proto][port]['product']}\n"
+                    message += (
+                        f"\tPort: {port} | State: {host[proto][port]['state']} "
+                        f"| Service: {host[proto][port]['product']}\n"
+                    )
         if len(message) != 0:
             # If there are open http ports on the host
-            message = COLOR_MANAGER.UNDERLINE + \
-                      f"List of the open http ports on your host:{COLOR_MANAGER.ENDC}\n\n" \
-                      + COLOR_MANAGER.CYAN + message + COLOR_MANAGER.ENDC + \
-                      "\nPlease choose one of the ports above and try again (-p <port>).\n"
+            message = (
+                COLOR_MANAGER.UNDERLINE
+                + f"List of the open http ports on your host:{COLOR_MANAGER.ENDC}\n\n"
+                + COLOR_MANAGER.CYAN
+                + message
+                + COLOR_MANAGER.ENDC
+                + "\nPlease choose one of the ports above and try again (-p <port>).\n"
+            )
             print(message)
         else:
             # If there are no open http ports on the host
-            raise Exception("There are no open http ports on your host, please check the host.")
+            raise Exception(
+                "There are no open http ports on your host, please check the host."
+            )
     else:
         # If the user used -p or used the default port 80
         exists = False
@@ -132,8 +150,11 @@ def scan_ports(data: Data.Data):
             # Checking each protocol
             ports = list(host[proto].keys())  # Get all port numbers as a list.
             for port in ports:
-                if port == data.port and host[proto][port]['name'] == 'http' \
-                        and host[proto][port]['state'] == "open":
+                if (
+                    port == data.port
+                    and host[proto][port]["name"] == "http"
+                    and host[proto][port]["state"] == "open"
+                ):
                     # If the specified port is http and open
                     exists = True
                     break
@@ -144,7 +165,9 @@ def scan_ports(data: Data.Data):
                 data.url = f"http://{data.ip}:{data.port}/"
         else:
             # If the specified port is not good
-            raise Exception(f"Port {data.port} isn't open on your host. please try another port or check your host.")
+            raise Exception(
+                f"Port {data.port} isn't open on your host. please try another port or check your host."
+            )
 
 
 def ping(data: Data.Data):
@@ -154,8 +177,11 @@ def ping(data: Data.Data):
     """
     if data.ip == "127.0.0.1":
         return  # Our computer, there is no need to ping
-    result = subprocess.Popen(["ping", "-r", "9", "-n", f"{NUMBER_OF_PACKETS}", data.ip],
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.Popen(
+        ["ping", "-r", "9", "-n", f"{NUMBER_OF_PACKETS}", data.ip],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
     result.wait()  # Wait for the thread to finish the ping
     out, err = result.communicate()  # out = The output of the ping
     if out:
@@ -187,7 +213,9 @@ def set_target(data: Data.Data):
         valid_url(data)
     elif not valid_ip(data.ip):
         # If the user didn't specified URL and the IP is invalid
-        raise Exception(f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx")
+        raise Exception(
+            f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx"
+        )
     # At this point there has to be a valid IP
     # Ping the IP host, checks if the host is up and in our local network
     ping(data)
