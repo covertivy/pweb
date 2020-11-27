@@ -20,28 +20,28 @@ def print_results(results: Data.CheckResults) -> None:
             )
 
 
-def save_results(res_list, path: str) -> None:
+def save_results(data) -> None:
     """
-    A function that saves the results to the output file.
-    Args:
-        res_dict (dict): The dictionary of each script and it's results.
-        path (str): The output file's path.
+    A function that saves the results to the xml output file.
     """
-    root = ET.Element("root", name="root")
-    for thread_results in res_list:
+    root = ET.Element("root", name="root")  # Create a root for the element tree.
+    for thread_results in data.results:
+        # Go over each script's findings and summarize them.
         script_element = ET.SubElement(root, thread_results.headline.replace(" ", "_"))
         for page_res in thread_results.page_results:
+            # Save each page's data in an xml tree format.
             page_element = ET.SubElement(script_element, "Page")
             page_url_element = ET.SubElement(page_element, "url")
-            page_url_element.text = page_res.url
+            page_url_element.text = str(page_res.url)
             page_status_element = ET.SubElement(page_element, "status")
-            page_status_element.text = page_res.status
+            page_status_element.text = str(page_res.status)
             page_result_problem_element = ET.SubElement(page_element, "problem")
-            page_result_problem_element.text = page_res.problem
+            page_result_problem_element.text = str(page_res.problem)
             page_result_solution_element = ET.SubElement(page_element, "solution")
-            page_result_solution_element.text = page_res.solution
+            page_result_solution_element.text = str(page_res.solution)
+    # Create the tree with the `root` element as the root.
     tree = ET.ElementTree(root)
-    with open(path, "w") as f:
+    with open(data.output, "w") as f:
         tree.write(f, encoding="unicode")
 
 
