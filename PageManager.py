@@ -5,7 +5,7 @@ from colors import COLOR_MANAGER
 from Data import Data, SessionPage, Page
 
 
-def get_pages(data: Data, curr_url, session_page=False):
+def get_pages(data: Data, curr_url, session_page=False, non_recursive=False):
     """
     Function gets the lists of pages to the data object
     :param data: the data object of the program
@@ -15,6 +15,7 @@ def get_pages(data: Data, curr_url, session_page=False):
     if len(data.pages) == data.max_pages:
         # In case of specified amount of pages, the function will stop
         return
+
     try:
         # Opening the current URL
         data.session.open(curr_url)
@@ -22,6 +23,7 @@ def get_pages(data: Data, curr_url, session_page=False):
         soup = BeautifulSoup(data.session.response().read().decode(), "html.parser")
     except Exception as e:
         return
+
     # Adding the URL to the data list
     if all(data.session.geturl() != page.url for page in data.pages):
         # If the page is not in the page list
@@ -43,14 +45,16 @@ def get_pages(data: Data, curr_url, session_page=False):
     print(f"\t[{color}+{COLOR_MANAGER.ENDC}] {color}{data.session.geturl()}{COLOR_MANAGER.ENDC}")
     data.pages.append(page)
 
-    # Getting every link in the page
-    for href in soup.find_all("a"):
-        href = urljoin(curr_url, href.get("href"))  # Full URL
-        if str(href).startswith(data.url):
-            # Only URLs that belongs to the website
-            if all(href != page.url for page in data.pages):
-                # If the page is not in the page list
-                get_pages(data, href, session_page)
+    if not non_recursive:
+        # If the function is recursive
+        # Getting every link in the page
+        for href in soup.find_all("a"):
+            href = urljoin(curr_url, href.get("href"))  # Full URL
+            if str(href).startswith(data.url):
+                # Only URLs that belongs to the website
+                if all(href != page.url for page in data.pages):
+                    # If the page is not in the page list
+                    get_pages(data, href, session_page, data.nr)
 
     if data.username and data.password:
         # If there are username and password
