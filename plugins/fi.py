@@ -8,7 +8,12 @@ COLOR = COLOR_MANAGER.rgb(0, 200, 200)
 
 def check(data: Data.Data, lock: Lock):
     fi_results = Data.CheckResults("File Inclusion", COLOR)
-    fi_results.page_results.append(Data.PageResult(data.pages[0], "random problem", "random solution"))
+    lock.acquire()
+    pages = data.pages
+    lock.release()
+    for page in pages:
+        res = Data.PageResult(page, "unknown problem", "unknown solution")
+        fi_results.page_results.append(res)
     lock.acquire()
     data.results.append(fi_results)
     lock.release()

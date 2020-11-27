@@ -70,8 +70,10 @@ def get_pages(data: Data, curr_url, session_page=False):
 
 def logic(data: Data):
     """
-    Function prints the header of the scan, scans and prints \n
+    Function gets the pages list
     """
     print(COLOR_MANAGER.BLUE + COLOR_MANAGER.HEADER + "Scraping pages:" + COLOR_MANAGER.ENDC)
     get_pages(data, data.url)
+    if len(data.pages) == 0:
+        raise Exception("Your website doesn't have any valid web pages")
     print("\n", end="")

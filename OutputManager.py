@@ -7,22 +7,18 @@ import threading
 import xml.etree.ElementTree as ET
 
 
-def print_results(res_dict: Data.CheckResults) -> None:
-    print(f"{COLOR_MANAGER.BOLD}{res_dict.color}- {COLOR_MANAGER.UNDERLINE}{res_dict.headline}:{COLOR_MANAGER.ENDC}{res_dict.color}")
-    [
-        print(f"\t{COLOR_MANAGER.BOLD}Page: {COLOR_MANAGER.ENDC}{res_dict.color}{r.url}\n"
-              f"\t\t{COLOR_MANAGER.BOLD}Problem: {COLOR_MANAGER.ENDC}{res_dict.color}{r.problem}\n"
-              f"\t\t{COLOR_MANAGER.BOLD}Solution: {COLOR_MANAGER.ENDC}{res_dict.color}{r.solution}")
-        for r in res_dict.page_results
-    ]
+def print_results(results: Data.CheckResults) -> None:
+    print(f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:{COLOR_MANAGER.ENDC}{results.color}")
+    for res in results.page_results:
+        if res.problem is not None and res.solution is not None:
+            print(f"\t{COLOR_MANAGER.BOLD}Page: {COLOR_MANAGER.ENDC}{results.color}{res.url}\n"
+                  f"\t\t{COLOR_MANAGER.BOLD}Problem: {COLOR_MANAGER.ENDC}{results.color}{res.problem}\n"
+                  f"\t\t{COLOR_MANAGER.BOLD}Solution: {COLOR_MANAGER.ENDC}{results.color}{res.solution}")
 
 
 def save_results(data: Data.Data) -> None:
     """
     A function that saves the results to the output file.
-    Args:
-        res_dict (dict): The dictionary of each script and it's results.
-        path (str): The output file's path.
     """
     root = ET.Element("root")
     for thread_results in data.results:
