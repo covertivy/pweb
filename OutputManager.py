@@ -8,35 +8,46 @@ import xml.etree.ElementTree as ET
 
 
 def print_results(results: Data.CheckResults) -> None:
-    print(f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:{COLOR_MANAGER.ENDC}{results.color}")
+    print(
+        f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:{COLOR_MANAGER.ENDC}{results.color}"
+    )
     for res in results.page_results:
         if res.problem is not None and res.solution is not None:
-            print(f"\t{COLOR_MANAGER.BOLD}Page: {COLOR_MANAGER.ENDC}{results.color}{res.url}\n"
-                  f"\t\t{COLOR_MANAGER.BOLD}Problem: {COLOR_MANAGER.ENDC}{results.color}{res.problem}\n"
-                  f"\t\t{COLOR_MANAGER.BOLD}Solution: {COLOR_MANAGER.ENDC}{results.color}{res.solution}")
+            print(
+                f"\t{COLOR_MANAGER.BOLD}Page: {COLOR_MANAGER.ENDC}{results.color}{res.url}\n"
+                f"\t\t{COLOR_MANAGER.BOLD}Problem: {COLOR_MANAGER.ENDC}{results.color}{res.problem}\n"
+                f"\t\t{COLOR_MANAGER.BOLD}Solution: {COLOR_MANAGER.ENDC}{results.color}{res.solution}"
+            )
 
 
-def save_results(data: Data.Data) -> None:
+def save_results(res_list, path: str) -> None:
     """
     A function that saves the results to the output file.
+    Args:
+        res_dict (dict): The dictionary of each script and it's results.
+        path (str): The output file's path.
     """
-    root = ET.Element("root")
-    for thread_results in data.results:
-        script_element = ET.SubElement(root, thread_results.headline)
+    root = ET.Element("root", name="root")
+    for thread_results in res_list:
+        script_element = ET.SubElement(root, thread_results.headline.replace(" ", "_"))
         for page_res in thread_results.page_results:
-            page_result_element = ET.SubElement(script_element, page_res.url)
-            page_status = ET.SubElement(page_result_element, page_res.status)
-            page_result_problem = ET.SubElement(page_result_element, page_res.problem)
-            page_result_solution = ET.SubElement(page_result_element, page_res.solution)
+            page_element = ET.SubElement(script_element, "Page")
+            page_url_element = ET.SubElement(page_element, "url")
+            page_url_element.text = page_res.url
+            page_status_element = ET.SubElement(page_element, "status")
+            page_status_element.text = page_res.status
+            page_result_problem_element = ET.SubElement(page_element, "problem")
+            page_result_problem_element.text = page_res.problem
+            page_result_solution_element = ET.SubElement(page_element, "solution")
+            page_result_solution_element.text = page_res.solution
     tree = ET.ElementTree(root)
-    with open(data.output, "w") as f:
+    with open(path, "w") as f:
         tree.write(f, encoding="unicode")
 
 
 def logic(
-    data: Data.Data,
-    mutex: threading.Lock,
-    all_threads_done_event: threading.Event) -> None:
+    data: Data.Data, mutex: threading.Lock, all_threads_done_event: threading.Event
+) -> None:
     index = 0
     if data.output is None:
         # If there is no specified file path
