@@ -1,11 +1,10 @@
-#!/usr/bin/python3
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from colors import COLOR_MANAGER
 from Data import Data, SessionPage, Page
 
 
-def get_pages(data: Data, curr_url, session_page=False, non_recursive=False):
+def get_pages(data: Data, curr_url, session_page=False, recursive=True):
     """
     Function gets the lists of pages to the data object
     :param data: the data object of the program
@@ -45,7 +44,7 @@ def get_pages(data: Data, curr_url, session_page=False, non_recursive=False):
     print(f"\t[{color}+{COLOR_MANAGER.ENDC}] {color}{data.session.geturl()}{COLOR_MANAGER.ENDC}")
     data.pages.append(page)
 
-    if not non_recursive:
+    if recursive:
         # If the function is recursive
         # Getting every link in the page
         for href in soup.find_all("a"):
@@ -54,7 +53,7 @@ def get_pages(data: Data, curr_url, session_page=False, non_recursive=False):
                 # Only URLs that belongs to the website
                 if all(href != page.url for page in data.pages):
                     # If the page is not in the page list
-                    get_pages(data, href, session_page, data.nr)
+                    get_pages(data, href, session_page, data.recursive)
 
     if data.username and data.password:
         # If there are username and password

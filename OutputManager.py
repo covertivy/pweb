@@ -1,8 +1,6 @@
 #!/usr/bin/python3
 import Data
 from colors import *
-import os
-from os import path
 import threading
 import xml.etree.ElementTree as ET
 
@@ -45,9 +43,7 @@ def save_results(data) -> None:
         tree.write(f, encoding="unicode")
 
 
-def logic(
-    data: Data.Data, mutex: threading.Lock, all_threads_done_event: threading.Event
-) -> None:
+def logic(data: Data.Data, mutex: threading.Lock, all_threads_done_event: threading.Event, plugins: int) -> None:
     index = 0
     if data.output is None:
         # If there is no specified file path

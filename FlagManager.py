@@ -72,11 +72,11 @@ def parse_args():  # Get command line arguments using argsparse.
         dest="output"
     )
     parser.add_argument(
-        "-nr",
-        "--NonRecursive",
+        "-r",
+        "--Recursive",
         action="store_true",
-        help="Non-recursive page scraper, will check only the pages that are reachable from the first web page.",
-        dest="non_recursive"
+        help="recursive page scraper, will check all the reachable pages in the website.",
+        dest="recursive"
     )
     args = parser.parse_args()
     return args
@@ -129,8 +129,8 @@ def get_final_args(args) -> Data.Data:
     else:
         output_obj.output = args.output
 
-    # Set non-recursive flag
-    output_obj.nr = args.non_recursive
+    # Set recursive flag
+    output_obj.recursive = args.recursive
 
     # Set verbose flag
     output_obj.verbose = args.verbose

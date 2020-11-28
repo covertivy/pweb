@@ -12,7 +12,7 @@ class Data:
         self.output = None
         self.username = None
         self.password = None
-        self.nr = False
+        self.recursive = False
         self.verbose = True
         self.pages = list()  # pages
         self.results = list()  # vulnerabilities results
@@ -29,7 +29,7 @@ class Data:
             f"OUTPUT FILE: {self.output}\n"
             f"USERNAME: {self.username}\n"
             f"PASSWORD: {self.password}\n"
-            f"NON-RECURSIVE: {self.nr}\n"
+            f"RECURSIVE: {self.recursive}\n"
             f"VERBOSE: {self.verbose}"
         )
 
