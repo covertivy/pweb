@@ -49,12 +49,19 @@ def get_pages(data: Data, curr_url, session_page=False, recursive=True):
         # Getting every link in the page
         for href in soup.find_all("a"):
             href = urljoin(curr_url, href.get("href"))  # Full URL
-            if str(href).startswith(data.url):
+            if str(href).startswith(f"{str(data.url).split(':')[0]}:{str(data.url).split(':')[1]}"):
                 # Only URLs that belongs to the website
                 if all(href != page.url for page in data.pages):
                     # If the page is not in the page list
                     get_pages(data, href, session_page, data.recursive)
+    """
+    if page.url == "http://192.168.56.102:80/peruggia/index.php?action=login":
 
+        print(urljoin(page.url,data.session.forms()[0].attrs['action']))
+        url = data.session.open(urljoin(page.url, data.session.forms()[0].attr['action']),
+                      data={'username': data.username, 'password': data.password}).geturl()
+        print(url)
+        """
     if data.username and data.password:
         # If there are username and password
         try:
@@ -76,7 +83,11 @@ def logic(data: Data):
     Function gets the pages list
     """
     print(COLOR_MANAGER.BLUE + COLOR_MANAGER.HEADER + "Scraping pages:" + COLOR_MANAGER.ENDC)
-    get_pages(data, data.url)
+    try:
+        get_pages(data, data.url)
+    except:
+        raise Exception("Unknown problem occurred.\n"
+                        "\tIn case of too many pages, try not using (-r) or putting another URL")
     if len(data.pages) == 0:
         raise Exception("Your website doesn't have any valid web pages")
     print("\n", end="")
