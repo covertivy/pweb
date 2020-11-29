@@ -22,9 +22,10 @@ class Colors:
         # or
         print(f"{Colors.UNDERLINE}hello{Colors.ENDC}")
     """
-    ENDC = '\033[0m'  # back to normal
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+
+    ENDC = "\033[0m"  # back to normal
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
     HEADER = BOLD + UNDERLINE
 
     RED = rgb(255, 0, 0)
@@ -66,11 +67,38 @@ class Colors:
 
     @staticmethod
     def rand_color():
-        return rgb(random.choice(range(255)), random.choice(range(255)), random.choice(range(255)))
+        return rgb(
+            random.choice(range(255)),
+            random.choice(range(255)),
+            random.choice(range(255)),
+        )
 
     @staticmethod
-    def print_error(error: str = 'ERROR!'):
-        print('[' + Colors.BOLD_RED + '!' + Colors.ENDC + '] ' + Colors.BOLD_RED + error + Colors.ENDC)
+    def print_warning(warning: str = "WARNING!", begins_with: str = ""):
+        print(
+            begins_with
+            + "["
+            + Colors.BOLD_YELLOW
+            + "!"
+            + Colors.ENDC
+            + "] "
+            + Colors.BOLD_YELLOW
+            + warning
+            + Colors.ENDC
+        )
+
+    @staticmethod
+    def print_error(error: str = "ERROR!"):
+        print(
+            "["
+            + Colors.BOLD_RED
+            + "!"
+            + Colors.ENDC
+            + "] "
+            + Colors.BOLD_RED
+            + error
+            + Colors.ENDC
+        )
 
 
 COLOR_MANAGER = Colors()

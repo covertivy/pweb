@@ -11,11 +11,13 @@ CONFIG_FILE_NAME = "pluginconfig.ini"
 CONFIG_FILE_PATH = os.path.join(
     THIS_FOLDER, CONFIG_FILE_NAME
 )  # Create path of config file. (name can be changed)
-PLUGINS_FOLDER = 'plugins'  # local plugin folder name.
-PLUGIN_PATH_SECTION = "plugins"  # the config file section in which the plugins are stored.
-GENERIC_FUNC_NAME = 'check'  # name of the generic function each file has to implement.
-CHECK_DEVICE_NAME = 'CheckDevice'  # The name of the Check Device.
-CONFIG_PATHS_KEY = 'paths'  # The name of the paths key in the config file.
+PLUGINS_FOLDER = "plugins"  # local plugin folder name.
+PLUGIN_PATH_SECTION = (
+    "plugins"  # the config file section in which the plugins are stored.
+)
+GENERIC_FUNC_NAME = "check"  # name of the generic function each file has to implement.
+CHECK_DEVICE_NAME = "CheckDevice"  # The name of the Check Device.
+CONFIG_PATHS_KEY = "paths"  # The name of the paths key in the config file.
 
 
 def fetch_plugins():
@@ -64,9 +66,19 @@ def fetch_plugins():
         + "Fetching plugins:"
         + COLOR_MANAGER.ENDC
     )
+    index = 0
     for path in plugin_path_list:
-        print(f"\t[{COLOR_MANAGER.LIGHT_GREEN}+{COLOR_MANAGER.ENDC}]"
-              f" {COLOR_MANAGER.LIGHT_GREEN}{path}{COLOR_MANAGER.ENDC}")
+        if os.path.isfile(path):
+            print(
+                f"\t[{COLOR_MANAGER.LIGHT_GREEN}+{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.LIGHT_GREEN}{path}{COLOR_MANAGER.ENDC}"
+            )
+        else:
+            COLOR_MANAGER.print_warning(
+                f'Plugin path "{path}" does not exist! (ignoring...)', "\t"
+            )
+            plugin_path_list.pop(index)
+        index += 1
+
     print("\n", end="")
     return plugin_path_list
 
@@ -89,9 +101,9 @@ def generate_check_device():
         checker.write(f"import {PLUGINS_FOLDER}.{plugin} as {plugin}\n")
 
     # Store all plugin functions in a list.
-    checker.write(f'\nALL_FUNCS = [{plugins_names[0]}.{GENERIC_FUNC_NAME}')
+    checker.write(f"\nALL_FUNCS = [{plugins_names[0]}.{GENERIC_FUNC_NAME}")
     for plugin in plugins_names[1:]:
         checker.write(f", {plugin}.{GENERIC_FUNC_NAME}")
-    
+
     checker.write("]\n")
     checker.close()
