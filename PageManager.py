@@ -136,6 +136,9 @@ def logic(data: Data):
                         "\tIn case of too many pages, try not using (-r) or putting another URL")
     if len(data.pages) == 0:
         raise Exception("Your website doesn't have any valid web pages")
-    print(len(data.pages))
-    print(pages_block_list)
-    print("\n", end="")
+    session_pages = 0
+    for page in data.pages:
+        if type(page) is SessionPage:
+            session_pages += 1
+    print(f"\n{COLOR_MANAGER.BLUE}Pages that does not require login authorization: {len(data.pages) - session_pages}")
+    print(f"{COLOR_MANAGER.ORANGE}Pages that requires login authorization: {session_pages}\n")
