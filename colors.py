@@ -88,9 +88,10 @@ class Colors:
         )
 
     @staticmethod
-    def print_error(error: str = "ERROR!"):
+    def print_error(error: str = "ERROR!", starts_with: str = ""):
         print(
-            "["
+            starts_with
+            + "["
             + Colors.BOLD_RED
             + "!"
             + Colors.ENDC
