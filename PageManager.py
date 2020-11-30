@@ -11,36 +11,7 @@ logout_pages = []
 already_printed = []
 finished = True
 
-"""
-    if data.session.geturl() != curr_url:
-        # Changed the URL, redirected
-        if requests.get(curr_url).url != curr_url:
-            # If it is a Session page
 
-            for page in data.pages:
-                if type(page) is not SessionPage and page.url == data.session.geturl():
-                    finished = False
-                    pages_block_list.append(curr_url)  # Block redirected URLs
-                    print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
-            if data.session.geturl() == requests.get(data.session.geturl()).url:
-                # If the redirected page is out of session
-                finished = False
-                pages_block_list.append(curr_url)  # Block redirected URLs
-                print(f"{curr_url}->{data.session.geturl()}")
-                print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}] "
-                      f"{COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
-            return
-"""
-"""
-if data.session.geturl() != curr_url and session_page:
-    # Changed the URL, redirected
-    for page in data.pages:
-        if type(page) is not SessionPage and page.url == data.session.geturl():
-            finished = False
-            print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
-            pages_block_list.append(curr_url)
-    return
-    """
 def get_pages(data: Data, curr_url, session_page=False, recursive=True):
     """
     Function gets the lists of pages to the data object
@@ -101,6 +72,7 @@ def get_pages(data: Data, curr_url, session_page=False, recursive=True):
         soup = BeautifulSoup(content, "html.parser")
     except Exception as e:
         # Couldn't open with the session
+        block_list.append(curr_url)
         return
 
     # Adding the URL to the data list
@@ -131,17 +103,17 @@ def get_pages(data: Data, curr_url, session_page=False, recursive=True):
     if recursive:
         # If the function is recursive
         # Getting every link in the page
-        for href in soup.find_all("a"):
-            href = urljoin(curr_url, href.get("href"))  # Full URL
-            if str(href).startswith(f"{str(data.url).split(':')[0]}:{str(data.url).split(':')[1]}"):
+        links = [urljoin(curr_url, x.get("href")) for x in list(set(soup.find_all("a")))]
+        links.sort()
+        for link in links:
+            if str(link).startswith(f"{str(data.url).split(':')[0]}:{str(data.url).split(':')[1]}"):
                 # Only URLs that belongs to the website
-                if all(href != page.url for page in data.pages):
+                if all(link != page.url for page in data.pages):
                     # If the page is not in the page list
-                    if href not in block_list:
+                    if link not in block_list:
                         # Page isn't redirecting
-                        get_pages(data, href, session_page, data.recursive)
-    if session_page:
-        return
+                        get_pages(data, link, session_page, data.recursive)
+
     if data.username and data.password:
         # If there are username and password
         if any(username in page.content for username in ['name="username"', 'name=username']) and \
@@ -151,16 +123,15 @@ def get_pages(data: Data, curr_url, session_page=False, recursive=True):
                 br.set_cookiejar(http.cookiejar.CookieJar())
                 br.open(curr_url)
                 br.select_form(nr=0)
-
                 br.form['username'] = data.username
                 br.form['password'] = data.password
                 br.submit()
-                br.reload()
                 new_url = br.geturl()
-                data.session = br
-                data.cookies = br.cookiejar
-                if check_url(data.session.geturl(), data.session.response().read().decode(), data, True):
+                if check_url(new_url, br.response().read().decode(), data, True):
                     # If the new URL was not in the page list try to get the page with the new login details
+                    data.session = br
+                    data.cookies = br.cookiejar
+                    data.session.set_cookiejar(data.cookies)
                     get_pages(data, new_url, True, recursive)
             except Exception as e:
                 return False
