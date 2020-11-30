@@ -5,7 +5,9 @@ from Data import Data, SessionPage, Page
 import requests
 import mechanize
 import http.cookiejar
+import time
 
+TOO_MUCH_TIME = 8  # How many seconds of running is too much
 block_list = []
 logout_pages = []
 already_printed = []
@@ -119,20 +121,20 @@ def get_pages(data: Data, curr_url, session_page=False, recursive=True):
         if any(username in page.content for username in ['name="username"', 'name=username']) and \
                 any(password in page.content for password in ['name="password"', 'name=password']):
             try:
-                br = mechanize.Browser()
-                br.set_cookiejar(http.cookiejar.CookieJar())
+                br = mechanize.Browser()  # Creating new session
+                br.set_cookiejar(http.cookiejar.CookieJar())  # Setting new cookies
                 br.open(curr_url)
-                br.select_form(nr=0)
+                br.select_form(nr=0)  # Attempting to log in
                 br.form['username'] = data.username
                 br.form['password'] = data.password
                 br.submit()
                 new_url = br.geturl()
                 if check_url(new_url, br.response().read().decode(), data, True):
                     # If the new URL was not in the page list try to get the page with the new login details
-                    data.session = br
-                    data.cookies = br.cookiejar
+                    data.session = br  # Updating the session
+                    data.cookies = br.cookiejar  # Updating the cookies
                     data.session.set_cookiejar(data.cookies)
-                    get_pages(data, new_url, True, recursive)
+                    get_pages(data, new_url, True, data.recursive)
             except Exception as e:
                 return False
 
@@ -140,11 +142,15 @@ def get_pages(data: Data, curr_url, session_page=False, recursive=True):
 def check_url(url: str, content: str, data: Data, session_page: bool) -> bool:
     for page in data.pages:
         if url == page.url:
+            # If we already found a page with the same URL
             if not session_page:
+                # If the new page isn't a session page
                 return False
             if type(page) is SessionPage:
+                # If the URL we found is belong to a session
                 return False
             if content == requests.get(page.url).content.decode():
+                # If the content of the page is identical to another
                 return False
     return True
 
@@ -159,19 +165,24 @@ def logic(data: Data):
         global block_list
         while True:
             finished = True
+            start = time.time()  # Starting point of the function
             get_pages(data, data.url)
+            end = time.time()  # Ending point of the function
             if finished:
                 break
             else:
-                # Refreshing the session
+                if end - start > TOO_MUCH_TIME:
+                    # The user will need to wait until next output
+                    running = round((end - start)/10)*10  # Rounding the running time
+                    COLOR_MANAGER.print_error(f"The session logged out, wait about {running} "
+                                              f"seconds, the page scraper is running again.", starts_with="\t")
+                # Refreshing the data
                 block_list = logout_pages
                 data.pages = list()
-                data.session = mechanize.Browser()
-                data.cookies = http.cookiejar.CookieJar()  # Session cookies
                 data.session.set_cookiejar(data.cookies)  # Setting the cookies
     except Exception as e:
-        raise Exception(str(e) + "Unknown problem occurred.\n"
-                        "\tIn case of too many pages, try not using (-r) or putting another URL")
+        raise ("Unknown problem occurred.\n"
+              "\tIn case of too many pages, try not using (-r) or putting another URL")
     if len(data.pages) == 0:
         raise Exception("Your website doesn't have any valid web pages")
     session_pages = 0
