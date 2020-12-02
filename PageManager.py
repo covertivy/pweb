@@ -6,11 +6,11 @@ import requests
 import mechanize
 import http.cookiejar
 
-login_pages = []
-already_printed = []
-already_checked = []
-troublesome = []
-logout = []
+login_pages = []  # List of (login URL, logged-in URL, the session)
+already_printed = []  # List of printed Pages/SessionPages
+already_checked = []  # List of checked Pages/SessionPages
+troublesome = []  # List of troublesome URLs
+logout = []  # List of logout URLs
 logged_out = False
 
 
@@ -41,7 +41,7 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
                     # Have the same URL
                     if type(p) is SessionPage:
                         # Redirected to another session page
-                        already_checked.append(curr_url)  # No need to check
+                        troublesome.append(curr_url)  # No need to check
                         return
                     elif p.content == br.response().read().decode():
                         # It redirected to a non-session page, and have the same content
@@ -80,7 +80,7 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
 
     if page.url != curr_url:
         # If the current URL is redirecting to another URL
-        already_checked.append(curr_url)
+        troublesome.append(curr_url)
 
     try:
         # Creating a BeautifulSoup object
@@ -99,7 +99,7 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
     # Adding to the page list
     data.pages.append(page)
     # Adding to the already-checked list
-    already_checked.append(page.url)
+    already_checked.append(page)
 
     if recursive:
         # If the function is recursive
@@ -114,11 +114,13 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
                 # Only URLs that belongs to the website
                 if all(link != page.url for page in data.pages) or br:
                     # If the page is not in the page list
-                    if link not in already_checked and link not in troublesome:
+                    if not any(link == checked_page.url for checked_page in already_checked)\
+                            and link not in troublesome:
                         # Page was not checked
                         get_pages(data, link, data.recursive, br)
 
     if not br:
+        # If not session page
         br = mechanize.Browser()
         br.set_cookiejar(http.cookiejar.CookieJar())
         try:
@@ -149,6 +151,20 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
             pass
 
 
+def clean_list(data: Data) -> list:
+    new_list = list()
+    for page in data.pages:
+        in_list = False
+        for new_page in new_list:
+            if page.url == new_page.url and\
+                    (page.content == new_page.content or type(page) == type(new_page)):
+                # Same URL and content or both session
+                in_list = True
+        if not in_list:
+            new_list.append(page)
+    return new_list
+
+
 def logic(data: Data):
     """
     Function gets the pages list
@@ -156,10 +172,8 @@ def logic(data: Data):
     print(COLOR_MANAGER.BLUE + COLOR_MANAGER.HEADER + "Scraping pages:" + COLOR_MANAGER.ENDC)
     try:
         get_pages(data, data.url)
-        global troublesome
         global already_checked
         # We need to clear them in case of session pages
-        troublesome.clear()
         already_checked.clear()
     except Exception as e:
         raise ("Unknown problem occurred.\n"
@@ -169,25 +183,23 @@ def logic(data: Data):
         raise Exception("Your website doesn't have any valid web pages")
 
     session_pages = 0
-    if data.password and data.username:
+    if len(login_pages):
         # If there are specified username and password
         # login_pages = get_login_pages(data)
         global logged_out
-        recent_pages = list(data.pages)
+        pages_backup = list(data.pages)
         for origin, url, br in login_pages:
             # Check every login page
-            while True:
+            logged_out = True
+            while logged_out:
+                # Until it won't encounter a logout page
+                logged_out = False
                 # Attempting to achieve data from page
                 get_pages(data, url, br=br)
-                if not logged_out:
-                    # If the session has not encountered a logout page
-                    recent_pages = list(data.pages)
-                    break
-                else:
+                if logged_out:
                     # If the session has encountered a logout page
                     already_checked.clear()
-                    data.pages = list(recent_pages)  # Restoring the pages list
-                    logged_out = False
+                    data.pages = list(pages_backup)  # Restoring the pages list
 
                     br = mechanize.Browser()
                     br.set_cookiejar(http.cookiejar.CookieJar())
@@ -196,11 +208,16 @@ def logic(data: Data):
                     br.form['username'] = data.username
                     br.form['password'] = data.password
                     br.submit()
+                    # Making the loop all over again, without the logout page
+            # If the session has not encountered a logout page
+            pages_backup = list(data.pages)
 
-        for page in data.pages:
-            if type(page) is SessionPage:
-                session_pages += 1
+    data.pages = clean_list(data)
 
+    for page in data.pages:
+        if type(page) is SessionPage:
+            session_pages += 1
+    print(len(already_printed))
     if session_pages != 0:
         print(f"\n{COLOR_MANAGER.BLUE}Pages that does not require login authorization: {len(data.pages) - session_pages}")
         print(f"{COLOR_MANAGER.ORANGE}Pages that requires login authorization: {session_pages}\n")

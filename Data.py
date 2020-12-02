@@ -1,7 +1,4 @@
 #!/usr/bin/python3
-import mechanize
-import http.cookiejar
-
 
 class Data:
     def __init__(self):
@@ -16,9 +13,6 @@ class Data:
         self.verbose = True
         self.pages = list()  # pages
         self.results = list()  # vulnerabilities results
-        self.cookies = http.cookiejar.CookieJar()  # Session cookies
-        self.session = mechanize.Browser()  # Session object
-        self.session.set_cookiejar(self.cookies)  # Setting the cookies
 
     def __str__(self):
         return (
