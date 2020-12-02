@@ -6,6 +6,8 @@ import requests
 import mechanize
 import http.cookiejar
 
+
+TOO_MUCH_TIME = 8  # How many seconds of running is too much
 login_pages = []  # List of (login URL, logged-in URL, the session)
 already_printed = []  # List of printed Pages/SessionPages
 already_checked = []  # List of checked Pages/SessionPages
@@ -40,6 +42,7 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
                 if p.url == br.geturl():
                     # Have the same URL
                     if type(p) is SessionPage:
+                        print("lol")
                         # Redirected to another session page
                         troublesome.append(curr_url)  # No need to check
                         return
@@ -96,8 +99,16 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
         print(f"\t[{color}+{COLOR_MANAGER.ENDC}] {color}{page.url}{COLOR_MANAGER.ENDC}")
         already_printed.append(page)
 
-    # Adding to the page list
-    data.pages.append(page)
+    in_list = False
+    for pages in data.pages:
+        if pages.url == page.url and\
+                (pages.content == page.content or type(pages) == type(page)):
+            # Same URL and content or both session
+            in_list = True
+    if not in_list:
+        # Adding to the page list
+        data.pages.append(page)
+
     # Adding to the already-checked list
     already_checked.append(page)
 
@@ -151,20 +162,6 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
             pass
 
 
-def clean_list(data: Data) -> list:
-    new_list = list()
-    for page in data.pages:
-        in_list = False
-        for new_page in new_list:
-            if page.url == new_page.url and\
-                    (page.content == new_page.content or type(page) == type(new_page)):
-                # Same URL and content or both session
-                in_list = True
-        if not in_list:
-            new_list.append(page)
-    return new_list
-
-
 def logic(data: Data):
     """
     Function gets the pages list
@@ -194,14 +191,13 @@ def logic(data: Data):
             while logged_out:
                 # Until it won't encounter a logout page
                 logged_out = False
-                # Attempting to achieve data from page
-                get_pages(data, url, br=br)
+                get_pages(data, url, br=br)  # Attempting to achieve data from page
                 if logged_out:
                     # If the session has encountered a logout page
-                    already_checked.clear()
+                    already_checked.clear()  # The function needs to go through all the session pages
                     data.pages = list(pages_backup)  # Restoring the pages list
 
-                    br = mechanize.Browser()
+                    br = mechanize.Browser()  # Creating new session
                     br.set_cookiejar(http.cookiejar.CookieJar())
                     br.open(origin)  # Opening the origin of the current URL
                     br.select_form(nr=0)
@@ -211,13 +207,11 @@ def logic(data: Data):
                     # Making the loop all over again, without the logout page
             # If the session has not encountered a logout page
             pages_backup = list(data.pages)
+        # Counting the session pages
+        for page in data.pages:
+            if type(page) is SessionPage:
+                session_pages += 1
 
-    data.pages = clean_list(data)
-
-    for page in data.pages:
-        if type(page) is SessionPage:
-            session_pages += 1
-    print(len(already_printed))
     if session_pages != 0:
         print(f"\n{COLOR_MANAGER.BLUE}Pages that does not require login authorization: {len(data.pages) - session_pages}")
         print(f"{COLOR_MANAGER.ORANGE}Pages that requires login authorization: {session_pages}\n")
