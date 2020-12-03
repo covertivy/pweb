@@ -49,8 +49,10 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
                     elif p.content == br.response().read().decode():
                         # It redirected to a non-session page, and have the same content
                         if "logout" in curr_url:
-                            print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
-                                  f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
+                            print(
+                                f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
+                                f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}"
+                            )
                             logout.append(curr_url)
                             logged_out = True
                         return
@@ -59,12 +61,19 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
             res = requests.get(br.geturl())
             if res.url == br.geturl() and "logout" in curr_url:
                 # If the URL can be reachable from non-session point the session has logged out
-                print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
-                      f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
+                print(
+                    f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
+                    f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}"
+                )
                 logged_out = True
                 logout.append(curr_url)
                 return
-            page = SessionPage(br.geturl(), br.response().code, br.response().read().decode(), br.cookiejar)
+            page = SessionPage(
+                br.geturl(),
+                br.response().code,
+                br.response().read().decode(),
+                br.cookiejar,
+            )
             color = COLOR_MANAGER.ORANGE
         except Exception as e:
             troublesome.append(curr_url)
@@ -93,16 +102,19 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
         troublesome.append(page.url)
         return
 
-    if not any(page.url == printed_page.url and
-               type(page) == type(printed_page) for printed_page in already_printed):
+    if not any(
+        page.url == printed_page.url and type(page) == type(printed_page)
+        for printed_page in already_printed
+    ):
         # Printing the page
         print(f"\t[{color}+{COLOR_MANAGER.ENDC}] {color}{page.url}{COLOR_MANAGER.ENDC}")
         already_printed.append(page)
 
     in_list = False
     for pages in data.pages:
-        if pages.url == page.url and\
-                (pages.content == page.content or type(pages) == type(page)):
+        if pages.url == page.url and (
+            pages.content == page.content or type(pages) == type(page)
+        ):
             # Same URL and content or both session
             in_list = True
     if not in_list:
@@ -115,18 +127,29 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
     if recursive:
         # If the function is recursive
         # Getting every link in the page
-        links = [urljoin(page.url, x.get("href")) for x in list(set(soup.find_all("a")))]
+        links = [
+            urljoin(page.url, x.get("href")) for x in list(set(soup.find_all("a")))
+        ]
         links.sort()
         for link in links:
+            if len(data.pages) == data.max_pages:
+                # We might reach the page limit while we check links, so we stop the for loop as well as individual recursions.
+                return
             if logged_out:
                 # More efficient to check every time
                 return
-            if str(link).startswith(f"{str(data.url).split(':')[0]}:{str(data.url).split(':')[1]}"):
+            if str(link).startswith(
+                f"{str(data.url).split(':')[0]}:{str(data.url).split(':')[1]}"
+            ):
                 # Only URLs that belongs to the website
                 if all(link != page.url for page in data.pages) or br:
                     # If the page is not in the page list
-                    if not any(link == checked_page.url for checked_page in already_checked)\
-                            and link not in troublesome:
+                    if (
+                        not any(
+                            link == checked_page.url for checked_page in already_checked
+                        )
+                        and link not in troublesome
+                    ):
                         # Page was not checked
                         get_pages(data, link, data.recursive, br)
 
@@ -137,8 +160,8 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
         try:
             br.open(page.url)  # Opening the URL
             br.select_form(nr=0)  # Attempting to log in
-            br.form['username'] = data.username
-            br.form['password'] = data.password
+            br.form["username"] = data.username
+            br.form["password"] = data.password
             br.submit()
             new_url = br.geturl()
             content = br.response().read()
@@ -166,15 +189,22 @@ def logic(data: Data):
     """
     Function gets the pages list
     """
-    print(COLOR_MANAGER.BLUE + COLOR_MANAGER.HEADER + "Scraping pages:" + COLOR_MANAGER.ENDC)
+    print(
+        COLOR_MANAGER.BLUE
+        + COLOR_MANAGER.HEADER
+        + "Scraping pages:"
+        + COLOR_MANAGER.ENDC
+    )
     try:
         get_pages(data, data.url)
         global already_checked
         # We need to clear them in case of session pages
         already_checked.clear()
     except Exception as e:
-        raise ("Unknown problem occurred.\n"
-              "\tIn case of too many pages, try putting another URL")
+        raise (
+            "Unknown problem occurred.\n"
+            "\tIn case of too many pages, try putting another URL"
+        )
 
     if len(data.pages) == 0:
         raise Exception("Your website doesn't have any valid web pages")
@@ -201,8 +231,8 @@ def logic(data: Data):
                     br.set_cookiejar(http.cookiejar.CookieJar())
                     br.open(origin)  # Opening the origin of the current URL
                     br.select_form(nr=0)
-                    br.form['username'] = data.username
-                    br.form['password'] = data.password
+                    br.form["username"] = data.username
+                    br.form["password"] = data.password
                     br.submit()
                     # Making the loop all over again, without the logout page
             # If the session has not encountered a logout page
@@ -213,7 +243,11 @@ def logic(data: Data):
                 session_pages += 1
 
     if session_pages != 0:
-        print(f"\n{COLOR_MANAGER.BLUE}Pages that does not require login authorization: {len(data.pages) - session_pages}")
-        print(f"{COLOR_MANAGER.ORANGE}Pages that requires login authorization: {session_pages}\n")
+        print(
+            f"\n{COLOR_MANAGER.BLUE}Pages that does not require login authorization: {len(data.pages) - session_pages}"
+        )
+        print(
+            f"{COLOR_MANAGER.ORANGE}Pages that requires login authorization: {session_pages}\n"
+        )
     else:
         print(f"\n{COLOR_MANAGER.BLUE}Number of pages: {len(data.pages)}\n")
