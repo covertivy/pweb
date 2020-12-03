@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+
 class Data:
     def __init__(self):
         self.ip = None

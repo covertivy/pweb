@@ -51,15 +51,21 @@ def print_data(data: Data.Data):
     """
     Function prints the inserted data
     """
-    print(f"\n{COLOR_MANAGER.PINK + COLOR_MANAGER.HEADER}Inserted Data:{COLOR_MANAGER.ENDC}")
+    print(
+        f"\n{COLOR_MANAGER.PINK + COLOR_MANAGER.HEADER}Inserted Data:{COLOR_MANAGER.ENDC}"
+    )
     for line in str(data).split("\n"):
-        print(f"\t[{COLOR_MANAGER.PINK}*{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.PINK}{line}{COLOR_MANAGER.ENDC}")
+        print(
+            f"\t[{COLOR_MANAGER.PINK}*{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.PINK}{line}{COLOR_MANAGER.ENDC}"
+        )
     print(COLOR_MANAGER.ENDC)
 
 
 def main():
     try:
-        data = (get_data())  # Get data through flag manager, address manager and page manager.
+        data = (
+            get_data()
+        )  # Get data through flag manager, address manager and page manager.
         if type(data.port) is not int:
             # If the user asked for ports scan (-P) there is no need to continue the run
             exit()
