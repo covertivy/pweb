@@ -18,14 +18,14 @@ def parse_args():  # Get command line arguments using argsparse.
         default="127.0.0.1",
         type=str,
         help="Enter the ip of the host server. (Not necessary if argument <url> is specified)",
-        dest="ip"
+        dest="ip",
     )
     parser.add_argument(
         "-v",
         "--verbose",
         action="store_false",
         help="Specify this flag when you don't want to print our cool logo.",
-        dest="verbose"
+        dest="verbose",
     )
     parser.add_argument(
         "-p",
@@ -33,28 +33,28 @@ def parse_args():  # Get command line arguments using argsparse.
         type=int,
         help="Specify a known port on which a web server is serving, if not specified, default port would be 80.\n "
         "You can use flag -P to force an all-port scan.",
-        dest="port"
+        dest="port",
     )
     parser.add_argument(
         "-P",
         "--ALL_PORTS",
         action="store_true",
         help="Specify this flag when port isn't known and you wish to scan all ports.",
-        dest="all_ports"
+        dest="all_ports",
     )
     parser.add_argument(
         "-u",
         default=None,
         type=str,
         help="Instead of specifying an ip address you can specifically specify a url.",
-        dest="url"
+        dest="url",
     )
     parser.add_argument(
         "-n",
         default=None,
         type=int,
         help="Limit the amount of pages checked to a specific amount.",
-        dest="number_of_pages"
+        dest="number_of_pages",
     )
     parser.add_argument(
         "-L",
@@ -62,21 +62,21 @@ def parse_args():  # Get command line arguments using argsparse.
         type=list,
         nargs=2,
         help="Specify a username and password to be used in any login form on the website.",
-        dest="login"
+        dest="login",
     )
     parser.add_argument(
         "-o",
         default=None,
         type=str,
         help="Specify a file path in which the outputs will be stored (xml).",
-        dest="output"
+        dest="output",
     )
     parser.add_argument(
         "-r",
         "--Recursive",
         action="store_true",
         help="recursive page scraper, will check all the reachable pages in the website.",
-        dest="recursive"
+        dest="recursive",
     )
     args = parser.parse_args()
     return args
@@ -117,8 +117,14 @@ def get_final_args(args) -> Data.Data:
         else:
             output_obj.port = args.port
 
-    # Set number of pages
-    output_obj.max_pages = args.number_of_pages
+    # Set number of
+    if args.number_of_pages > 0:
+        output_obj.max_pages = args.number_of_pages
+    else:
+        COLOR_MANAGER.print_error(
+            "Invalid number of pages! Running with unlimited pages."
+        )
+        output_obj.max_pages = None
 
     # Set file path
     if args.output is not None:
