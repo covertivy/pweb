@@ -70,30 +70,20 @@ def valid_url(data: Data.Data):
             else:
                 # Port out of range
                 raise Exception(
-                    f"Port in the URL is out of range ('{port}' is not between 0-255)"
+                    f"Port in the URL is out of range ('{port}' is not between 0-255)", "\t"
                 )
         else:
             # Port is not a number
             raise Exception(
-                f"Port in the URL is not a number ('{port}' needs to be a number)"
+                f"Port in the URL is not a number ('{port}' needs to be a number)", "\t"
             )
 
     data.ip = address[0]
     if not valid_ip(data.ip):
         # if the IP in the URL is invalid
         raise Exception(
-            f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx"
+            f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx", "\t"
         )
-    """
-    try:
-        code = requests.get(data.url).status_code
-        if code != 200:
-            # If the URL is not responding
-            raise Exception(
-                f"The URL does not responds and returns status code: {code}"
-            )
-    except:
-        raise Exception(f"The Port {data.port} isn't open on the Host {data.ip}")"""
 
 
 def scan_ports(data: Data.Data):
@@ -105,7 +95,7 @@ def scan_ports(data: Data.Data):
     nm.scan(hosts=data.ip, ports=str(data.port))  # Scan host, ports from 22 to 443
 
     if len(nm.all_hosts()) == 0:
-        raise Exception(f"No hosts found on {data.ip}")
+        raise Exception(f"No hosts found on {data.ip}", "\t")
 
     host = nm[nm.all_hosts()[0]]  # Usually there is one host in the list, the one we want to check
 
@@ -121,37 +111,36 @@ def scan_ports(data: Data.Data):
                 if host[proto][port]["name"] == "http":
                     # We are looking for http ports only
                     padding = " " * (5 - len(str(port)))
-                    message += f"\tPort: {port}{padding} | State: {host[proto][port]['state']} " \
+                    message += f"\t\tPort: {port}{padding} | State: {host[proto][port]['state']} " \
                                f"| Service: {host[proto][port]['product']}\n"
         if len(message) != 0:
             # If there are open http ports on the host
             message = (
-                COLOR_MANAGER.UNDERLINE
-                + f"\nList of the open http ports on your host:{COLOR_MANAGER.ENDC}\n\n"
-                + COLOR_MANAGER.CYAN
+                f"\t{COLOR_MANAGER.HEADER}{COLOR_MANAGER.YELLOW}List of the open http ports on your host:"
+                f"{COLOR_MANAGER.ENDC}\n"
+                + COLOR_MANAGER.YELLOW
                 + message
-                + COLOR_MANAGER.ENDC
-                + "\nPlease choose one of the ports above and try again (-p <port>).\n"
+                + f"\n\tPlease choose one of the ports above and try again (-p <port>).{COLOR_MANAGER.ENDC}\n"
             )
             print(message)
         else:
             # If there are no open http ports on the host
             raise Exception(
-                "There are no open http ports on your host, please check the host."
+                "There are no open http ports on your host, please check the host.", "\t"
             )
     else:
         # If the user used -p or used the default port 80
+        print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW} "
+              f"Scanning port {data.port} for HTTP{COLOR_MANAGER.ENDC}")
         exists = False
         proto_list = host.all_protocols()
         for proto in proto_list:
             # Checking each protocol
             ports = list(host[proto].keys())  # Get all port numbers as a list.
             for port in ports:
-                if (
-                    port == data.port
-                    and host[proto][port]["name"] == "http"
-                    and host[proto][port]["state"] == "open"
-                ):
+                if (port == data.port
+                        and host[proto][port]["name"] == "http"
+                        and host[proto][port]["state"] == "open"):
                     # If the specified port is http and open
                     exists = True
                     break
@@ -163,7 +152,7 @@ def scan_ports(data: Data.Data):
         else:
             # If the specified port is not good
             raise Exception(
-                f"Port {data.port} isn't open on your host. please try another port or check your host."
+                f"Port {data.port} isn't open on your host. please try another port or check your host.", "\t"
             )
 
 
@@ -174,6 +163,10 @@ def ping(data: Data.Data):
     """
     if data.ip == "127.0.0.1":
         return  # Our computer, there is no need to ping
+
+    print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW} "
+          f"Pinging {data.ip}{COLOR_MANAGER.ENDC}")
+
     result = subprocess.Popen(
         ["ping", "-r", "9", "-n", f"{NUMBER_OF_PACKETS}", data.ip],
         stdout=subprocess.PIPE,
@@ -185,16 +178,16 @@ def ping(data: Data.Data):
         # If the ping made an output
         if "Access denied." in out.decode():
             # If the ping requires sudo privileges
-            raise Exception("The process requires administrative privileges")
+            raise Exception("The process requires administrative privileges", "\t")
         elif "Lost = 0" in out.decode():
             # If the host is up
             if out.decode().count("->") > NUMBER_OF_PACKETS * TTL:
                 # Every "->" represents a router that the ping going through
                 # More than 2 routers are usually out of the local network
-                raise Exception(f"The host {data.ip} is not in your local network")
+                raise Exception(f"The host {data.ip} is not in your local network", "\t")
         else:
             # If the host is down
-            raise Exception(f"The host {data.ip} is down or too far")
+            raise Exception(f"The host {data.ip} is down or too far", "\t")
     else:
         # Don't know when it can occur, just in case of unknown error
         raise Exception("Some error has occurred")
@@ -205,13 +198,14 @@ def set_target(data: Data.Data):
     Function sets the address details in the Data object, checks ports, IP or URL.
     :param data: the data object of the program
     """
+    print(f"\n{COLOR_MANAGER.HEADER}{COLOR_MANAGER.YELLOW}Achieving target:{COLOR_MANAGER.ENDC}")
     if data.url is not None:
         # If the user specified URL
         valid_url(data)
     elif not valid_ip(data.ip):
         # If the user didn't specified URL and the IP is invalid
         raise Exception(
-            f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx"
+            f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx", "\t"
         )
     # At this point there has to be a valid IP
     # Ping the IP host, checks if the host is up and in our local network

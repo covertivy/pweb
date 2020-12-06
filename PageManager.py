@@ -182,11 +182,10 @@ def logic(data: Data):
         # We need to clear them in case of session pages
         already_checked.clear()
     except Exception as e:
-        raise ("Unknown problem occurred.\n"
-               "\tIn case of too many pages, try putting another URL")
+        raise Exception("Unknown problem occurred.", "\t")
 
     if len(data.pages) == 0:
-        raise Exception("Your website doesn't have any valid web pages")
+        raise Exception("Your website doesn't have any valid web pages", "\t")
 
     session_pages = 0
     if len(login_pages):
@@ -222,8 +221,8 @@ def logic(data: Data):
                 session_pages += 1
 
     if session_pages != 0:
-        print(f"\n{COLOR_MANAGER.BLUE}Pages that does not require login authorization: "
-              f"{len(data.pages) - session_pages}")
-        print(f"{COLOR_MANAGER.ORANGE}Pages that requires login authorization: {session_pages}\n")
+        print(f"\n\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization: "
+              f"{len(data.pages) - session_pages}\n"
+              f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization: {session_pages}\n")
     else:
-        print(f"\n{COLOR_MANAGER.BLUE}Number of pages: {len(data.pages)}\n")
+        print(f"\n\t{COLOR_MANAGER.BLUE}Number of pages: {len(data.pages)}\n")
