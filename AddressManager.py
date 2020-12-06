@@ -84,7 +84,7 @@ def valid_url(data: Data.Data):
         raise Exception(
             f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx"
         )
-
+    """
     try:
         code = requests.get(data.url).status_code
         if code != 200:
@@ -93,7 +93,7 @@ def valid_url(data: Data.Data):
                 f"The URL does not responds and returns status code: {code}"
             )
     except:
-        raise Exception(f"The Port {data.port} isn't open on the Host {data.ip}")
+        raise Exception(f"The Port {data.port} isn't open on the Host {data.ip}")"""
 
 
 def scan_ports(data: Data.Data):
@@ -107,9 +107,7 @@ def scan_ports(data: Data.Data):
     if len(nm.all_hosts()) == 0:
         raise Exception(f"No hosts found on {data.ip}")
 
-    host = nm[
-        nm.all_hosts()[0]
-    ]  # Usually there is one host in the list, the one we want to check
+    host = nm[nm.all_hosts()[0]]  # Usually there is one host in the list, the one we want to check
 
     if type(data.port) is not int:
         # If the user used -P for all ports scan
@@ -122,15 +120,14 @@ def scan_ports(data: Data.Data):
             for port in ports:
                 if host[proto][port]["name"] == "http":
                     # We are looking for http ports only
-                    message += (
-                        f"\tPort: {port} | State: {host[proto][port]['state']} "
-                        f"| Service: {host[proto][port]['product']}\n"
-                    )
+                    padding = " " * (5 - len(str(port)))
+                    message += f"\tPort: {port}{padding} | State: {host[proto][port]['state']} " \
+                               f"| Service: {host[proto][port]['product']}\n"
         if len(message) != 0:
             # If there are open http ports on the host
             message = (
                 COLOR_MANAGER.UNDERLINE
-                + f"List of the open http ports on your host:{COLOR_MANAGER.ENDC}\n\n"
+                + f"\nList of the open http ports on your host:{COLOR_MANAGER.ENDC}\n\n"
                 + COLOR_MANAGER.CYAN
                 + message
                 + COLOR_MANAGER.ENDC
