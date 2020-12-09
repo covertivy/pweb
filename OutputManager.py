@@ -66,7 +66,9 @@ def logic(data: Data.Data, mutex: threading.Lock, all_threads_done_event: thread
                 print_results(results)
     else:
         # If there is a specified file path
-        print(f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
+        print(
+            f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}"
+        )
         all_threads_done_event.wait()  # Waiting for the plugins to finish their run
         print(
             f"\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Saving to Output File ({data.output})...{COLOR_MANAGER.ENDC}"
