@@ -51,7 +51,7 @@ def print_data(data: Data.Data):
     """
     Function prints the inserted data
     """
-    print(f"\n{COLOR_MANAGER.PINK + COLOR_MANAGER.HEADER}Inserted Data:{COLOR_MANAGER.ENDC}")
+    print(f"\n{COLOR_MANAGER.PINK + COLOR_MANAGER.HEADER}Inserted data:{COLOR_MANAGER.ENDC}")
     for line in str(data).split("\n"):
         print(f"\t[{COLOR_MANAGER.PINK}*{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.PINK}{line}{COLOR_MANAGER.ENDC}")
     print(COLOR_MANAGER.ENDC)
@@ -69,7 +69,10 @@ def main():
         VulnerabilityManager.logic(data)
         print(COLOR_MANAGER.ENDC)
     except Exception as e:
-        COLOR_MANAGER.print_error(str(e))
+        if len(e.args) == 2:
+            COLOR_MANAGER.print_error(str(e.args[0]), str(e.args[1]))
+        else:
+            COLOR_MANAGER.print_error(str(e))
     finally:
         # os.remove('CheckDevice.py')
         exit(code=0)

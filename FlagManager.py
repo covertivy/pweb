@@ -107,6 +107,7 @@ def get_final_args(args) -> Data.Data:
         output_obj.url += "/"
 
     # Check if all ports flag is set.
+
     if args.all_ports:
         output_obj.port = "1-65534"
     else:  # Not all ports scan.
@@ -118,13 +119,15 @@ def get_final_args(args) -> Data.Data:
             output_obj.port = args.port
 
     # Set limit of pages.
-    if args.number_of_pages > 0:
-        output_obj.max_pages = args.number_of_pages
-    else:
+    if args.number_of_pages and args.number_of_pages <= 0:
+        # If the number is set and it is invalid
         COLOR_MANAGER.print_error(
             "Invalid number of pages! Running with unlimited pages."
         )
         output_obj.max_pages = None
+    else:
+        # If the number wasn't specified or it was specified and is valid
+        output_obj.max_pages = args.number_of_pages
 
     # Set file path
     if args.output is not None:

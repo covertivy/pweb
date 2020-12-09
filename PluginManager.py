@@ -32,7 +32,7 @@ def fetch_plugins():
 
     # Check if config file exists.
     if not os.path.exists(CONFIG_FILE_PATH):
-        raise Exception('Config file "{CONFIG_FILE_PATH}" was not found!')
+        raise Exception(f'Config file "{CONFIG_FILE_PATH}" was not found!', "\t")
     # Read config file:
     cfg_parser.read(CONFIG_FILE_PATH)
 
@@ -40,14 +40,14 @@ def fetch_plugins():
     # For more information check out "https://docs.python.org/3/library/configparser.html"
     if PLUGIN_PATH_SECTION not in cfg_parser.sections():
         raise Exception(
-            f'Section "{PLUGIN_PATH_SECTION}" was not found in config file "{CONFIG_FILE_NAME}"'
+            f'Section "{PLUGIN_PATH_SECTION}" was not found in config file "{CONFIG_FILE_NAME}"', "\t"
         )
 
     # Check if the mandatory key CONFIG_PATHS_KEY exists inside the desired section.
     # For more information check out "https://docs.python.org/3/library/configparser.html"
     if CONFIG_PATHS_KEY not in cfg_parser[PLUGIN_PATH_SECTION]:
         raise Exception(
-            f'Key "{CONFIG_PATHS_KEY}" was not found in section "{PLUGIN_PATH_SECTION}"'
+            f'Key "{CONFIG_PATHS_KEY}" was not found in section "{PLUGIN_PATH_SECTION}"', "\t"
         )
 
     # Save paths from the config file.
@@ -56,7 +56,7 @@ def fetch_plugins():
     # Check if there are paths inside the section under the key CONFIG_PATHS_KEY.
     if len(plugin_path_list) == 0:
         raise Exception(
-            f'No plugin paths were found in config file "{CONFIG_FILE_NAME}"'
+            f'No plugin paths were found in config file "{CONFIG_FILE_NAME}"', "\t"
         )
 
     # Print fancy plugin fetcher with color and cool stuff.
