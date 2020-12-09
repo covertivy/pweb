@@ -32,7 +32,7 @@ def fetch_plugins():
 
     # Check if config file exists.
     if not os.path.exists(CONFIG_FILE_PATH):
-        raise Exception('Config file "{CONFIG_FILE_PATH}" was not found!')
+        raise Exception(f'Config file "{CONFIG_FILE_PATH}" was not found!', "\t")
     # Read config file:
     cfg_parser.read(CONFIG_FILE_PATH)
 
@@ -40,14 +40,14 @@ def fetch_plugins():
     # For more information check out "https://docs.python.org/3/library/configparser.html"
     if PLUGIN_PATH_SECTION not in cfg_parser.sections():
         raise Exception(
-            f'Section "{PLUGIN_PATH_SECTION}" was not found in config file "{CONFIG_FILE_NAME}"'
+            f'Section "{PLUGIN_PATH_SECTION}" was not found in config file "{CONFIG_FILE_NAME}"', "\t"
         )
 
     # Check if the mandatory key CONFIG_PATHS_KEY exists inside the desired section.
     # For more information check out "https://docs.python.org/3/library/configparser.html"
     if CONFIG_PATHS_KEY not in cfg_parser[PLUGIN_PATH_SECTION]:
         raise Exception(
-            f'Key "{CONFIG_PATHS_KEY}" was not found in section "{PLUGIN_PATH_SECTION}"'
+            f'Key "{CONFIG_PATHS_KEY}" was not found in section "{PLUGIN_PATH_SECTION}"', "\t"
         )
 
     # Save paths from the config file.
@@ -56,7 +56,7 @@ def fetch_plugins():
     # Check if there are paths inside the section under the key CONFIG_PATHS_KEY.
     if len(plugin_path_list) == 0:
         raise Exception(
-            f'No plugin paths were found in config file "{CONFIG_FILE_NAME}"'
+            f'No plugin paths were found in config file "{CONFIG_FILE_NAME}"', "\t"
         )
 
     # Print fancy plugin fetcher with color and cool stuff.
@@ -67,11 +67,20 @@ def fetch_plugins():
         + COLOR_MANAGER.ENDC
     )
 
+    # Check each plugin in the plugin config file.
     index = 0
     while index < len(plugin_path_list):
         path = plugin_path_list[index]
+
+        # Check if plugin exists in specified path.
         if os.path.isfile(path):
-            if path.endswith(".py"):
+            # Check if plugin is a python file.
+            if not path.endswith(".py"):
+                COLOR_MANAGER.print_error(
+                    f'Plugin "{path}" is not a python file!', "\t"
+                )
+                plugin_path_list.pop(index)
+            else:
                 print(
                     f"\t[{COLOR_MANAGER.LIGHT_GREEN}+{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.LIGHT_GREEN}{path}{COLOR_MANAGER.ENDC}"
                 )
