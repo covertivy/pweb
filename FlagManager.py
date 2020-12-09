@@ -122,8 +122,7 @@ def get_final_args(args) -> Data.Data:
     if args.number_of_pages and args.number_of_pages <= 0:
         # If the number is set and it is invalid
         COLOR_MANAGER.print_error(
-            "Invalid number of pages! Running with unlimited pages."
-        )
+            "Invalid number of pages! Running with unlimited pages.")
         output_obj.max_pages = None
     else:
         # If the number wasn't specified or it was specified and is valid

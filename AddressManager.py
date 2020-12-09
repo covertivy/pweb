@@ -82,8 +82,7 @@ def valid_url(data: Data.Data):
     if not valid_ip(data.ip):
         # if the IP in the URL is invalid
         raise Exception(
-            f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx", "\t"
-        )
+            f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx", "\t")
 
 
 def scan_ports(data: Data.Data):
@@ -126,8 +125,7 @@ def scan_ports(data: Data.Data):
         else:
             # If there are no open http ports on the host
             raise Exception(
-                "There are no open http ports on your host, please check the host.", "\t"
-            )
+                "There are no open http ports on your host, please check the host.", "\t")
     else:
         # If the user used -p or used the default port 80
         print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW} "
@@ -152,8 +150,7 @@ def scan_ports(data: Data.Data):
         else:
             # If the specified port is not good
             raise Exception(
-                f"Port {data.port} isn't open on your host. please try another port or check your host.", "\t"
-            )
+                f"Port {data.port} isn't open on your host. please try another port or check your host.", "\t")
 
 
 def ping(data: Data.Data):

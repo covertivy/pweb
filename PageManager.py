@@ -7,7 +7,6 @@ import mechanize
 import http.cookiejar
 
 
-TOO_MUCH_TIME = 8  # How many seconds of running is too much
 login_pages = []  # List of (login URL, logged-in URL, the session)
 already_printed = []  # List of printed Pages/SessionPages
 already_checked = []  # List of checked Pages/SessionPages

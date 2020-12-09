@@ -77,7 +77,7 @@ def fetch_plugins():
             # Check if plugin is a python file.
             if not path.endswith(".py"):
                 COLOR_MANAGER.print_error(
-                    f'Plugin "{path}" is not a python file!', "\t"
+                    f'Plugin "{path}" is not a python file! (ignoring...)', "\t"
                 )
                 plugin_path_list.pop(index)
             else:
@@ -85,11 +85,6 @@ def fetch_plugins():
                     f"\t[{COLOR_MANAGER.LIGHT_GREEN}+{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.LIGHT_GREEN}{path}{COLOR_MANAGER.ENDC}"
                 )
                 index += 1
-            else:
-                COLOR_MANAGER.print_error(
-                    f'Plugin "{path}" is not a python file! (ignoring...)', "\t"
-                )
-                plugin_path_list.remove(path)
         else:
             COLOR_MANAGER.print_warning(
                 f'Plugin path "{path}" does not exist! (ignoring...)', "\t"
