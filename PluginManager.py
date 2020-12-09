@@ -66,11 +66,15 @@ def fetch_plugins():
         + "Fetching plugins:"
         + COLOR_MANAGER.ENDC
     )
+
+    # Check each plugin in the plugin config file.
     index = 0
     while index < len(plugin_path_list):
         path = plugin_path_list[index]
 
+        # Check if plugin exists in specified path.
         if os.path.isfile(path):
+            # Check if plugin is a python file.
             if not path.endswith(".py"):
                 COLOR_MANAGER.print_error(
                     f'Plugin "{path}" is not a python file!', "\t"

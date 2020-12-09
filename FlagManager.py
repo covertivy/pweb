@@ -117,7 +117,7 @@ def get_final_args(args) -> Data.Data:
         else:
             output_obj.port = args.port
 
-    # Set number of
+    # Set limit of pages.
     if args.number_of_pages > 0:
         output_obj.max_pages = args.number_of_pages
     else:
