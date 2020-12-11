@@ -15,6 +15,16 @@ logout = []  # List of logout URLs
 logged_out = False
 
 
+def get_links(links: list, url: str) -> list:
+    valid_links = list()
+    for link in [urljoin(url, link) for link in links]:
+        if str(link).startswith(f"{str(url).split(':')[0]}:{str(url).split(':')[1]}"):
+            # Only URLs that belongs to the website
+            valid_links.append(link)
+    valid_links.sort()  # Links list sorted in alphabetic order
+    return valid_links
+
+
 def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser = None):
     """
     Function gets the lists of pages to the data object
@@ -35,8 +45,7 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
     if br:
         # Session page
         try:
-            br.open(curr_url)
-            br.reload()
+            res = br.open(curr_url)
             for p in data.pages:
                 if p.url == br.geturl():
                     # Have the same URL
@@ -56,8 +65,8 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
                         return
                     else:
                         break
-            res = requests.get(br.geturl())
-            if res.url == br.geturl() and "logout" in curr_url:
+            req = requests.get(br.geturl())
+            if req.url == br.geturl() and "logout" in curr_url:
                 # If the URL can be reachable from non-session point the session has logged out
                 print(
                     f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
@@ -66,16 +75,19 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
                 logged_out = True
                 logout.append(curr_url)
                 return
-            page = SessionPage(br.geturl(), br.response().code, br.response().read().decode(), br.cookiejar)
-            color = COLOR_MANAGER.ORANGE
         except Exception as e:
             troublesome.append(curr_url)
             return
+        else:
+            print(res.headers.get("Content-Type"))
+            page = SessionPage(br.geturl(), br.response().code, br.response().headers.get("Content-Type"),
+                               br.response().read().decode(), br.cookiejar)
+            color = COLOR_MANAGER.ORANGE
     else:
         # Non-Session page
         try:
             res = requests.get(curr_url)
-            page = Page(res.url, res.status_code, res.content.decode())
+            page = Page(res.url, res.status_code, res.headers.get("Content-Type"), res.content.decode())
             color = COLOR_MANAGER.BLUE
             br = None  # Not to confuse the function
         except Exception as e:
@@ -87,21 +99,31 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
         # If the current URL is redirecting to another URL
         troublesome.append(curr_url)
 
-    try:
-        # Creating a BeautifulSoup object
-        soup = BeautifulSoup(page.content, "html.parser")
-    except Exception as e:
-        # Couldn't parse, might be non-html format, like pdf or docx
-        troublesome.append(page.url)
-        return
+    soup = None
+    if "html" in page.type:
+        # Only if the page is html
+        try:
+            # Creating a BeautifulSoup object
+            soup = BeautifulSoup(page.content, "html.parser")
+        except Exception as e:
+            # Couldn't parse, might be non-html format, like pdf or docx
+            troublesome.append(page.url)
+            return
 
     if not any(page.url == printed_page.url and type(page) == type(printed_page)
                for printed_page in already_printed):
         # If the page was not printed
+        if not soup:
+            # If it is a non-html page
+            if "css" in page.type:
+                color = COLOR_MANAGER.PINK
+            if "application" in page.type:
+                color = COLOR_MANAGER.GREEN
         # Printing the page
         print(f"\t[{color}+{COLOR_MANAGER.ENDC}] {color}{page.url}{COLOR_MANAGER.ENDC}")
         already_printed.append(page)
 
+    # Checking if the page was already checked
     in_list = False
     for pages in data.pages:
         if pages.url == page.url and (pages.content == page.content or type(pages) == type(page)):
@@ -114,24 +136,34 @@ def get_pages(data: Data, curr_url: str, recursive=True, br: mechanize.Browser =
     # Adding to the already-checked list
     already_checked.append(page)
 
+    if not soup:
+        # There is no reason check non-html page
+        return
+
+    # Getting every application script in the page
+    scripts = get_links([script.get("src") for script in soup.find_all("script")], page.url)
+    for script in scripts:
+        if all(script != page.url for page in data.pages) or br:
+            # If the script is not in the page list
+            if (not any(script == checked_page.url for checked_page in already_checked)
+                    and script not in troublesome):
+                # Page was not checked
+                get_pages(data, script, data.recursive, br)
+
     if recursive:
         # If the function is recursive
-        # Getting every link in the page
-        links = [urljoin(page.url, x.get("href")) for x in list(set(soup.find_all("a")))]
-        links.sort()  # Links list sorted in alphabetic order
+        links = get_links([link.get("href") for link in soup.find_all("a")], page.url)  # Getting every link in the page
         for link in links:
             if logged_out or len(data.pages) == data.max_pages:
                 # More efficient to check every time
                 # If the session logged out or the pages amount is at its maximum
                 return
-            if str(link).startswith(f"{str(data.url).split(':')[0]}:{str(data.url).split(':')[1]}"):
-                # Only URLs that belongs to the website
-                if all(link != page.url for page in data.pages) or br:
-                    # If the page is not in the page list
-                    if (not any(link == checked_page.url for checked_page in already_checked)
-                            and link not in troublesome):
-                        # Page was not checked
-                        get_pages(data, link, data.recursive, br)
+            if all(link != page.url for page in data.pages) or br:
+                # If the page is not in the page list
+                if (not any(link == checked_page.url for checked_page in already_checked)
+                        and link not in troublesome):
+                    # Page was not checked
+                    get_pages(data, link, data.recursive, br)
 
     if not br:
         # If not session page
