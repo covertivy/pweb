@@ -6,14 +6,14 @@ from threading import Lock
 COLOR = COLOR_MANAGER.rgb(255, 255, 0)
 
 
-def check(data: Data.Data, lock: Lock):
+def check(data: Data.Data):
     ci_results = Data.CheckResults("Command Injection", COLOR)
-    lock.acquire()
+    data.mutex.acquire()
     pages = data.pages
-    lock.release()
+    data.mutex.release()
     for page in pages:
         res = Data.PageResult(page, "unknown problem", "unknown solution")
         ci_results.page_results.append(res)
-    lock.acquire()
+    data.mutex.acquire()
     data.results.append(ci_results)
-    lock.release()
+    data.mutex.release()

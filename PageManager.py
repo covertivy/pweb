@@ -5,16 +5,24 @@ from Data import Data, SessionPage, Page
 import requests
 import http.cookiejar
 
-
-login_pages = []  # List of (login URL, logged-in URL, the session)
+type_colors = dict()  # Dictionary of the mime-types and their color (find values in the logic function)
+login_pages = []  # List of (login URL, logged-in URL, the session, login-form of the login URL)
 already_printed = []  # List of printed Pages/SessionPages
 already_checked = []  # List of checked Pages/SessionPages
 troublesome = []  # List of troublesome URLs
 logout = []  # List of logout URLs
-logged_out = False
+logged_out = False  # Logout flag
+current_login_page = ""  # Where the session started
 PADDING = 4
 
+
 def get_links(links: list, url: str) -> list:
+    """
+    Function filters the links list
+    @param links: The list of every link in the page
+    @param url: The current URL
+    @return: List of valid links
+    """
     valid_links = list()
     for link in [urljoin(url, link) for link in links]:
         if str(link).startswith(f"http://{str(url).replace('http://', '').split(':')[0].split('/')[0]}"):
@@ -25,7 +33,13 @@ def get_links(links: list, url: str) -> list:
     return valid_links
 
 
-def get_login_form(data: Data, url: str):
+def get_login_form(data: Data, url: str) -> (dict, requests.Session):
+    """
+    Function gets the login form of the page
+    @param data: The data object of the program
+    @param url: The current URL
+    @return: Dictionary of the form details, The session of the request
+    """
     session = requests.session()
     session.cookies = http.cookiejar.CookieJar()
     res = session.get(url)  # Opening the URL
@@ -76,7 +90,14 @@ def get_login_form(data: Data, url: str):
     return None, None
 
 
-def submit_form(form_details: dict, url: str, session: requests.Session):
+def submit_form(form_details: dict, url: str, session: requests.Session) -> requests.Response:
+    """
+    Function submits the login form
+    @param form_details: Dictionary of the form details
+    @param url: The current URL
+    @param session: The session of the request
+    @return: The response of the login request
+    """
     # Join the url with the action (form request URL)
     action_url = urljoin(url, form_details["action"])  # Getting action URL
     # The arguments body we want to submit
@@ -91,16 +112,17 @@ def submit_form(form_details: dict, url: str, session: requests.Session):
         return session.post(action_url, data=args)
     elif form_details["method"] == "get":
         return session.get(action_url, params=args)
-    return None
+    return requests.Response()
 
 
 def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Session = None):
     """
     Function gets the lists of pages to the data object
-    :param data: the data object of the program
-    :param curr_url: the current URL the function checks
-    :param recursive: True- check all website pages, False- only the first reachable one
-    :param session: In case of session page, the br is important for the connection
+    @param data: The data object of the program
+    @param curr_url: The current URL the function checks
+    @param recursive: True- check all website pages, False- only the first reachable one
+    @param session: In case of session page, the session is important for the connection
+    @return: None
     """
     if len(data.pages) == data.max_pages:
         # In case of specified amount of pages, the function will stop
@@ -145,14 +167,13 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
             return
         else:
             page = SessionPage(res.url, res.status_code, res.headers.get("Content-Type").split(";")[0],
-                               res.content.decode(), session.cookies)
+                               res.content.decode(), session.cookies, current_login_page)
             color = COLOR_MANAGER.ORANGE
     else:
         # Non-Session page
         try:
             res = requests.get(curr_url)
-            page = Page(res.url, res.status_code, res.headers.get("Content-Type").split(";")[0],
-                        res.content.decode())
+            page = Page(res.url, res.status_code, res.headers.get("Content-Type").split(";")[0], res.content.decode())
             color = COLOR_MANAGER.BLUE
         except Exception as e:
             # Couldn't open with the session
@@ -179,14 +200,11 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
         # If the page was not printed
         if not soup:
             # If it is a non-html page
-            if "css" in page.type:
-                color = COLOR_MANAGER.PINK  # CSS
-            elif "javascript" in page.type:
-                color = COLOR_MANAGER.GREEN  # JS
-            elif "xml" in page.type:
-                color = COLOR_MANAGER.YELLOW  # XML
-            else:
-                color = COLOR_MANAGER.PURPLE  # Other
+            color = type_colors['Other']
+            for key in type_colors.keys():
+                if str(key).lower() in page.type:
+                    color = type_colors[key]
+                    break
         # Printing the page
         print(f"\t[{color}+{COLOR_MANAGER.ENDC}] {color}{page.url}{COLOR_MANAGER.ENDC}")
         already_printed.append(page)
@@ -257,13 +275,13 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
                 return
             new_url = res.url
             content = res.content.decode()
-            if any(new_url == url for origin, url, ses in login_pages):
+            if any(new_url == url for origin, url, ses, form in login_pages):
                 # The new url is already in the list
                 return
             if all(new_url != p.url for p in data.pages):
                 # If the new URL is not in list
                 # It is also redirecting
-                login_pages.append((page.url, new_url, session))
+                login_pages.append((page.url, new_url, session, form_details))
             else:
                 # If the new URL is in the list
                 for p in data.pages:
@@ -271,7 +289,7 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
                         # Have the same URL
                         if content != p.content:
                             # Different content
-                            login_pages.append((page.url, new_url, session))
+                            login_pages.append((page.url, new_url, session, form_details))
                         break
         except Exception as e:
             pass
@@ -279,14 +297,21 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
 
 def logic(data: Data):
     """
-    Function gets the pages list
+    Function gets the page list
+    @param data: The data object of the program
+    @return: None
     """
+    global type_colors
+    type_colors = {'HTML': None,  # The session is the one that decides
+                   'Javascript': COLOR_MANAGER.GREEN,
+                   'CSS': COLOR_MANAGER.PINK,
+                   'XML': COLOR_MANAGER.YELLOW,
+                   'Other': COLOR_MANAGER.PURPLE}  # Dictionary of the mime-types and their color
     print(
         COLOR_MANAGER.BLUE
         + COLOR_MANAGER.HEADER
         + "Scraping pages:"
-        + COLOR_MANAGER.ENDC
-    )
+        + COLOR_MANAGER.ENDC)
     try:
         get_pages(data, data.url)
         global already_checked
@@ -301,12 +326,13 @@ def logic(data: Data):
     session_pages = 0
     if len(login_pages):
         # If there are specified username and password
-        # login_pages = get_login_pages(data)
         global logged_out
+        global current_login_page
         pages_backup = list(data.pages)
-        for origin, url, session in login_pages:
+        for origin, url, session, form in login_pages:
             # Check every login page
             logged_out = True
+            current_login_page = (origin, form)
             while logged_out:
                 # Until it won't encounter a logout page
                 logged_out = False
@@ -328,47 +354,61 @@ def logic(data: Data):
 
 
 def print_result(data: Data, session_pages: int):
+    """
+    Function prints the result of the web scraper
+    @param data: The data object of the program
+    @param session_pages: The number of session pages
+    @return: None
+    """
     print(f"\n\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization:{COLOR_MANAGER.ENDC}")
     print_types(data, Page)
     if session_pages != 0:
+        # If there are session pages
         print(f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization:{COLOR_MANAGER.ENDC}")
         print_types(data, SessionPage)
-    print("")
+    print(COLOR_MANAGER.ENDC)
 
 
 def print_types(data: Data, page_type):
-    css = 0
-    js = 0
-    html = 0
-    xml = 0
-    others = 0
+    """
+    Function counts the different mime-types of pages
+    @param data: The data object of the program
+    @param page_type: Page or Session page, decides which page class to count
+    @return: None
+    """
+    global type_colors
+    type_count = dict()
+    for key in type_colors.keys():
+        type_count[key] = 0
+
     for page in data.pages:
         if type(page) == page_type:
-            if "css" in page.type:
-                css += 1
-            elif "html" in page.type:
-                html += 1
-            elif "xml" in page.type:
-                xml += 1
-            elif "javascript" in page.type:
-                js += 1
-            else:
-                others += 1
+            found = False
+            for key in type_count.keys():
+                if str(key).lower() in page.type:
+                    type_count[key] += 1
+                    found = True
+            if not found:
+                type_count['Other'] += 1
+    
     if page_type == SessionPage:
-        print_type(html, "Html-format", COLOR_MANAGER.ORANGE)
+        # Session page
+        type_colors['HTML'] = COLOR_MANAGER.ORANGE
     else:
-        print_type(html, "Html-format", COLOR_MANAGER.BLUE)
-    if css != 0:
-        print_type(css, "CSS", COLOR_MANAGER.PINK)
-    if js != 0:
-        print_type(js, "Javascript", COLOR_MANAGER.GREEN)
-    if xml != 0:
-        print_type(xml, "XML", COLOR_MANAGER.YELLOW)
-    if others != 0:
-        print_type(others, "Other", COLOR_MANAGER.PURPLE)
+        type_colors['HTML'] = COLOR_MANAGER.BLUE
+    for key in type_count.keys():
+        if type_count[key] != 0:
+            print_type(type_count[key], key, type_colors[key])
 
 
 def print_type(mime_type: int, name: str, color: str):
+    """
+    Function print the page mime-type
+    @param mime_type: The number of page of the mime-type
+    @param name: The name of the mime-type
+    @param color: The color of the print
+    @return: None
+    """
     padding = " " * (PADDING - len(str(mime_type)))
     print(f"\t\t[{color}+{COLOR_MANAGER.ENDC}]"
           f"{color} {mime_type}{padding}{name} pages{COLOR_MANAGER.ENDC}")

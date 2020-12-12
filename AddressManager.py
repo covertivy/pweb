@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 import nmap
-import Data
+from Data import Data
 from colors import COLOR_MANAGER
-import requests
 from scapy.all import *
 import subprocess
 
@@ -13,28 +12,21 @@ TTL = 2
 def valid_ip(ip: str) -> bool:
     """
     Function checks if the IP is valid
-    :param ip: the IP string
-    :return: True - valid IP, False - invalid IP
+    @param ip: The IP string
+    @return: True - valid IP, False - invalid IP
     """
-
-    def isIPv4(field: str) -> bool:
-        """
-        Function checks if a string is a number and between 0-255
-        :param field: a field from the IP address
-        :return: True - valid field, False - invalid field
-        """
-        return field.isnumeric() and 0 <= int(field) <= 255
-
-    if ip.count(".") == 3 and all(isIPv4(field) for field in ip.split(".")):
+    if ip.count(".") == 3 and \
+            all(field.isnumeric() and 0 <= int(field) <= 255 for field in ip.split(".")):
         # If there are 4 fields in the IP and they all are in range 0-255
         return True
     return False
 
 
-def valid_url(data: Data.Data):
+def valid_url(data: Data):
     """
     Function checks if the url is valid
-    :param data: the data object of the program
+    @param data: The data object of the program
+    @return: None
     """
     if not str(data.url).lower().startswith("http://"):
         # If the URL does not start with "http://
@@ -85,10 +77,11 @@ def valid_url(data: Data.Data):
             f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx", "\t")
 
 
-def scan_ports(data: Data.Data):
+def scan_ports(data: Data):
     """
     Function scans the host on the specified port/s
-    :param data: the data object of the program
+    @param data: The data object of the program
+    @return: None
     """
     nm = nmap.PortScanner()  # Instantiate nmap.PortScanner object
     nm.scan(hosts=data.ip, ports=str(data.port))  # Scan host, ports from 22 to 443
@@ -153,10 +146,11 @@ def scan_ports(data: Data.Data):
                 f"Port {data.port} isn't open on your host. please try another port or check your host.", "\t")
 
 
-def ping(data: Data.Data):
+def ping(data: Data):
     """
-    Function checks if the host is up and in the local network
-    :param data: the data object of the program
+    Function checks if the host is up and is in the local network
+    @param data: The data object of the program
+    @return: None
     """
     if data.ip == "127.0.0.1":
         return  # Our computer, there is no need to ping
@@ -167,8 +161,7 @@ def ping(data: Data.Data):
     result = subprocess.Popen(
         ["ping", "-r", "9", "-n", f"{NUMBER_OF_PACKETS}", data.ip],
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+        stderr=subprocess.PIPE)
     result.wait()  # Wait for the thread to finish the ping
     out, err = result.communicate()  # out = The output of the ping
     if out:
@@ -190,10 +183,11 @@ def ping(data: Data.Data):
         raise Exception("Some error has occurred")
 
 
-def set_target(data: Data.Data):
+def set_target(data: Data):
     """
-    Function sets the address details in the Data object, checks ports, IP or URL.
-    :param data: the data object of the program
+    Function sets the address details in the Data object, checks ports, IP or URL
+    @param data: The data object of the program
+    @return: None
     """
     print(f"\n{COLOR_MANAGER.HEADER}{COLOR_MANAGER.YELLOW}Achieving target:{COLOR_MANAGER.ENDC}")
     if data.url is not None:
@@ -202,8 +196,7 @@ def set_target(data: Data.Data):
     elif not valid_ip(data.ip):
         # If the user didn't specified URL and the IP is invalid
         raise Exception(
-            f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx", "\t"
-        )
+            f"The IP {data.ip} is not in the right of format of xxx.xxx.xxx.xxx", "\t")
     # At this point there has to be a valid IP
     # Ping the IP host, checks if the host is up and in our local network
     ping(data)

@@ -1,17 +1,26 @@
 #!/usr/bin/python3
 import argparse
-import Data
+from Data import Data
 from colors import COLOR_MANAGER
 
 
-def char_arr_to_string(arr: list) -> str:  # convert char array to string
+def char_arr_to_string(arr: list) -> str:
+    """
+    Function converts char array to string
+    @param arr: Char array
+    @return: String
+    """
     to_ret = ""
     for item in arr:
         to_ret += str(item)
     return to_ret
 
 
-def parse_args():  # Get command line arguments using argsparse.
+def parse_args() -> argparse.Namespace:
+    """
+    Function gets command line arguments using argparse
+    @return: Namespace of the arguments
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-i",
@@ -82,15 +91,13 @@ def parse_args():  # Get command line arguments using argsparse.
     return args
 
 
-def get_final_args(args) -> Data.Data:
+def get_final_args(args) -> Data:
     """
-    Args:
-        args: All the command line arguments.
-
-    Returns:
-        Data.Data: The returned data object, will be processed furthermore in the Main Core.
+    Function gets the arguments into the Data object
+    @param args: All the command line arguments.
+    @return: The returned data object, will be processed furthermore in the Main Core.
     """
-    output_obj = Data.Data()
+    output_obj = Data()
 
     # Set Username and Password
     if type(args.login) is not None:

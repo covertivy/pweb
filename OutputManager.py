@@ -1,26 +1,31 @@
 #!/usr/bin/python3
-import Data
+from Data import Data, CheckResults
 from colors import *
 import threading
 import xml.etree.ElementTree as ET
 
 
-def print_results(results: Data.CheckResults) -> None:
-    print(
-        f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:{COLOR_MANAGER.ENDC}{results.color}"
-    )
-    for res in results.page_results:
-        if res.problem is not None and res.solution is not None:
-            print(
-                f"\t{COLOR_MANAGER.BOLD}Page: {COLOR_MANAGER.ENDC}{results.color}{res.url}\n"
-                f"\t\t{COLOR_MANAGER.BOLD}Problem: {COLOR_MANAGER.ENDC}{results.color}{res.problem}\n"
-                f"\t\t{COLOR_MANAGER.BOLD}Solution: {COLOR_MANAGER.ENDC}{results.color}{res.solution}"
-            )
-
-
-def save_results(data) -> None:
+def print_results(results: CheckResults):
     """
-    A function that saves the results to the xml output file.
+    Function prints the latest check results
+    @param results: The check results
+    @return:
+    """
+    print(f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:"
+          f"{COLOR_MANAGER.ENDC}{results.color}")
+    for res in results.page_results:
+        print(f"\t{COLOR_MANAGER.BOLD}Page: {COLOR_MANAGER.ENDC}{results.color}{res.url}")
+        if res.problem:
+            print(f"\t\t{COLOR_MANAGER.BOLD}Problem: {COLOR_MANAGER.ENDC}{results.color}{res.problem}")
+        if res.solution:
+            print(f"\t\t{COLOR_MANAGER.BOLD}Solution: {COLOR_MANAGER.ENDC}{results.color}{res.solution}")
+
+
+def save_results(data):
+    """
+    Function saves the results to the xml output file
+    @param data: The data object of the program
+    @return: None
     """
     root = ET.Element("root", name="root")  # Create a root for the element tree.
     for thread_results in data.results:
@@ -43,7 +48,13 @@ def save_results(data) -> None:
         tree.write(f, encoding="unicode")
 
 
-def logic(data: Data.Data, mutex: threading.Lock, all_threads_done_event: threading.Event) -> None:
+def logic(data: Data, all_threads_done_event: threading.Event):
+    """
+    Function prints the check results to the screen or to a xml file
+    @param data: The data object of the program
+    @param all_threads_done_event: Signals when the plugins has finished their run
+    @return: None
+    """
     index = 0
     if data.output is None:
         # If there is no specified file path
@@ -58,19 +69,17 @@ def logic(data: Data.Data, mutex: threading.Lock, all_threads_done_event: thread
                     continue
             else:
                 # If there are new results
-                mutex.acquire()
+                data.mutex.acquire()
                 results = data.results[index]  # The most recent results.
-                mutex.release()
+                data.mutex.release()
                 index += 1
                 # Print the current found results.
                 print_results(results)
     else:
         # If there is a specified file path
         print(
-            f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}"
-        )
+            f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
         all_threads_done_event.wait()  # Waiting for the plugins to finish their run
         print(
-            f"\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Saving to Output File ({data.output})...{COLOR_MANAGER.ENDC}"
-        )
+            f"\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Saving to Output File ({data.output})...{COLOR_MANAGER.ENDC}")
         save_results(data)  # Saving the results
