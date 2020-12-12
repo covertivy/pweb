@@ -44,14 +44,15 @@ def get_login_form(data: Data, url: str):
             # Get name attribute
             input_name = input_tag.attrs.get("name")
             value = ""  # The default value of the input
-            if input_name.lower() == "username":
-                # Username input
-                value = data.username
-                login_input[0] = True
-            elif input_name.lower() == "password":
-                # Password input
-                value = data.password
-                login_input[1] = True
+            if input_name:
+                if input_name.lower() == "username":
+                    # Username input
+                    value = data.username
+                    login_input[0] = True
+                elif input_name.lower() == "password":
+                    # Password input
+                    value = data.password
+                    login_input[1] = True
             # Get the default value of that input tag
             input_value = input_tag.attrs.get("value", value)
             # Add everything to that list
@@ -136,14 +137,15 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
             troublesome.append(curr_url)
             return
         else:
-            page = SessionPage(res.url, res.status_code, res.headers.get("Content-Type"),
+            page = SessionPage(res.url, res.status_code, res.headers.get("Content-Type").split(";")[0],
                                res.content.decode(), session.cookies)
             color = COLOR_MANAGER.ORANGE
     else:
         # Non-Session page
         try:
             res = requests.get(curr_url)
-            page = Page(res.url, res.status_code, res.headers.get("Content-Type"), res.content.decode())
+            page = Page(res.url, res.status_code, res.headers.get("Content-Type").split(";")[0],
+                        res.content.decode())
             color = COLOR_MANAGER.BLUE
         except Exception as e:
             # Couldn't open with the session
@@ -204,6 +206,16 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
                     and script not in troublesome):
                 # Page was not checked
                 get_pages(data, script, data.recursive, session)
+
+    # Getting every css style in the page
+    styles = get_links([script.get("href") for script in soup.find_all(type="text/css")], page.url)
+    for style in styles:
+        if all(style != page.url for page in data.pages) or session:
+            # If the script is not in the page list
+            if (not any(style == checked_page.url for checked_page in already_checked)
+                    and style not in troublesome):
+                # Page was not checked
+                get_pages(data, style, data.recursive, session)
 
     if recursive:
         # If the function is recursive
@@ -291,7 +303,6 @@ def logic(data: Data):
                     # If the session has encountered a logout page
                     already_checked.clear()  # The function needs to go through all the session pages
                     data.pages = list(pages_backup)  # Restoring the pages list
-
                     form_details, session = get_login_form(data, origin)  # Getting new session
                     submit_form(form_details, origin, session)  # Updating the session
                     # Doing the loop all over again, without the logout page
