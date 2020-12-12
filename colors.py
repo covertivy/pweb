@@ -4,25 +4,16 @@ import random
 
 def rgb(red: int, green: int, blue: int):
     """
-    function paints the text
-    :param red: int, 0-255
-    :param green: int, 0-255
-    :param blue: int, 0-255
-    :return: paint format
+    Function paints the text
+    @param red: int, 0-255
+    @param green: int, 0-255
+    @param blue: int, 0-255
+    @return: Paint format
     """
     return "\033[38;2;{};{};{}m".format(red, green, blue)
 
 
 class Colors:
-    """
-    common use of the class methods:
-        print(Colors.rgb(0, 0, 0) + "hello")
-        # or
-        print(Colors.BOLD + "hello" + Colors.ENDC)
-        # or
-        print(f"{Colors.UNDERLINE}hello{Colors.ENDC}")
-    """
-
     ENDC = "\033[0m"  # back to normal
     BOLD = "\033[1m"
     UNDERLINE = "\033[4m"
@@ -55,26 +46,35 @@ class Colors:
     BOLD_PINK = PINK + BOLD
 
     @staticmethod
-    def rgb(red: int, green: int, blue: int):
+    def rgb(red: int, green: int, blue: int) -> str:
         """
-        function paints the text
-        :param red: int, 0-255
-        :param green: int, 0-255
-        :param blue: int, 0-255
-        :return: paint format
+        Function paints the text
+        @param red: int, 0-255
+        @param green: int, 0-255
+        @param blue: int, 0-255
+        @return: Paint format
         """
         return rgb(red, green, blue)
 
     @staticmethod
-    def rand_color():
+    def rand_color() -> str:
+        """
+        Function paints the text in random color
+        @return: Paint format
+        """
         return rgb(
             random.choice(range(255)),
             random.choice(range(255)),
-            random.choice(range(255)),
-        )
+            random.choice(range(255)))
 
     @staticmethod
     def print_warning(warning: str = "WARNING!", begins_with: str = ""):
+        """
+        Function prints a specified warning
+        @param warning: The specified warning
+        @param begins_with: Optional string to start with
+        @return: None
+        """
         print(
             begins_with
             + "["
@@ -84,11 +84,16 @@ class Colors:
             + "] "
             + Colors.BOLD_YELLOW
             + warning
-            + Colors.ENDC
-        )
+            + Colors.ENDC)
 
     @staticmethod
     def print_error(error: str = "ERROR!", starts_with: str = ""):
+        """
+        Function prints a specified error
+        @param error: The specified error
+        @param starts_with: Optional string to start with
+        @return: None
+        """
         print(
             starts_with
             + "["
@@ -98,8 +103,7 @@ class Colors:
             + "] "
             + Colors.BOLD_RED
             + error
-            + Colors.ENDC
-        )
+            + Colors.ENDC)
 
 
-COLOR_MANAGER = Colors()
+COLOR_MANAGER = Colors()  # Colors instance

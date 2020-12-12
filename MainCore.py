@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import Data
+from Data import Data
 import FlagManager
 import PluginManager
 import AddressManager
@@ -21,33 +21,32 @@ LOGO = """                           __
 
 def print_startup():
     """
-    Print majestic logo.
+    Function prints majestic logo.
+    @return: None
     """
     for char in LOGO:
         print(COLOR_MANAGER.rand_color() + char, end="")
     print(COLOR_MANAGER.ENDC + "\n")
-    print(
-        f"{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}"
-    )
+    print(f"{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}")
 
 
-def get_data() -> Data.Data:
+def get_data() -> Data:
     """
-    Function sets the Data object variables for the check process
-    :return: basic Data object
+    Function gets the Data object to a initial check stage
+    @return: Data object that ready for the Page manager
     """
-    data = FlagManager.get_final_args(
-        FlagManager.parse_args()
-    )  # Get arguments from command line.
+    data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
     if data.verbose:
         print_startup()  # Print startup logo and current time.
     AddressManager.set_target(data)
     return data
 
 
-def print_data(data: Data.Data):
+def print_data(data: Data):
     """
     Function prints the inserted data
+    @param data: The data object of the program
+    @return: None
     """
     print(f"\n{COLOR_MANAGER.PINK + COLOR_MANAGER.HEADER}Inserted data:{COLOR_MANAGER.ENDC}")
     for line in str(data).split("\n"):
@@ -56,8 +55,12 @@ def print_data(data: Data.Data):
 
 
 def main():
+    """
+    Function connects the different managers together
+    @return: None
+    """
     try:
-        data = (get_data())  # Get data through flag manager, address manager and page manager.
+        data = get_data()  # Get data through flag manager, address manager and page manager.
         if type(data.port) is not int:
             # If the user asked for ports scan (-P) there is no need to continue the run
             exit()
