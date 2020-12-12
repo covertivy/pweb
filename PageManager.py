@@ -12,14 +12,15 @@ already_checked = []  # List of checked Pages/SessionPages
 troublesome = []  # List of troublesome URLs
 logout = []  # List of logout URLs
 logged_out = False
-
+PADDING = 4
 
 def get_links(links: list, url: str) -> list:
     valid_links = list()
     for link in [urljoin(url, link) for link in links]:
-        if str(link).startswith(f"{str(url).split(':')[0]}:{str(url).split(':')[1]}"):
+        if str(link).startswith(f"http://{str(url).replace('http://', '').split(':')[0].split('/')[0]}"):
             # Only URLs that belongs to the website
             valid_links.append(link)
+    valid_links = list(set(valid_links))
     valid_links.sort()  # Links list sorted in alphabetic order
     return valid_links
 
@@ -45,6 +46,7 @@ def get_login_form(data: Data, url: str):
             input_name = input_tag.attrs.get("name")
             value = ""  # The default value of the input
             if input_name:
+                # If there is an input name
                 if input_name.lower() == "username":
                     # Username input
                     value = data.username
@@ -56,7 +58,14 @@ def get_login_form(data: Data, url: str):
             # Get the default value of that input tag
             input_value = input_tag.attrs.get("value", value)
             # Add everything to that list
-            inputs.append({"type": input_type, "name": input_name, "value": input_value})
+            input_dict = dict()
+            if input_type:
+                input_dict["type"] = input_type
+            if input_name:
+                input_dict["name"] = input_name
+            input_dict["value"] = input_value
+            inputs.append(input_dict)
+
         if login_input[0] and login_input[1]:
             # There both username and password in the form
             form_details = dict()
@@ -74,7 +83,9 @@ def submit_form(form_details: dict, url: str, session: requests.Session):
     args = dict()
     for input_tag in form_details["inputs"]:
         # Using the specified value
-        args[input_tag["name"]] = input_tag["value"]
+        if "name" in input_tag.keys():
+            # Only if the input has a name
+            args[input_tag["name"]] = input_tag["value"]
     # Sending the request
     if form_details["method"] == "post":
         return session.post(action_url, data=args)
@@ -114,10 +125,8 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
                     elif p.content == res.content.decode():
                         # It redirected to a non-session page, and have the same content
                         if "logout" in curr_url:
-                            print(
-                                f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
-                                f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}"
-                            )
+                            print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
+                                  f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
                             logout.append(curr_url)
                             logged_out = True
                         return
@@ -126,10 +135,8 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
             req = requests.get(res.url)
             if req.url == res.url and "logout" in curr_url:
                 # If the URL can be reachable from non-session point the session has logged out
-                print(
-                    f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
-                    f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}"
-                )
+                print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
+                      f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
                 logged_out = True
                 logout.append(curr_url)
                 return
@@ -173,9 +180,13 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
         if not soup:
             # If it is a non-html page
             if "css" in page.type:
-                color = COLOR_MANAGER.PINK
-            if "application" in page.type:
-                color = COLOR_MANAGER.GREEN
+                color = COLOR_MANAGER.PINK  # CSS
+            elif "javascript" in page.type:
+                color = COLOR_MANAGER.GREEN  # JS
+            elif "xml" in page.type:
+                color = COLOR_MANAGER.YELLOW  # XML
+            else:
+                color = COLOR_MANAGER.PURPLE  # Other
         # Printing the page
         print(f"\t[{color}+{COLOR_MANAGER.ENDC}] {color}{page.url}{COLOR_MANAGER.ENDC}")
         already_printed.append(page)
@@ -219,7 +230,8 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
 
     if recursive:
         # If the function is recursive
-        links = get_links([link.get("href") for link in soup.find_all("a")], page.url)  # Getting every link in the page
+        # Getting every link in the page
+        links = get_links([link.get("href") for link in soup.find_all("a")], page.url)
         for link in links:
             if logged_out or len(data.pages) == data.max_pages:
                 # More efficient to check every time
@@ -227,8 +239,8 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
                 return
             if all(link != page.url for page in data.pages) or session:
                 # If the page is not in the page list
-                if (not any(link == checked_page.url for checked_page in already_checked)
-                        and link not in troublesome):
+                if not any(link == checked_page.url for checked_page in already_checked)\
+                        and link not in troublesome:
                     # Page was not checked
                     get_pages(data, link, data.recursive, session)
 
@@ -312,9 +324,51 @@ def logic(data: Data):
         for page in data.pages:
             if type(page) is SessionPage:
                 session_pages += 1
+    print_result(data, session_pages)
+
+
+def print_result(data: Data, session_pages: int):
+    print(f"\n\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization:{COLOR_MANAGER.ENDC}")
+    print_types(data, Page)
     if session_pages != 0:
-        print(f"\n\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization: "
-              f"{len(data.pages) - session_pages}\n"
-              f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization: {session_pages}\n")
+        print(f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization:{COLOR_MANAGER.ENDC}")
+        print_types(data, SessionPage)
+    print("")
+
+
+def print_types(data: Data, page_type):
+    css = 0
+    js = 0
+    html = 0
+    xml = 0
+    others = 0
+    for page in data.pages:
+        if type(page) == page_type:
+            if "css" in page.type:
+                css += 1
+            elif "html" in page.type:
+                html += 1
+            elif "xml" in page.type:
+                xml += 1
+            elif "javascript" in page.type:
+                js += 1
+            else:
+                others += 1
+    if page_type == SessionPage:
+        print_type(html, "Html-format", COLOR_MANAGER.ORANGE)
     else:
-        print(f"\n\t{COLOR_MANAGER.BLUE}Number of pages: {len(data.pages)}\n")
+        print_type(html, "Html-format", COLOR_MANAGER.BLUE)
+    if css != 0:
+        print_type(css, "CSS", COLOR_MANAGER.PINK)
+    if js != 0:
+        print_type(js, "Javascript", COLOR_MANAGER.GREEN)
+    if xml != 0:
+        print_type(xml, "XML", COLOR_MANAGER.YELLOW)
+    if others != 0:
+        print_type(others, "Other", COLOR_MANAGER.PURPLE)
+
+
+def print_type(mime_type: int, name: str, color: str):
+    padding = " " * (PADDING - len(str(mime_type)))
+    print(f"\t\t[{color}+{COLOR_MANAGER.ENDC}]"
+          f"{color} {mime_type}{padding}{name} pages{COLOR_MANAGER.ENDC}")
