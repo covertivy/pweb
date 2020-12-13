@@ -84,7 +84,7 @@ def scan_ports(data: Data):
     @return: None
     """
     nm = nmap.PortScanner()  # Instantiate nmap.PortScanner object
-    nm.scan(hosts=data.ip, ports=str(data.port))  # Scan host, ports from 22 to 443
+    nm.scan(hosts=data.ip, ports=str(data.port))  # Scan host
 
     if len(nm.all_hosts()) == 0:
         raise Exception(f"No hosts found on {data.ip}", "\t")
@@ -123,7 +123,7 @@ def scan_ports(data: Data):
         # If the user used -p or used the default port 80
         print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW} "
               f"Scanning port {data.port} for HTTP{COLOR_MANAGER.ENDC}")
-        exists = False
+        operating_system = None
         proto_list = host.all_protocols()
         for proto in proto_list:
             # Checking each protocol
@@ -133,10 +133,11 @@ def scan_ports(data: Data):
                         and host[proto][port]["name"] == "http"
                         and host[proto][port]["state"] == "open"):
                     # If the specified port is http and open
-                    exists = True
+                    operating_system = host[proto][port]['extrainfo']
                     break
-        if exists:
+        if operating_system:
             # If the specified port is good
+            data.os = operating_system
             if data.url is None:
                 # If the url field is empty
                 data.url = f"http://{data.ip}:{data.port}/"

@@ -7,6 +7,7 @@ class Data:
         self.ip = None
         self.url = None
         self.port = None
+        self.os = None
         self.max_pages = None
         self.output = None
         self.username = None
@@ -22,6 +23,7 @@ class Data:
             f"IP: {self.ip}\n"
             f"URL: {self.url}\n"
             f"PORT: {self.port}\n"
+            f"SERVER INFO: {self.os[:15]}...\n"
             f"MAXIMUM PAGES: {self.max_pages}\n"
             f"OUTPUT FILE: {self.output}\n"
             f"USERNAME: {self.username}\n"
