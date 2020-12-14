@@ -48,7 +48,7 @@ class Page:
 
 
 class SessionPage(Page):
-    def __init__(self, url, status, mime_type, content, cookies, login: str):
+    def __init__(self, url, status, mime_type, content, cookies, login: set):
         super(SessionPage, self).__init__(url, status, mime_type, content)
         self.cookies = cookies
         self.login = login  # The page which the session started from

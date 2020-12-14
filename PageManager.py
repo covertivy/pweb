@@ -12,7 +12,7 @@ already_checked = []  # List of checked Pages/SessionPages
 troublesome = []  # List of troublesome URLs
 logout = []  # List of logout URLs
 logged_out = False  # Logout flag
-current_login_page = ""  # Where the session started
+current_login_page = set()  # Where the session started
 PADDING = 4
 
 
