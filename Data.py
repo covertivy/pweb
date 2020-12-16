@@ -27,7 +27,8 @@ class Data:
             f"USERNAME: {self.username}\n"
             f"PASSWORD: {self.password}\n"
             f"RECURSIVE: {self.recursive}\n"
-            f"VERBOSE: {self.verbose}")
+            f"VERBOSE: {self.verbose}"
+        )
 
 
 class Page:
@@ -42,7 +43,8 @@ class Page:
             f"URL: {self.url}\n"
             f"STATUS: {self.status}\n"
             f"CONTENT-TYPE: {self.type}\n"
-            f"CONTENT: {self.content}\n")
+            f"CONTENT: {self.content}\n"
+        )
 
 
 class SessionPage(Page):
