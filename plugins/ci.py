@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import requests
 
+
 COLOR = COLOR_MANAGER.rgb(255, 255, 0)
 problematic = list()
 
