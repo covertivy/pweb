@@ -26,12 +26,10 @@ def check(data: Data.Data):
 
     results = list()
     for page, form in pages:
-        result = command_injection(page, form)
-        if result.url is not None:
-            results.append(result)
+        ci_results.page_results.append(Data.PageResult(page, form, ""))
 
-    for res in results:
-        ci_results.page_results.append(res)
+    for page, form in results:
+        ci_results.page_results.append(page)
 
     data.mutex.acquire()
     data.results.append(ci_results)  # Adding the results to the data object
@@ -51,35 +49,38 @@ def filter_forms(pages: list) -> list:
             continue
         forms = BeautifulSoup(page.content, "html.parser").find_all("form")  # Getting page forms
         for form in forms:
-            # Get the form action (requested URL)
-            action = form.attrs.get("action").lower()
-            # Get the form method (POST, GET, DELETE, etc)
-            # If not specified, GET is the default in HTML
-            method = form.attrs.get("method", "get").lower()
-            # Get all form inputs
-            inputs = []
-            for input_tag in form.find_all("input"):
-                # Get type of input form control
-                input_type = input_tag.attrs.get("type", "text")
-                # Get name attribute
-                input_name = input_tag.attrs.get("name")
-                # Get the default value of that input tag
-                input_value = input_tag.attrs.get("value", "")
-                # Add everything to that list
-                input_dict = dict()
-                if input_type:
-                    input_dict["type"] = input_type
-                if input_name:
-                    input_dict["name"] = input_name
-                input_dict["value"] = input_value
-                inputs.append(input_dict)
-            # Setting the form dictionary
-            form_details = dict()
-            form_details["action"] = action
-            form_details["method"] = method
-            form_details["inputs"] = inputs
-            # Adding the page and it's form to the list
-            filtered_pages.append((page, form_details))
+            try:
+                # Get the form action (requested URL)
+                action = form.attrs.get("action").lower()
+                # Get the form method (POST, GET, DELETE, etc)
+                # If not specified, GET is the default in HTML
+                method = form.attrs.get("method", "get").lower()
+                # Get all form inputs
+                inputs = []
+                for input_tag in form.find_all("input"):
+                    # Get type of input form control
+                    input_type = input_tag.attrs.get("type", "text")
+                    # Get name attribute
+                    input_name = input_tag.attrs.get("name")
+                    # Get the default value of that input tag
+                    input_value = input_tag.attrs.get("value", "")
+                    # Add everything to that list
+                    input_dict = dict()
+                    if input_type:
+                        input_dict["type"] = input_type
+                    if input_name:
+                        input_dict["name"] = input_name
+                    input_dict["value"] = input_value
+                    inputs.append(input_dict)
+                # Setting the form dictionary
+                form_details = dict()
+                form_details["action"] = action
+                form_details["method"] = method
+                form_details["inputs"] = inputs
+                # Adding the page and it's form to the list
+                filtered_pages.append((page, form_details))
+            except:
+                continue
     return filtered_pages
 
 
