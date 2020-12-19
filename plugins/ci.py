@@ -7,7 +7,7 @@ import requests
 
 
 COLOR = COLOR_MANAGER.rgb(255, 255, 0)
-problematic = list()
+#  chars_to_filter = ["&", "&&", "|", "||", ";", "\n"]
 
 
 def check(data: Data.Data):
@@ -76,21 +76,89 @@ def filter_forms(pages: list) -> list:
                 form_details["method"] = method
                 form_details["inputs"] = inputs
                 # Adding the page and it's form to the list
-                if len(inputs) > 1:
-                    # If there is one input or none, it can't be command injection
+                if len(get_text_inputs(form_details)) != 0:
+                    # If there are no text inputs, it can't be command injection
                     filtered_pages.append((page, form_details))
             except:
                 continue
     return filtered_pages
 
 
-def command_injection(page, form: dict) -> Data.PageResult:
+def command_injection(page, form: dict):
     """
 
     @param page:
     @param form:
     @return:
     """
+    print(f"{page.url} : {non_blind(page, form)}")
+    return None
+
+
+def get_text_inputs(form) -> list:
+    text_inputs = list()
+    for input_tag in form["inputs"]:
+        # Using the specified value
+        if "name" in input_tag.keys():
+            # Only if the input has a name
+            if input_tag["type"] and input_tag["type"] == "text":
+                text_inputs.append(input_tag)
+    return text_inputs
+
+
+def non_blind(page, form: dict):
+    """
+
+    @param page:
+    @param form:
+    @return:
+    """
+    chars_to_filter = ["&", "&&", "|", "||", ";", "\n"]
+    # Join the url with the action (form request URL)
+    action_url = urljoin(page.url, form["action"])  # Getting action URL
+    text_inputs = get_text_inputs(form)  # Getting the text inputs
+    results = dict()
+    for text_input in text_inputs:
+        # Setting keys for the results
+        results[text_input["name"]] = list()
+    for char in chars_to_filter:
+        for curr_text_input in text_inputs:  # In case of more than one text input
+            # Setting session for connection
+            session = requests.Session()
+            if type(page) == Data.SessionPage:
+                # In case of session page
+                session.cookies = page.cookies
+            # The arguments body we want to submit
+            args = dict()
+            for input_tag in form["inputs"]:
+                # Using the specified value
+                if "name" in input_tag.keys():
+                    # Only if the input has a name
+                    # args[input_tag["name"]] = input_tag["value"]
+                    if input_tag["name"] == curr_text_input["name"]:
+                        args[input_tag["name"]] = f"{char} echo 'checkcheck'"
+                    else:
+                        args[input_tag["name"]] = input_tag["value"]
+            # Sending the request
+            content = str()
+            if form["method"] == "post":
+                content = session.post(action_url, data=args).text
+            elif form["method"] == "get":
+                content = session.get(action_url, params=args).text
+
+            if "checkcheck" in content and "echo" not in content and "'checkcheck'" not in content:
+                results[curr_text_input["name"]].append(char)
+    return results
+
+
+def blind(page, form: dict):
+    """
+
+    @param page:
+    @param form:
+    @return:
+    """
+    chars_to_filter = ["&", "&&", "|", "||", ";", "\n"]
     # Join the url with the action (form request URL)
     action_url = urljoin(page.url, form["action"])  # Getting action URL
     # Setting session for connection:
@@ -116,5 +184,3 @@ def command_injection(page, form: dict) -> Data.PageResult:
         content = session.get(action_url, params=args).text
     else:
         return None
-    print("checkcheck" in content)
-    return None
