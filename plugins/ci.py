@@ -22,14 +22,12 @@ def check(data: Data.Data):
     pages = data.pages  # Achieving the pages
     data.mutex.release()
     # Filtering the pages list
-    pages = filter_forms(pages)
-
-    results = list()
+    pages = filter_forms(pages)  # [(page object, form dict),...]
     for page, form in pages:
-        ci_results.page_results.append(Data.PageResult(page, form, ""))
-
-    for page, form in results:
-        ci_results.page_results.append(page)
+        result = command_injection(page, form)
+        if result:
+            # If there is a problem with the page
+            ci_results.page_results.append(result)
 
     data.mutex.acquire()
     data.results.append(ci_results)  # Adding the results to the data object
@@ -38,13 +36,13 @@ def check(data: Data.Data):
 
 def filter_forms(pages: list) -> list:
     """
-
-    @param pages:
-    @return:
+    Function filters the pages that has an action form
+    @param pages:List of pages
+    @return: List of pages that has an action form
     """
     filtered_pages = list()
     for page in pages:
-        if "html" not in page.type:
+        if "html" not in page.type.lower():
             # If it is a non-html page we can not check for command injection
             continue
         forms = BeautifulSoup(page.content, "html.parser").find_all("form")  # Getting page forms
@@ -78,13 +76,15 @@ def filter_forms(pages: list) -> list:
                 form_details["method"] = method
                 form_details["inputs"] = inputs
                 # Adding the page and it's form to the list
-                filtered_pages.append((page, form_details))
+                if len(inputs) > 1:
+                    # If there is one input or none, it can't be command injection
+                    filtered_pages.append((page, form_details))
             except:
                 continue
     return filtered_pages
 
 
-def command_injection(page: Data.Page, form: dict) -> Data.PageResult:
+def command_injection(page, form: dict) -> Data.PageResult:
     """
 
     @param page:
@@ -93,5 +93,28 @@ def command_injection(page: Data.Page, form: dict) -> Data.PageResult:
     """
     # Join the url with the action (form request URL)
     action_url = urljoin(page.url, form["action"])  # Getting action URL
-    pass
+    # Setting session for connection:
+    session = requests.Session()
+    if type(page) == Data.SessionPage:
+        # In case of session page
+        session.cookies = page.cookies
+    # The arguments body we want to submit
+    args = dict()
+    for input_tag in form["inputs"]:
+        # Using the specified value
+        if "name" in input_tag.keys():
+            # Only if the input has a name
+            # args[input_tag["name"]] = input_tag["value"]
+            if input_tag["type"] and input_tag["type"] == "text":
+                args[input_tag["name"]] = "| echo checkcheck"
+            else:
+                args[input_tag["name"]] = input_tag["value"]
+    # Sending the request
+    if form["method"] == "post":
+        content = session.post(action_url, data=args).text
+    elif form["method"] == "get":
+        content = session.get(action_url, params=args).text
+    else:
+        return None
+    print("checkcheck" in content)
     return None

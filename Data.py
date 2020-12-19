@@ -14,6 +14,7 @@ class Data:
         self.password = None
         self.recursive = False
         self.verbose = True
+        self.block = False
         self.pages = list()  # Pages
         self.results = list()  # Vulnerabilities results
         self.mutex = Lock()  # Mutex

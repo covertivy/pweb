@@ -13,6 +13,7 @@ troublesome = []  # List of troublesome URLs
 logout = []  # List of logout URLs
 logged_out = False  # Logout flag
 current_login_page = set()  # Where the session started
+black_list = list()  # List of words that the user do not want to check
 PADDING = 4
 
 
@@ -227,40 +228,27 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
         return
 
     # Getting every application script in the page
-    scripts = get_links([script.get("src") for script in soup.find_all("script")], page.url)
-    for script in scripts:
-        if all(script != page.url for page in data.pages) or session:
-            # If the script is not in the page list
-            if (not any(script == checked_page.url for checked_page in already_checked)
-                    and script not in troublesome):
-                # Page was not checked
-                get_pages(data, script, data.recursive, session)
+    links = get_links([script.get("src") for script in soup.find_all("script")], page.url)
 
     # Getting every css style in the page
-    styles = get_links([script.get("href") for script in soup.find_all(type="text/css")], page.url)
-    for style in styles:
-        if all(style != page.url for page in data.pages) or session:
-            # If the script is not in the page list
-            if (not any(style == checked_page.url for checked_page in already_checked)
-                    and style not in troublesome):
-                # Page was not checked
-                get_pages(data, style, data.recursive, session)
+    links.extend(get_links([script.get("href") for script in soup.find_all(type="text/css")], page.url))
 
     if recursive:
         # If the function is recursive
         # Getting every link in the page
-        links = get_links([link.get("href") for link in soup.find_all("a")], page.url)
-        for link in links:
-            if logged_out or len(data.pages) == data.max_pages:
-                # More efficient to check every time
-                # If the session logged out or the pages amount is at its maximum
-                return
-            if all(link != page.url for page in data.pages) or session:
-                # If the page is not in the page list
-                if not any(link == checked_page.url for checked_page in already_checked)\
-                        and link not in troublesome:
-                    # Page was not checked
-                    get_pages(data, link, data.recursive, session)
+        links.extend(get_links([link.get("href") for link in soup.find_all("a")], page.url))
+
+    for link in links:
+        if logged_out or len(data.pages) == data.max_pages:
+            # More efficient to check every time
+            # If the session logged out or the pages amount is at its maximum
+            return
+        if all(link != page.url for page in data.pages) or session:
+            # If the page is not in the page list
+            if not any(link == checked_page.url for checked_page in already_checked)\
+                    and link not in troublesome and all(word not in link for word in black_list):
+                # Page was not checked
+                get_pages(data, link, data.recursive, session)
 
     if not session and data.username and data.password:
         # If not session page and there are username and password specified
@@ -312,6 +300,17 @@ def logic(data: Data):
         + COLOR_MANAGER.HEADER
         + "Scraping pages:"
         + COLOR_MANAGER.ENDC)
+    # Block pages
+    if data.block:
+        try:
+            global black_list
+            file = open("blacklist.txt", "r")
+            black_list = file.read()
+            file.close()
+            black_list = [word.replace(" ", "") for word in black_list.split(",")]
+        except Exception as e:
+            COLOR_MANAGER.print_error("The file blacklist.txt was not found\n"
+                                      "\tOr was not in the right format <word1>,<word2>", "\t")
     try:
         get_pages(data, data.url)
         global already_checked
