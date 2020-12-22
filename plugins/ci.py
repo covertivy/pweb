@@ -4,10 +4,10 @@ import Data
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import requests
-
+import time
 
 COLOR = COLOR_MANAGER.rgb(255, 255, 0)
-#  chars_to_filter = ["&", "&&", "|", "||", ";", "\n"]
+NON_BLIND_STRING = "checkcheck"
 
 
 def check(data: Data.Data):
@@ -25,7 +25,7 @@ def check(data: Data.Data):
     pages = filter_forms(pages)  # [(page object, form dict),...]
     for page, form in pages:
         result = command_injection(page, form)
-        if result:
+        if result.problem:
             # If there is a problem with the page
             ci_results.page_results.append(result)
 
@@ -84,15 +84,54 @@ def filter_forms(pages: list) -> list:
     return filtered_pages
 
 
-def command_injection(page, form: dict):
+def command_injection(page, form: dict) -> Data.PageResult:
     """
 
     @param page:
     @param form:
     @return:
     """
-    print(f"{page.url} : {non_blind(page, form)}")
-    return None
+    page_result = Data.PageResult(page, "", "")
+    chars_to_filter = ["&", "&&", "|", "||", ";", "\n"]
+    if type(page) == Data.SessionPage:
+        cookies = page.cookies
+    else:
+        cookies = None
+    # Join the url with the action (form request URL)
+    action_url = urljoin(page.url, form["action"])  # Getting action URL
+    text_inputs = get_text_inputs(form)  # Getting the text inputs
+    results = dict()
+    for text_input in text_inputs:
+        # Setting keys for the results
+        results[text_input["name"]] = list()
+    check_for_blind = True
+    for char in chars_to_filter:
+        for curr_text_input in text_inputs:  # In case of more than one text input
+            # Getting content of non-blind injection
+            content = submit_form(action_url, form, cookies, curr_text_input, f"{char} echo {NON_BLIND_STRING}")
+            if NON_BLIND_STRING in content and "echo" not in content:
+                results[curr_text_input["name"]].append(char)
+                check_for_blind = False
+    if check_for_blind:
+        # Didn't find anything
+        found_vulnerability = False
+        for char in chars_to_filter:
+            for curr_text_input in text_inputs:  # In case of more than one text input
+                # Getting content of normal input
+                start = time.time()
+                submit_form(action_url, form, cookies, curr_text_input, "")
+                normal_time = time.time() - start
+                start = time.time()
+                submit_form(action_url, form, cookies, curr_text_input, f"{char} ping -c 5 127.0.0.1")
+                injection_time = time.time() - start
+                if injection_time - normal_time > 3:
+                    results[curr_text_input["name"]].append(char)
+                    found_vulnerability = True
+        if found_vulnerability:
+            write_vulnerability(results, page_result)
+    else:
+        write_vulnerability(results, page_result)
+    return page_result
 
 
 def get_text_inputs(form) -> list:
@@ -106,81 +145,44 @@ def get_text_inputs(form) -> list:
     return text_inputs
 
 
-def non_blind(page, form: dict):
-    """
-
-    @param page:
-    @param form:
-    @return:
-    """
-    chars_to_filter = ["&", "&&", "|", "||", ";", "\n"]
-    # Join the url with the action (form request URL)
-    action_url = urljoin(page.url, form["action"])  # Getting action URL
-    text_inputs = get_text_inputs(form)  # Getting the text inputs
-    results = dict()
-    for text_input in text_inputs:
-        # Setting keys for the results
-        results[text_input["name"]] = list()
-    for char in chars_to_filter:
-        for curr_text_input in text_inputs:  # In case of more than one text input
-            # Setting session for connection
-            session = requests.Session()
-            if type(page) == Data.SessionPage:
-                # In case of session page
-                session.cookies = page.cookies
-            # The arguments body we want to submit
-            args = dict()
-            for input_tag in form["inputs"]:
-                # Using the specified value
-                if "name" in input_tag.keys():
-                    # Only if the input has a name
-                    # args[input_tag["name"]] = input_tag["value"]
-                    if input_tag["name"] == curr_text_input["name"]:
-                        args[input_tag["name"]] = f"{char} echo 'checkcheck'"
-                    else:
-                        args[input_tag["name"]] = input_tag["value"]
-            # Sending the request
-            content = str()
-            if form["method"] == "post":
-                content = session.post(action_url, data=args).text
-            elif form["method"] == "get":
-                content = session.get(action_url, params=args).text
-
-            if "checkcheck" in content and "echo" not in content and "'checkcheck'" not in content:
-                results[curr_text_input["name"]].append(char)
-    return results
-
-
-def blind(page, form: dict):
-    """
-
-    @param page:
-    @param form:
-    @return:
-    """
-    chars_to_filter = ["&", "&&", "|", "||", ";", "\n"]
-    # Join the url with the action (form request URL)
-    action_url = urljoin(page.url, form["action"])  # Getting action URL
-    # Setting session for connection:
+def submit_form(action_url, form: dict, cookies, curr_text_input, text):
+    # Setting session for connection
     session = requests.Session()
-    if type(page) == Data.SessionPage:
+    if cookies:
         # In case of session page
-        session.cookies = page.cookies
+        session.cookies = cookies
     # The arguments body we want to submit
     args = dict()
     for input_tag in form["inputs"]:
         # Using the specified value
         if "name" in input_tag.keys():
             # Only if the input has a name
-            # args[input_tag["name"]] = input_tag["value"]
-            if input_tag["type"] and input_tag["type"] == "text":
-                args[input_tag["name"]] = "| echo checkcheck"
+            if input_tag["name"] == curr_text_input["name"]:
+                args[input_tag["name"]] = f"{text}"
             else:
                 args[input_tag["name"]] = input_tag["value"]
     # Sending the request
+    content = str()
     if form["method"] == "post":
         content = session.post(action_url, data=args).text
     elif form["method"] == "get":
         content = session.get(action_url, params=args).text
-    else:
-        return None
+    return content
+
+
+def write_vulnerability(results: dict, page_result: Data.PageResult):
+    for key in results.keys():
+        if len(results[key]):
+            page_result.problem += f"The text parameter '{key}' did not detect the character"
+            page_result.solution += f"Filter the text input of '{key}' from "
+            if len(results[key]) == 1:
+                page_result.problem += ": "
+                page_result.solution += "this character"
+            else:
+                page_result.problem += "s: "
+                page_result.solution += "those characters."
+            for char in results[key]:
+                if char == "\n":
+                    char = "\\n"
+                page_result.problem += f"'{char}', "
+            page_result.problem = page_result.problem[:-2]
