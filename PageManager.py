@@ -3,8 +3,14 @@ from urllib.parse import urljoin
 from colors import COLOR_MANAGER
 from Data import Data, SessionPage, Page
 import requests
+import requests.utils
 import http.cookiejar
+from selenium import webdriver
+import platform
+import os
+import zipfile
 
+# Global variables
 type_colors = dict()  # Dictionary of the mime-types and their color (find values in the logic function)
 login_pages = []  # List of (login URL, logged-in URL, the session, login-form of the login URL)
 already_printed = []  # List of printed Pages/SessionPages
@@ -14,7 +20,12 @@ logout = []  # List of logout URLs
 logged_out = False  # Logout flag
 current_login_page = set()  # Where the session started
 black_list = list()  # List of words that the user do not want to check
+
+# Consts:
 PADDING = 4
+CHROME_DRIVERS = {"windows": "https://chromedriver.storage.googleapis.com/86.0.4240.22/chromedriver_win32.zip",
+                  "darwin": "https://chromedriver.storage.googleapis.com/86.0.4240.22/chromedriver_mac64.zip",
+                  "linux": "https://chromedriver.storage.googleapis.com/86.0.4240.22/chromedriver_linux64.zip"}
 
 
 def get_links(links: list, url: str) -> list:
@@ -116,11 +127,12 @@ def submit_form(form_details: dict, url: str, session: requests.Session) -> requ
     return requests.Response()
 
 
-def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Session = None):
+def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=True, session: requests.Session = None):
     """
     Function gets the lists of pages to the data object
     @param data: The data object of the program
     @param curr_url: The current URL the function checks
+    @param browser:
     @param recursive: True- check all website pages, False- only the first reachable one
     @param session: In case of session page, the session is important for the connection
     @return: None
@@ -174,21 +186,27 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
         # Non-Session page
         try:
             res = requests.get(curr_url)
-            page = Page(res.url, res.status_code, res.headers.get("Content-Type").split(";")[0], res.content.decode())
+            page = Page(res.url, res.status_code,
+                        res.headers.get("Content-Type").split(";")[0], res.content.decode())
             color = COLOR_MANAGER.BLUE
         except Exception as e:
             # Couldn't open with the session
             troublesome.append(curr_url)
             return
 
-    if page.url != curr_url:
-        # If the current URL is redirecting to another URL
-        troublesome.append(curr_url)
-
     soup = None
     if "html" in page.type:
         # Only if the page is html
         try:
+            # Rendering page
+            if type(page) == SessionPage:
+                # Setting cookies
+                cookies = requests.utils.dict_from_cookiejar(page.cookies)
+                for key in cookies.keys():
+                    browser.add_cookie({"name": key, "value": cookies[key]})
+            browser.get(page.url)
+            page.url = browser.current_url  # Rendered URL
+            page.content = browser.page_source  # Rendered content
             # Creating a BeautifulSoup object
             soup = BeautifulSoup(page.content, "html.parser")
         except Exception as e:
@@ -196,8 +214,21 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
             troublesome.append(page.url)
             return
 
-    if not any(page.url == printed_page.url and type(page) == type(printed_page)
-               for printed_page in already_printed):
+    if page.url != curr_url:
+        # If the current URL is redirecting to another URL
+        troublesome.append(curr_url)
+        if not get_links([curr_url], page.url):
+            # The Redirected link is out of the website
+            return
+
+    # Checking if the page was already printed
+    in_list = False
+    for printed_page in already_printed:
+        if printed_page.url == page.url and\
+                (printed_page.content == page.content or type(printed_page) == type(page)):
+            # Same URL and content or both are session
+            in_list = True
+    if not in_list:
         # If the page was not printed
         if not soup:
             # If it is a non-html page
@@ -248,7 +279,7 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
             if not any(link == checked_page.url for checked_page in already_checked)\
                     and link not in troublesome and all(word not in link for word in black_list):
                 # Page was not checked
-                get_pages(data, link, data.recursive, session)
+                get_pages(data, link, browser, data.recursive, session)
 
     if not session and data.username and data.password:
         # If not session page and there are username and password specified
@@ -283,6 +314,37 @@ def get_pages(data: Data, curr_url: str, recursive=True, session: requests.Sessi
             pass
 
 
+def chromedriver():
+    operating_system = platform.system().lower()
+    driver_file = "chromedriver"
+    if operating_system == "windows":
+        driver_file = "chromedriver.exe"
+    if driver_file not in os.listdir("."):
+        # Getting zip file
+        print(f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
+              f"Downloading Chromedriver...{COLOR_MANAGER.ENDC}")
+        try:
+            zip_content = requests.get(CHROME_DRIVERS[operating_system]).content
+            zip_file = open("a.zip", "wb")
+            zip_file.write(zip_content)
+            zip_file.close()
+            with zipfile.ZipFile("a.zip", "r") as zip_ref:
+                # Extracting the executable file
+                zip_ref.extractall(".")
+            os.remove("a.zip")  # No need to keep the zip
+        except:
+            raise Exception("Download failed, please check your internet connection.")
+    # There is a chromedriver in the folder
+    try:
+        options = webdriver.ChromeOptions()
+        options.add_argument('--log-level=3')
+        options.add_argument('headless')
+        options.add_experimental_option('excludeSwitches', ['enable-logging'])
+        return webdriver.Chrome(executable_path=driver_file, options=options)
+    except:
+        raise Exception("Setting up the web driver failed, please try again.")
+
+
 def logic(data: Data):
     """
     Function gets the page list
@@ -312,7 +374,11 @@ def logic(data: Data):
             COLOR_MANAGER.print_error("The file blacklist.txt was not found\n"
                                       "\tOr was not in the right format <word1>,<word2>", "\t")
     try:
-        get_pages(data, data.url)
+        browser = chromedriver()  # Setting web browser driver
+    except Exception as e:
+        raise Exception(e, "\t")
+    try:
+        get_pages(data, data.url, browser)
         global already_checked
         # We need to clear them in case of session pages
         already_checked.clear()
@@ -335,13 +401,14 @@ def logic(data: Data):
             while logged_out:
                 # Until it won't encounter a logout page
                 logged_out = False
-                get_pages(data, url, session=session)  # Attempting to achieve data from page
+                get_pages(data, url, browser, session=session)  # Attempting to achieve data from page
                 if logged_out:
                     # If the session has encountered a logout page
                     already_checked.clear()  # The function needs to go through all the session pages
                     data.pages = list(pages_backup)  # Restoring the pages list
                     form_details, session = get_login_form(data, origin)  # Getting new session
                     submit_form(form_details, origin, session)  # Updating the session
+                    browser.get(origin)  # Setting browser to current page
                     # Doing the loop all over again, without the logout page
             # If the session has not encountered a logout page
             pages_backup = list(data.pages)
@@ -350,6 +417,7 @@ def logic(data: Data):
             if type(page) is SessionPage:
                 session_pages += 1
     print_result(data, session_pages)
+    browser.close()
 
 
 def print_result(data: Data, session_pages: int):

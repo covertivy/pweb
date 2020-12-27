@@ -8,6 +8,7 @@ import time
 
 COLOR = COLOR_MANAGER.rgb(255, 255, 0)
 NON_BLIND_STRING = "checkcheck"
+ATTEMPTS = 4
 
 
 def check(data: Data.Data):
@@ -108,8 +109,9 @@ def command_injection(page, form: dict) -> Data.PageResult:
     for char in chars_to_filter:
         for curr_text_input in text_inputs:  # In case of more than one text input
             # Getting content of non-blind injection
-            content = submit_form(action_url, form, cookies, curr_text_input, f"{char} echo {NON_BLIND_STRING}")
-            if NON_BLIND_STRING in content and "echo" not in content:
+            content = submit_form(action_url, form, cookies, curr_text_input, f"{char}echo {NON_BLIND_STRING}")
+            if NON_BLIND_STRING in content and \
+                    f"echo {NON_BLIND_STRING}" not in content:
                 # The web page printed the echo message
                 results[curr_text_input["name"]].append(char)
                 check_for_blind = False
@@ -118,15 +120,20 @@ def command_injection(page, form: dict) -> Data.PageResult:
         found_vulnerability = False
         for char in chars_to_filter:
             for curr_text_input in text_inputs:  # In case of more than one text input
-                # Getting time of normal input
-                start = time.time()
-                submit_form(action_url, form, cookies, curr_text_input, "")
-                normal_time = time.time() - start
+                # Getting average response time
+                average_time = 0
+                for _ in range(ATTEMPTS):
+                    # Getting time of normal input
+                    start = time.time()
+                    submit_form(action_url, form, cookies, curr_text_input, "")
+                    normal_time = time.time() - start
+                    average_time += normal_time
+                average_time /= ATTEMPTS
                 # Getting time of blind injection
                 start = time.time()
                 submit_form(action_url, form, cookies, curr_text_input, f"{char} ping -c 5 127.0.0.1")
                 injection_time = time.time() - start
-                if injection_time - normal_time > 3:
+                if injection_time - average_time > 3:
                     # The injection slowed down the server response
                     results[curr_text_input["name"]].append(char)
                     found_vulnerability = True
@@ -193,7 +200,7 @@ def submit_form(action_url: str, form: dict, cookies, curr_text_input: dict, tex
 
 def write_vulnerability(results: dict, page_result: Data.PageResult, problem: str):
     """
-    Function write the problem and the solution of every problem that is found for a page
+    Function writes the problem and the solution of every problem that is found for a page
     @param results: a dictionary of text input and list of chars it didn't filter
     @param page_result: page result object of the current page
     @param problem: string of found problem

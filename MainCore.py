@@ -38,7 +38,7 @@ def get_data() -> Data:
     data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
     if data.verbose:
         print_startup()  # Print startup logo and current time.
-    # AddressManager.set_target(data)
+    AddressManager.set_target(data)
     return data
 
 
