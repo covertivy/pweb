@@ -14,8 +14,9 @@ class Data:
         self.password = None
         self.recursive = False
         self.verbose = True
-        self.pages = list()  # pages
-        self.results = list()  # vulnerabilities results
+        self.block = False
+        self.pages = list()  # Pages
+        self.results = list()  # Vulnerabilities results
         self.mutex = Lock()  # Mutex
 
     def __str__(self):
@@ -23,7 +24,7 @@ class Data:
             f"IP: {self.ip}\n"
             f"URL: {self.url}\n"
             f"PORT: {self.port}\n"
-            f"SERVER INFO: {self.os[:15]}...\n"
+          # f"SERVER INFO: {self.os[:15]}...\n"
             f"MAXIMUM PAGES: {self.max_pages}\n"
             f"OUTPUT FILE: {self.output}\n"
             f"USERNAME: {self.username}\n"
@@ -48,7 +49,7 @@ class Page:
 
 
 class SessionPage(Page):
-    def __init__(self, url, status, mime_type, content, cookies, login: str):
+    def __init__(self, url, status, mime_type, content, cookies, login: set):
         super(SessionPage, self).__init__(url, status, mime_type, content)
         self.cookies = cookies
         self.login = login  # The page which the session started from

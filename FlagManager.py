@@ -87,6 +87,13 @@ def parse_args() -> argparse.Namespace:
         help="recursive page scraper, will check all the reachable pages in the website.",
         dest="recursive",
     )
+    parser.add_argument(
+        "-b",
+        "--black_list",
+        action="store_true",
+        help="block list of words that may be found in a page's URL, the list can be modified in blacklist.txt",
+        dest="block",
+    )
     args = parser.parse_args()
     return args
 
@@ -149,5 +156,8 @@ def get_final_args(args) -> Data:
 
     # Set verbose flag
     output_obj.verbose = args.verbose
+
+    # Set block flag
+    output_obj.block = args.block
 
     return output_obj

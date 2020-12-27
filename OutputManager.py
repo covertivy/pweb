@@ -11,14 +11,17 @@ def print_results(results: CheckResults):
     @param results: The check results
     @return:
     """
-    print(f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:"
-          f"{COLOR_MANAGER.ENDC}{results.color}")
-    for res in results.page_results:
-        print(f"\t{COLOR_MANAGER.BOLD}Page: {COLOR_MANAGER.ENDC}{results.color}{res.url}")
-        if res.problem:
-            print(f"\t\t{COLOR_MANAGER.BOLD}Problem: {COLOR_MANAGER.ENDC}{results.color}{res.problem}")
-        if res.solution:
-            print(f"\t\t{COLOR_MANAGER.BOLD}Solution: {COLOR_MANAGER.ENDC}{results.color}{res.solution}")
+    if results.page_results:
+        print(f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:"
+              f"{COLOR_MANAGER.ENDC}{results.color}")
+        for res in results.page_results:
+            print(f"\t{COLOR_MANAGER.BOLD}Page: {COLOR_MANAGER.ENDC}{results.color}{res.url}")
+            if res.problem:
+                print(f"\t\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.RED}Problem: {COLOR_MANAGER.ENDC}{results.color}{res.problem}")
+            if res.solution:
+                print(f"\t\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Solution: {COLOR_MANAGER.ENDC}{results.color}{res.solution}")
+        return True
+    return False
 
 
 def save_results(data):
@@ -58,6 +61,7 @@ def logic(data: Data, all_threads_done_event: threading.Event):
     index = 0
     if data.output is None:
         # If there is no specified file path
+        found_vulnerability = False
         while True:
             # While the plugins are still running
             if len(data.results) == index:
@@ -74,7 +78,10 @@ def logic(data: Data, all_threads_done_event: threading.Event):
                 data.mutex.release()
                 index += 1
                 # Print the current found results.
-                print_results(results)
+                if print_results(results):
+                    found_vulnerability = True
+        if not found_vulnerability:
+            print(f"\t{COLOR_MANAGER.PURPLE}Did not find any vulnerability...{COLOR_MANAGER.ENDC}")
     else:
         # If there is a specified file path
         print(
