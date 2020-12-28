@@ -94,6 +94,14 @@ def parse_args() -> argparse.Namespace:
         help="block list of words that may be found in a page's URL, the list can be modified in blacklist.txt",
         dest="block",
     )
+    parser.add_argument(
+        "-a",
+        "--agreement",
+        action="store_true",
+        help="some of the default plugins will mess up with the website data base and source code, "
+             "this flag is your signing that you agree to have minimal damage in case of vulnerability.",
+        dest="agreement",
+    )
     args = parser.parse_args()
     return args
 
@@ -159,5 +167,8 @@ def get_final_args(args) -> Data:
 
     # Set block flag
     output_obj.block = args.block
+
+    # Set agreement flag
+    output_obj.agreement = args.agreement
 
     return output_obj

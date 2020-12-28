@@ -64,16 +64,18 @@ def logic(data: Data, all_threads_done_event: threading.Event):
         found_vulnerability = False
         while True:
             # While the plugins are still running
+            data.mutex.acquire()
             if len(data.results) == index:
                 #  If there are no new results
                 if all_threads_done_event.isSet():
                     #  If all the threads has finished their run
+                    data.mutex.release()
                     break
                 else:
+                    data.mutex.release()
                     continue
             else:
                 # If there are new results
-                data.mutex.acquire()
                 results = data.results[index]  # The most recent results.
                 data.mutex.release()
                 index += 1

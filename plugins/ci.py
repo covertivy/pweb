@@ -25,10 +25,13 @@ def check(data: Data.Data):
     # Filtering the pages list
     pages = filter_forms(pages)  # [(page object, form dict),...]
     for page, form in pages:
-        result = command_injection(page, form)
-        if result.problem:
-            # If there is a problem with the page
-            ci_results.page_results.append(result)
+        try:
+            result = command_injection(page, form)
+            if result.problem:
+                # If there is a problem with the page
+                ci_results.page_results.append(result)
+        except Exception as e:
+            continue
 
     data.mutex.acquire()
     data.results.append(ci_results)  # Adding the results to the data object

@@ -15,6 +15,7 @@ class Data:
         self.recursive = False
         self.verbose = True
         self.block = False
+        self.agreement = False
         self.pages = list()  # Pages
         self.results = list()  # Vulnerabilities results
         self.mutex = Lock()  # Mutex
@@ -24,13 +25,13 @@ class Data:
             f"IP: {self.ip}\n"
             f"URL: {self.url}\n"
             f"PORT: {self.port}\n"
-          # f"SERVER INFO: {self.os[:15]}...\n"
             f"MAXIMUM PAGES: {self.max_pages}\n"
             f"OUTPUT FILE: {self.output}\n"
             f"USERNAME: {self.username}\n"
             f"PASSWORD: {self.password}\n"
             f"RECURSIVE: {self.recursive}\n"
-            f"VERBOSE: {self.verbose}")
+            f"VERBOSE: {self.verbose}\n"
+            f"AGREEMENT: {self.agreement}")
 
 
 class Page:
