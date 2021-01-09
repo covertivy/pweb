@@ -86,6 +86,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="recursive page scraper, will check all the reachable pages in the website.",
         dest="recursive",
+        default=False,
     )
     args = parser.parse_args()
     return args
@@ -129,7 +130,8 @@ def get_final_args(args) -> Data:
     if args.number_of_pages and args.number_of_pages <= 0:
         # If the number is set and it is invalid
         COLOR_MANAGER.print_error(
-            "Invalid number of pages! Running with unlimited pages.")
+            "Invalid number of pages! Running with unlimited pages."
+        )
         output_obj.max_pages = None
     else:
         # If the number wasn't specified or it was specified and is valid
