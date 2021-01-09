@@ -67,7 +67,7 @@ def determine_possible_vulns(source_html: str) -> dict:
     for script_index, script in all_scripts:
         sink_patterns = []
 
-        regex_sink_matches = regex.finditer(SINKS_RE, str(script).replace("\n", " "))
+        regex_sink_matches = regex.finditer(SINKS_RE, str(script))
 
         # Look for sinks in script.
         for match in regex_sink_matches:
