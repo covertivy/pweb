@@ -243,3 +243,4 @@ dkms.conf
 .idea/
 *.xml
 My Stuff/
+pylama.ini

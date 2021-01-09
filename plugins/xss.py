@@ -3,7 +3,6 @@ from colors import COLOR_MANAGER
 import Data
 import bs4 as soup
 import re as regex  # Used `https://regex101.com/` a lot to verify regex string.
-from threading import Lock
 
 
 COLOR = COLOR_MANAGER.rgb(255, 0, 100)
@@ -14,28 +13,28 @@ SINKS_RE = """/((src|href|data|location|code|value|action)\s*["'\]]*\s*\+?\s*=)|
 
 
 def check(data: Data.Data):
-    dom_xss_results = Data.CheckResults("XSS", COLOR)
+    dom_xss_results = Data.CheckResults("DOMXSS", COLOR)
     data.mutex.acquire()
     pages = data.pages
     data.mutex.release()
 
     for page in pages:
         possible_vulns = determine_possible_vulns(page.content)
-        pretty_vulnerable = further_analyse(
+        very_vulnerable = further_analyse(
             possible_vulns, find_input_fields(page.content)
         )
-        if len(possible_vulns.keys()) > 0:
+        if len(very_vulnerable.keys()) > 0:
             amount_str = ""
-            if len(possible_vulns.keys()) == 1:
-                amount_str = "script that was"
+            if len(very_vulnerable.keys()) == 1:
+                amount_str = "script that is"
             else:
-                amount_str = "scripts that were"
+                amount_str = "scripts that are"
 
             scripts_str = ""
             for script_index in possible_vulns.keys():
                 scripts_str = scripts_str + f"Script {script_index}.\n"
 
-            problem_str = f"Found {len(possible_vulns.keys())} {amount_str} possibly vulnerable to DOM based XSS.\n{scripts_str}"
+            problem_str = f"Found {len(very_vulnerable.keys())} {amount_str} quite possibly vulnerable to DOM based XSS.\nThe scipt indexes are: {str(very_vulnerable.keys())}"
             result_str = "The primary rule that you must follow to prevent DOM XSS is: sanitize all untrusted data, even if it is only used in client-side scripts. If you have to use user input on your page, always use it in the text context, never as HTML tags or any other potential code.\nAvoid dangerous methods and instead use safer functions.\nCheck if sources are directly related to sinks and if so prevent them from accessing each other.\nFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html"
             res = Data.PageResult(page, problem_str, result_str)
             dom_xss_results.page_results.append(res)
