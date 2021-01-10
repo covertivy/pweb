@@ -24,15 +24,25 @@ def check(data: Data.Data):
     data.mutex.release()
     # Filtering the pages list
     pages = filter_forms(pages)  # [(page object, form dict),...]
-    for page, form in pages:
-        try:
-            result = command_injection(page, form)
-            if result.problem:
-                # If there is a problem with the page
-                ci_results.page_results.append(result)
-        except Exception as e:
-            continue
-
+    try:
+        if len(pages):
+            # There are pages with at least one text input
+            if data.agreement:
+                # The user specified his agreement
+                for page, form in pages:
+                    try:
+                        result = command_injection(page, form)
+                        if result.problem:
+                            # If there is a problem with the page
+                            ci_results.page_results.append(result)
+                    except Exception as e:
+                        continue
+            else:
+                # The user did not specified his agreement
+                ci_results.page_results = "The plugin check routine requires injecting text boxes," \
+                                          " read about (-a) in our manual and try again."
+    except Exception as e:
+        ci_results.page_results = "Something went wrong..."
     data.mutex.acquire()
     data.results.append(ci_results)  # Adding the results to the data object
     data.mutex.release()

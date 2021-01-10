@@ -9,7 +9,7 @@ import time
 COLOR = COLOR_MANAGER.rgb(255, 0, 128)
 comments = {"#": ["sleep(5)"],
             "-- ": ["sleep(5)"],
-            "--": ["dbms_pipe.receive_message(('a'),5)", "WAITFOR DELAY '0:0:5'", "pg_sleep(10)"]}
+            "--": ["dbms_pipe.receive_message(('a'),5)", "WAITFOR DELAY '0:0:5'", "pg_sleep(5)"]}
 CHECK_STRING = "checkcheck"
 
 
@@ -25,16 +25,26 @@ def check(data: Data.Data):
     pages = data.pages  # Achieving the pages
     data.mutex.release()
     # Filtering the pages list
-    pages = filter_forms(pages)  # [(page object, form dict),...]
-    for page, form in pages:
-        try:
-            result = sql_injection(page, form)
-            if result.problem:
-                # If there is a problem with the page
-                sqli_results.page_results.append(result)
-        except Exception as e:
-            continue
-
+    try:
+        pages = filter_forms(pages)  # [(page object, form dict),...]
+        if len(pages):
+            # There are pages with at least one text input
+            if data.agreement:
+                # The user specified his agreement
+                for page, form in pages:
+                    try:
+                        result = sql_injection(page, form)
+                        if result.problem:
+                            # If there is a problem with the page
+                            sqli_results.page_results.append(result)
+                    except Exception as e:
+                        continue
+            else:
+                # The user did not specified his agreement
+                sqli_results.page_results = "The plugin check routine requires injecting text boxes," \
+                                            " read about (-a) in our manual and try again."
+    except Exception as e:
+        sqli_results.page_results = "Something went wrong..."
     data.mutex.acquire()
     data.results.append(sqli_results)  # Adding the results to the data object
     data.mutex.release()
