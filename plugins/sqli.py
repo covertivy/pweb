@@ -23,13 +23,15 @@ def check(data: Data.Data):
 
     data.mutex.acquire()
     pages = data.pages  # Achieving the pages
+    agreement = data.agreement
     data.mutex.release()
-    # Filtering the pages list
     try:
-        pages = filter_forms(pages)  # [(page object, form dict),...]
+        # Filtering the pages list
+        pages = filter_forms(pages, agreement)
+        # [(page object, form dict),...]
         if len(pages):
             # There are pages with at least one text input
-            if data.agreement:
+            if agreement:
                 # The user specified his agreement
                 for page, form in pages:
                     try:
@@ -37,20 +39,21 @@ def check(data: Data.Data):
                         if result.problem:
                             # If there is a problem with the page
                             sqli_results.page_results.append(result)
-                    except Exception as e:
+                    except Exception:
                         continue
             else:
                 # The user did not specified his agreement
+                # and there is a vulnerable page
                 sqli_results.page_results = "The plugin check routine requires injecting text boxes," \
                                             " read about (-a) in our manual and try again."
-    except Exception as e:
+    except Exception:
         sqli_results.page_results = "Something went wrong..."
     data.mutex.acquire()
     data.results.append(sqli_results)  # Adding the results to the data object
     data.mutex.release()
 
 
-def filter_forms(pages: list) -> list:
+def filter_forms(pages: list, agreement: bool) -> list:
     """
     Function filters the pages that has an action form
     @param pages:List of pages
@@ -95,6 +98,9 @@ def filter_forms(pages: list) -> list:
                 if len(get_text_inputs(form_details)) != 0:
                     # If there are no text inputs, it can't be sql injection
                     filtered_pages.append((page, form_details))
+                    if not agreement:
+                        # The user did not specified his agreement
+                        return filtered_pages
             except:
                 continue
     return filtered_pages
