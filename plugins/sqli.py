@@ -213,5 +213,7 @@ def write_vulnerability(results: dict, page_result: Data.PageResult):
         # For every text input
         if results[key]:
             # If the input is vulnerable
-            page_result.problem += f"The text parameter '{key}' allowed SQL injection"
-            page_result.solution += f"TBA"
+            page_result.problem = f"The text parameter '{key}' allowed SQL injection"
+            page_result.solution = f"You can validate the input from the " \
+                                   f"'{key}' parameter, by checking for " \
+                                   f"vulnerable characters or wrong input type"
