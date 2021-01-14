@@ -2,6 +2,7 @@
 from Data import Data, CheckResults
 from colors import *
 import threading
+import time
 import xml.etree.ElementTree as ET
 
 
@@ -65,6 +66,8 @@ def logic(data: Data, all_threads_done_event: threading.Event):
     @return: None
     """
     index = 0
+    print(
+            f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
     if data.output is None:
         # If there is no specified file path
         while True:
@@ -88,8 +91,6 @@ def logic(data: Data, all_threads_done_event: threading.Event):
                 print_results(results)
     else:
         # If there is a specified file path
-        print(
-            f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
         all_threads_done_event.wait()  # Waiting for the plugins to finish their run
         print(
             f"\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Saving to Output File ({data.output})...{COLOR_MANAGER.ENDC}")
