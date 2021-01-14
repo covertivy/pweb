@@ -2,7 +2,7 @@
 import nmap
 from Data import Data
 from colors import COLOR_MANAGER
-from scapy.all import *
+import socket
 import subprocess
 
 NUMBER_OF_PACKETS = 2
@@ -40,7 +40,7 @@ def valid_url(data: Data):
         pass
 
     address = (
-        data.url[len("http://") :].split("/")[0].split(":")
+        data.url[len("http://"):].split("/")[0].split(":")
     )  # address = [ip, port]
     if len(address) == 1:
         # IP only, no port specified in URL
@@ -48,7 +48,7 @@ def valid_url(data: Data):
             # Port wasn't specified under -p
             data.port = 80  # default port for http
         else:
-            path = data.url[len("http://") + len(address[0]) :]
+            path = data.url[len("http://") + len(address[0]):]
             data.url = f"http://{address[0]}:{data.port}{path}"
     elif len(address) == 2:
         # IP and port
