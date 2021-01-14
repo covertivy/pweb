@@ -7,7 +7,7 @@ import requests.utils
 import http.cookiejar
 from selenium import webdriver
 import platform
-import os
+import os, io
 import zipfile
 
 # Global variables
@@ -324,14 +324,10 @@ def chromedriver():
         print(f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
               f"Downloading Chromedriver...{COLOR_MANAGER.ENDC}")
         try:
-            zip_content = requests.get(CHROME_DRIVERS[operating_system]).content
-            zip_file = open("a.zip", "wb")
-            zip_file.write(zip_content)
-            zip_file.close()
-            with zipfile.ZipFile("a.zip", "r") as zip_ref:
+            zip_content = io.BytesIO(requests.get(CHROME_DRIVERS[operating_system]).content)
+            with zipfile.ZipFile(zip_content) as zip_ref:
                 # Extracting the executable file
                 zip_ref.extractall(".")
-            os.remove("a.zip")  # No need to keep the zip
         except:
             raise Exception("Download failed, please check your internet connection.")
     # There is a chromedriver in the folder
