@@ -1,12 +1,7 @@
-# PWEB
-A pentesting tool for Web Servers
-```
-This is a tool for pentesting web security flaws in sites and web servers.
-Instructions:
-later ;)
-```
+# **PWEB**
+#### This pentesting tool was created to allow multiple scans of common vulnerabilities against a given website.
+>**NOTE:** The website must be on your `local network` which means no more than one jump from you to your target.
 
-# **CREATED BY RAZ KISSOS AND DROR WEISS**
 
 # Usage
 | flag  |  description  |  foramt |  usage  | 
@@ -22,3 +17,4 @@ later ;)
 | -b | Specify if blacklist should be used to prevent specific <br/> pages from being scanned (blacklist type must be `.txt`). | python MainCore.py -i \<ip address\> -b \<blacklist path\> | python MainCore.py -i 192.168.52.101 -b ./myblacklist.txt |
 | -o | Specify an `xml output file` to which the data from the scan will <br/>be dumped to in xml format. if file does not exist the tool will create <br/>it and if the file already exists the tool will override the data in the file. | python MainCore.py -i \<ip address\> -o \<output file path\> | python MainCore.py -i 192.168.52.101 -o ./pweb_output.xml |
 | -A | The user agrees to allow the tool to use potentially agressive <br/> functions to recognize breaches in security. (some functions<br/> may not work without this being activated). | python MainCore.py -i \<ip address\> -A | python MainCore.py -i 192.168.52.101 -A |
+
