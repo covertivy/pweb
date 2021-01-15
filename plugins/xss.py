@@ -289,6 +289,7 @@ def further_analyse(suspicious_scripts: dict, input_sources: tuple) -> dict:
     ):  # No input sources in html.
         raise ValueError("There are no input sources in the given page!")
 
+    form_scripts = None
     if len(form_inputs) > 0:
         form_scripts = check_form_inputs(form_inputs, suspicious_scripts)
     general_scripts = check_all_inputs(all_inputs, suspicious_scripts)
@@ -311,6 +312,9 @@ def further_analyse(suspicious_scripts: dict, input_sources: tuple) -> dict:
                 final_scripts[script_index][0],
                 final_scripts[script_index][1] + general_scripts[script_index][1],
             )
+
+    if form_scripts is None:
+        return final_scripts
     for script_index in form_scripts.keys():
         if script_index not in final_scripts.keys():
             final_scripts[script_index] = form_scripts[script_index]
