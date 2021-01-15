@@ -6,9 +6,9 @@ import AddressManager
 import PageManager
 import VulnerabilityManager
 import datetime
-import threading
 import signal
 import sys
+import os
 from colors import COLOR_MANAGER
 
 LOGO = """                           __        
@@ -41,7 +41,7 @@ def get_data() -> Data:
     data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
     if data.verbose:
         print_startup()  # Print startup logo and current time.
-    # AddressManager.set_target(data)
+    AddressManager.set_target(data)
     return data
 
 
@@ -73,6 +73,7 @@ def main():
     Function connects the different managers together
     @return: None
     """
+    os.system("color")
     signal.signal(signal.SIGINT, signal_handler)
     try:
         data = get_data()  # Get data through flag manager, address manager and page manager.

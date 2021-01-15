@@ -7,7 +7,6 @@ class Data:
         self.ip = None
         self.url = None
         self.port = None
-        self.os = None
         self.max_pages = None
         self.output = None
         self.username = None
