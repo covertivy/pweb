@@ -1,6 +1,12 @@
-# **PWEB**
-#### This pentesting tool was created to allow multiple scans of common vulnerabilities against a given website.
->**NOTE:** The website must be on your `local network` which means no more than one jump from you to your target.
+# PWEB
+<img src="https://cdn.discordapp.com/attachments/742134324786102382/745359388608430221/hollow.png"  width="320" height="320" align=center>
+
+**Created by Raz Kissos and Dror Weiss**
+
+This is a tool for pentesting web security flaws in sites and web servers.  
+The tool is a command line tool that is designed as a plugin based system, each test script  
+is a plugin and so you can create you own test scripts and add them as plugins.
+>**NOTE:** The website must be on your `local network` which means no more than one jump from you to your target (on the same subnet) to ensure it is used for ethical causes only.
 
 
 # Usage
