@@ -7,7 +7,8 @@ import requests.utils
 import http.cookiejar
 from selenium import webdriver
 import platform
-import os, io
+import os
+import io
 import zipfile
 
 # Global variables
@@ -328,16 +329,18 @@ def chromedriver():
             with zipfile.ZipFile(zip_content) as zip_ref:
                 # Extracting the executable file
                 zip_ref.extractall(".")
-        except:
+        except Exception:
             raise Exception("Download failed, please check your internet connection.")
     # There is a chromedriver in the folder
+    driver_file = os.getcwd() + "\\" + driver_file  # Full path
     try:
         options = webdriver.ChromeOptions()
         options.add_argument('--log-level=3')
         options.add_argument('headless')
         options.add_experimental_option('excludeSwitches', ['enable-logging'])
-        return webdriver.Chrome(executable_path=driver_file, options=options)
-    except:
+        browser = webdriver.Chrome(executable_path=driver_file, options=options)
+        return browser
+    except Exception:
         raise Exception("Setting up the web driver failed, please try again.")
 
 

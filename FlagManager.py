@@ -131,7 +131,7 @@ def get_final_args(args) -> Data:
     # Check if all ports flag is set.
 
     if args.all_ports:
-        output_obj.port = "1-65534"
+        output_obj.port = "1-65535"
     else:  # Not all ports scan.
         # Check if port is valid.
         if args.port < 1 or args.port > 65535:
