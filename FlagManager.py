@@ -67,7 +67,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "-L",
-        default=list(),
+        default=list,
         type=list,
         nargs=2,
         help="Specify a username and password to be used in any login form on the website.",
@@ -81,7 +81,7 @@ def parse_args() -> argparse.Namespace:
         dest="output",
     )
     parser.add_argument(
-        "-r",
+        "-R",
         "--Recursive",
         action="store_true",
         help="recursive page scraper, will check all the reachable pages in the website.",
@@ -91,16 +91,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-b",
         "--black_list",
-        action="store_true",
-        help="block list of words that may be found in a page's URL, the list can be modified in blacklist.txt",
+        type=str,
+        default=None,
+        help="Specify a black list of words that may be found in a page's URL, "
+        " if the word is in the page url, the page is blocked. blacklist must be a `.txt` file.",
         dest="block",
     )
     parser.add_argument(
-        "-a",
-        "--agreement",
+        "-A",
+        "--agressive",
         action="store_true",
         help="some of the default plugins will mess up with the website data base and source code, "
-             "this flag is your signing that you agree to have minimal damage in case of vulnerability.",
+        "this flag is your signing that you agree to have minimal damage in case of vulnerability.",
         dest="agreement",
     )
     args = parser.parse_args()
@@ -152,7 +154,7 @@ def get_final_args(args) -> Data:
         # If the number wasn't specified or it was specified and is valid
         output_obj.max_pages = args.number_of_pages
 
-    # Set file path
+    # Set output file path
     if args.output is not None:
         if args.output.endswith(".xml"):
             output_obj.output = args.output
@@ -161,14 +163,20 @@ def get_final_args(args) -> Data:
     else:
         output_obj.output = args.output
 
+    # Set blacklist file path
+    if args.block is not None:
+        if args.block.endswith(".txt"):
+            output_obj.blacklist = args.block
+        else:
+            output_obj.blacklist = args.block + ".txt"
+    else:
+        output_obj.blacklist = args.block
+
     # Set recursive flag
     output_obj.recursive = args.recursive
 
     # Set verbose flag
     output_obj.verbose = args.verbose
-
-    # Set block flag
-    output_obj.block = args.block
 
     # Set agreement flag
     output_obj.agreement = args.agreement

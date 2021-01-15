@@ -14,7 +14,7 @@ class Data:
         self.password = None
         self.recursive = False
         self.verbose = True
-        self.block = False
+        self.blacklist = None
         self.agreement = False
         self.pages = list()  # Pages
         self.results = list()  # Vulnerabilities results
@@ -31,7 +31,9 @@ class Data:
             f"PASSWORD: {self.password}\n"
             f"RECURSIVE: {self.recursive}\n"
             f"VERBOSE: {self.verbose}\n"
-            f"AGREEMENT: {self.agreement}")
+            f"AGREEMENT: {self.agreement}\n"
+            f"BLACKLIST: {self.blacklist}"
+        )
 
 
 class Page:
@@ -46,7 +48,8 @@ class Page:
             f"URL: {self.url}\n"
             f"STATUS: {self.status}\n"
             f"CONTENT-TYPE: {self.type}\n"
-            f"CONTENT: {self.content}\n")
+            f"CONTENT: {self.content}\n"
+        )
 
 
 class SessionPage(Page):
