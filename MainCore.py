@@ -6,6 +6,9 @@ import AddressManager
 import PageManager
 import VulnerabilityManager
 import datetime
+import threading
+import signal
+import sys
 from colors import COLOR_MANAGER
 
 LOGO = """                           __        
@@ -54,11 +57,23 @@ def print_data(data: Data):
     print(COLOR_MANAGER.ENDC)
 
 
+def signal_handler(sig, frame):
+    """
+    Function wait for a key iterrupt and killing the process safely
+    @sig: something related to the signal handler
+    @frame: something related to the signal handler
+    @return: None
+    """
+    COLOR_MANAGER.print_warning("You have decided to close the process, please wait few seconds...\n", "\n\t")
+    sys.exit(0)
+
+
 def main():
     """
     Function connects the different managers together
     @return: None
     """
+    signal.signal(signal.SIGINT, signal_handler)
     try:
         data = get_data()  # Get data through flag manager, address manager and page manager.
         if type(data.port) is not int:

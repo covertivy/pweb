@@ -2,6 +2,7 @@
 from Data import Data, CheckResults
 from colors import *
 import threading
+import time
 import xml.etree.ElementTree as ET
 
 
@@ -9,19 +10,25 @@ def print_results(results: CheckResults):
     """
     Function prints the latest check results
     @param results: The check results
-    @return:
+    @return: None
     """
-    if results.page_results:
-        print(f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:"
-              f"{COLOR_MANAGER.ENDC}{results.color}")
+    print(f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:"
+          f"{COLOR_MANAGER.ENDC}{results.color}")
+    if type(results.page_results) == list:
+        if not len(results.page_results):
+            COLOR_MANAGER.print_success("No vulnerabilities were found on the specified website's pages.", "\t")
         for res in results.page_results:
             print(f"\t{COLOR_MANAGER.BOLD}Page: {COLOR_MANAGER.ENDC}{results.color}{res.url}")
             if res.problem:
-                print(f"\t\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.RED}Problem: {COLOR_MANAGER.ENDC}{results.color}{res.problem}")
+                print(f"\t\t{COLOR_MANAGER.BOLD_RED}Problem:"
+                      f" {COLOR_MANAGER.ENDC}{results.color}{res.problem}")
             if res.solution:
-                print(f"\t\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Solution: {COLOR_MANAGER.ENDC}{results.color}{res.solution}")
-        return True
-    return False
+                print(f"\t\t{COLOR_MANAGER.BOLD_GREEN}Solution:"
+                      f" {COLOR_MANAGER.ENDC}{results.color}{res.solution}")
+    elif type(results.page_results) == str:
+        COLOR_MANAGER.print_error(results.page_results, "\t")
+    else:
+        COLOR_MANAGER.print_error("Something went wrong", "\t")
 
 
 def save_results(data):
@@ -59,9 +66,10 @@ def logic(data: Data, all_threads_done_event: threading.Event):
     @return: None
     """
     index = 0
+    print(
+            f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
     if data.output is None:
         # If there is no specified file path
-        found_vulnerability = False
         while True:
             # While the plugins are still running
             data.mutex.acquire()
@@ -80,14 +88,9 @@ def logic(data: Data, all_threads_done_event: threading.Event):
                 data.mutex.release()
                 index += 1
                 # Print the current found results.
-                if print_results(results):
-                    found_vulnerability = True
-        if not found_vulnerability:
-            print(f"\t{COLOR_MANAGER.PURPLE}Did not find any vulnerability...{COLOR_MANAGER.ENDC}")
+                print_results(results)
     else:
         # If there is a specified file path
-        print(
-            f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
         all_threads_done_event.wait()  # Waiting for the plugins to finish their run
         print(
             f"\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Saving to Output File ({data.output})...{COLOR_MANAGER.ENDC}")
