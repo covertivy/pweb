@@ -30,7 +30,7 @@ def parse_args() -> argparse.Namespace:
         dest="ip",
     )
     parser.add_argument(
-        "-v",
+        "-V",
         "--verbose",
         action="store_false",
         help="Specify this flag when you don't want to print our cool logo.",
@@ -81,11 +81,29 @@ def parse_args() -> argparse.Namespace:
         dest="output",
     )
     parser.add_argument(
-        "-r",
+        "-R",
         "--Recursive",
         action="store_true",
         help="recursive page scraper, will check all the reachable pages in the website.",
         dest="recursive",
+        default=False,
+    )
+    parser.add_argument(
+        "-b",
+        "--black_list",
+        type=str,
+        default=None,
+        help="Specify a black list of words that may be found in a page's URL, "
+        " if the word is in the page url, the page is blocked. blacklist must be a `.txt` file.",
+        dest="block",
+    )
+    parser.add_argument(
+        "-A",
+        "--agressive",
+        action="store_true",
+        help="some of the default plugins will mess up with the website data base and source code, "
+        "this flag is your signing that you agree to have minimal damage in case of vulnerability.",
+        dest="agreement",
     )
     args = parser.parse_args()
     return args
@@ -114,9 +132,8 @@ def get_final_args(args) -> Data:
         output_obj.url += "/"
 
     # Check if all ports flag is set.
-
     if args.all_ports:
-        output_obj.port = "1-65534"
+        output_obj.port = "1-65535"
     else:  # Not all ports scan.
         # Check if port is valid.
         if args.port < 1 or args.port > 65535:
@@ -129,13 +146,14 @@ def get_final_args(args) -> Data:
     if args.number_of_pages and args.number_of_pages <= 0:
         # If the number is set and it is invalid
         COLOR_MANAGER.print_error(
-            "Invalid number of pages! Running with unlimited pages.")
+            "Invalid number of pages! Running with unlimited pages."
+        )
         output_obj.max_pages = None
     else:
         # If the number wasn't specified or it was specified and is valid
         output_obj.max_pages = args.number_of_pages
 
-    # Set file path
+    # Set output file path
     if args.output is not None:
         if args.output.endswith(".xml"):
             output_obj.output = args.output
@@ -144,10 +162,22 @@ def get_final_args(args) -> Data:
     else:
         output_obj.output = args.output
 
+    # Set blacklist file path
+    if args.block is not None:
+        if args.block.endswith(".txt"):
+            output_obj.blacklist = args.block
+        else:
+            output_obj.blacklist = args.block + ".txt"
+    else:
+        output_obj.blacklist = args.block
+
     # Set recursive flag
     output_obj.recursive = args.recursive
 
     # Set verbose flag
     output_obj.verbose = args.verbose
+
+    # Set agreement flag
+    output_obj.agreement = args.agreement
 
     return output_obj

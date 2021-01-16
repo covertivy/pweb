@@ -6,18 +6,20 @@ from urllib.parse import urljoin
 import requests
 import time
 
-COLOR = COLOR_MANAGER.rgb(255, 255, 0)
-NON_BLIND_STRING = "checkcheck"
-ATTEMPTS = 4
+COLOR = COLOR_MANAGER.rgb(255, 0, 128)
+comments = {"#": ["sleep(5)"],
+            "-- ": ["sleep(5)"],
+            "--": ["dbms_pipe.receive_message(('a'),5)", "WAITFOR DELAY '0:0:5'", "pg_sleep(5)"]}
+CHECK_STRING = "checkcheck"
 
 
 def check(data: Data.Data):
     """
-    Function checks the website for blind/non-blind OS injection
+    Function checks the website for SQL injection
     @param data: The data object of the program
     @return: None
     """
-    ci_results = Data.CheckResults("Command Injection", COLOR)
+    sqli_results = Data.CheckResults("SQL Injection", COLOR)
 
     data.mutex.acquire()
     pages = data.pages  # Achieving the pages
@@ -29,25 +31,25 @@ def check(data: Data.Data):
         # [(page object, form dict),...]
         if len(pages):
             # There are pages with at least one text input
-            if data.agreement:
+            if agreement:
                 # The user specified his agreement
                 for page, form in pages:
                     try:
-                        result = command_injection(page, form)
+                        result = sql_injection(page, form)
                         if result.problem:
                             # If there is a problem with the page
-                            ci_results.page_results.append(result)
+                            sqli_results.page_results.append(result)
                     except Exception:
                         continue
             else:
                 # The user did not specified his agreement
                 # and there is a vulnerable page
-                ci_results.page_results = "The plugin check routine requires injecting text boxes," \
-                                          " read about (-a) in our manual and try again."
+                sqli_results.page_results = "The plugin check routine requires injecting text boxes," \
+                                            " read about (-a) in our manual and try again."
     except Exception:
-        ci_results.page_results = "Something went wrong..."
+        sqli_results.page_results = "Something went wrong..."
     data.mutex.acquire()
-    data.results.append(ci_results)  # Adding the results to the data object
+    data.results.append(sqli_results)  # Adding the results to the data object
     data.mutex.release()
 
 
@@ -60,7 +62,7 @@ def filter_forms(pages: list, agreement: bool) -> list:
     filtered_pages = list()
     for page in pages:
         if "html" not in page.type.lower():
-            # If it is a non-html page we can not check for command injection
+            # If it is a non-html page we can not check for sql injection
             continue
         forms = BeautifulSoup(page.content, "html.parser").find_all("form")  # Getting page forms
         for form in forms:
@@ -94,7 +96,7 @@ def filter_forms(pages: list, agreement: bool) -> list:
                 form_details["inputs"] = inputs
                 # Adding the page and it's form to the list
                 if len(get_text_inputs(form_details)) != 0:
-                    # If there are no text inputs, it can't be command injection
+                    # If there are no text inputs, it can't be sql injection
                     filtered_pages.append((page, form_details))
                     if not agreement:
                         # The user did not specified his agreement
@@ -104,15 +106,15 @@ def filter_forms(pages: list, agreement: bool) -> list:
     return filtered_pages
 
 
-def command_injection(page, form: dict) -> Data.PageResult:
+def sql_injection(page, form: dict) -> Data.PageResult:
     """
-    Function checks the page for blind/non-blind OS injection
+    Function checks the page for SQL injection
     @param page: The current page
     @param form: The page's action form
     @return: Page result object
     """
     page_result = Data.PageResult(page, "", "")
-    chars_to_filter = ["&", "&&", "|", "||", ";", "\n"]
+    global comments
     if type(page) == Data.SessionPage:
         cookies = page.cookies
     else:
@@ -123,47 +125,30 @@ def command_injection(page, form: dict) -> Data.PageResult:
     results = dict()
     for text_input in text_inputs:
         # Setting keys for the results
-        results[text_input["name"]] = list()
-    check_for_blind = True
-    for char in chars_to_filter:
-        for curr_text_input in text_inputs:  # In case of more than one text input
-            # Getting content of non-blind injection
-            content = submit_form(action_url, form, cookies, curr_text_input, f"{char}echo {NON_BLIND_STRING}")
-            if NON_BLIND_STRING in content and \
-                    f"echo {NON_BLIND_STRING}" not in content:
-                # The web page printed the echo message
-                results[curr_text_input["name"]].append(char)
-                check_for_blind = False
-    if check_for_blind:
-        # Didn't find anything
-        found_vulnerability = False
-        for char in chars_to_filter:
-            for curr_text_input in text_inputs:  # In case of more than one text input
-                # Getting average response time
-                average_time = 0
-                for _ in range(ATTEMPTS):
-                    # Getting time of normal input
-                    start = time.time()
-                    submit_form(action_url, form, cookies, curr_text_input, "")
-                    normal_time = time.time() - start
-                    average_time += normal_time
-                average_time /= ATTEMPTS
-                # Getting time of blind injection
+        results[text_input["name"]] = False
+    found_vulnerability = False
+    for text_input in text_inputs:
+        for comment in comments.keys():
+            # Checking every comment
+            for sleep in comments[comment]:
+                # Checking every sleep function
                 start = time.time()
-                submit_form(action_url, form, cookies, curr_text_input, f"{char} ping -c 5 127.0.0.1")
-                injection_time = time.time() - start
-                if injection_time - average_time > 3:
+                submit_form(action_url, form, cookies, text_input, f"{CHECK_STRING}")
+                normal_time = time.time() - start  # Normal input run time
+                start = time.time()
+                submit_form(action_url, form, cookies, text_input,
+                            f"{CHECK_STRING}' OR NOT {sleep} LIMIT 1{comment}")
+                injection_time = time.time() - start  # Injected input run time
+                if injection_time - normal_time > 3:
                     # The injection slowed down the server response
-                    results[curr_text_input["name"]].append(char)
+                    results[text_input["name"]] = True
+                    comments = {comment: [sleep]}  # Found the data base's sleep function and comment
                     found_vulnerability = True
-        if found_vulnerability:
-            # In case of blind OS injection
-            write_vulnerability(results, page_result,
-                                "allowed blind OS injection, it did not detected the character")
-    else:
-        # In case of non-blind OS injection
-        write_vulnerability(results, page_result,
-                            "allowed OS injection, it did not detected the character")
+                    break  # There is no reason to check another sleep function
+            if found_vulnerability:
+                # If a vulnerability is found, There is no reason to check another comment
+                break
+    write_vulnerability(results, page_result)
     return page_result
 
 
@@ -217,30 +202,18 @@ def submit_form(action_url: str, form: dict, cookies, curr_text_input: dict, tex
     return content
 
 
-def write_vulnerability(results: dict, page_result: Data.PageResult, problem: str):
+def write_vulnerability(results: dict, page_result: Data.PageResult):
     """
     Function writes the problem and the solution of every problem that is found for a page
     @param results: a dictionary of text input and list of chars it didn't filter
     @param page_result: page result object of the current page
-    @param problem: string of found problem
     @return: None
     """
     for key in results.keys():
         # For every text input
-        if len(results[key]):
+        if results[key]:
             # If the input is vulnerable
-            page_result.problem += f"The text parameter '{key}' {problem}"
-            page_result.solution += f"Filter the text input of '{key}' from "
-            if len(results[key]) == 1:
-                page_result.problem += ": "
-                page_result.solution += "this character"
-            else:
-                page_result.problem += "s: "
-                page_result.solution += "those characters."
-            # Adding the vulnerable chars
-            for char in results[key]:
-                if char == "\n":
-                    char = "\\n"
-                page_result.problem += f"'{char}', "
-            # Removing last ", "
-            page_result.problem = page_result.problem[:-2]
+            page_result.problem = f"The text parameter '{key}' allowed SQL injection"
+            page_result.solution = f"You can validate the input from the " \
+                                   f"'{key}' parameter, by checking for " \
+                                   f"vulnerable characters or wrong input type"

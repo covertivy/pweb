@@ -1,10 +1,10 @@
 #!/usr/bin/python3
-import nmap
 from Data import Data
 from colors import COLOR_MANAGER
-from scapy.all import *
+import socket
 import subprocess
 
+MAXIMUM_PORT = 65535
 NUMBER_OF_PACKETS = 2
 TTL = 2
 
@@ -40,7 +40,7 @@ def valid_url(data: Data):
         pass
 
     address = (
-        data.url[len("http://") :].split("/")[0].split(":")
+        data.url[len("http://"):].split("/")[0].split(":")
     )  # address = [ip, port]
     if len(address) == 1:
         # IP only, no port specified in URL
@@ -48,7 +48,7 @@ def valid_url(data: Data):
             # Port wasn't specified under -p
             data.port = 80  # default port for http
         else:
-            path = data.url[len("http://") + len(address[0]) :]
+            path = data.url[len("http://") + len(address[0]):]
             data.url = f"http://{address[0]}:{data.port}{path}"
     elif len(address) == 2:
         # IP and port
@@ -56,7 +56,7 @@ def valid_url(data: Data):
         if port.isnumeric():
             # If port is a number
             port = int(port)
-            if 65535 > port > 1:
+            if MAXIMUM_PORT > port > 0:
                 # If port is in range
                 data.port = port
             else:
@@ -83,59 +83,58 @@ def scan_ports(data: Data):
     @param data: The data object of the program
     @return: None
     """
-    nm = nmap.PortScanner()  # Instantiate nmap.PortScanner object
-    nm.scan(hosts=data.ip, ports=str(data.port))  # Scan host, ports from 22 to 443
-
-    if len(nm.all_hosts()) == 0:
-        raise Exception(f"No hosts found on {data.ip}", "\t")
-
-    host = nm[nm.all_hosts()[0]]  # Usually there is one host in the list, the one we want to check
-
     if type(data.port) is not int:
         # If the user used -P for all ports scan
-        message = str()
-        for proto in host.all_protocols():
-            # For every protocol that the host is using
-            ports = list(host[proto].keys())
-            ports.sort()
-
-            for port in ports:
-                if host[proto][port]["name"] == "http":
-                    # We are looking for http ports only
-                    padding = " " * (5 - len(str(port)))
-                    message += f"\t\tPort: {port}{padding} | State: {host[proto][port]['state']} " \
-                               f"| Service: {host[proto][port]['product']}\n"
-        if len(message) != 0:
+        ports_range = range(1, MAXIMUM_PORT + 1)
+        plural = "s"
+    else:
+        # If the user used -p or used the default port 80
+        ports_range = [data.port]
+        plural = ""
+    print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW} "
+          f"Scanning port{plural} {data.port} for HTTP{COLOR_MANAGER.ENDC}")
+    if len(ports_range) > 1:
+        # Scan all ports
+        print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW} "
+              f"Will take about 6 minutes to finish...")
+    http_ports = list()
+    default_timeout = socket.getdefaulttimeout()  # Save it before changing it
+    for port in ports_range:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        socket.setdefaulttimeout(0.005)
+        try:
+            if not sock.connect_ex((data.ip, port)):
+                # If it is an open port
+                if socket.getservbyport(port, 'tcp') == 'http':
+                    # If it runs http protocol
+                    http_ports.append(port)
+        except Exception:
+            continue
+        sock.close()
+    socket.setdefaulttimeout(default_timeout)  # Retrieving the default value
+    if type(data.port) is not int:
+        # If the user used -P for all ports scan
+        results = str()
+        for port in http_ports:
+            padding = " " * (5 - len(str(port)))  # Padding the table rows
+            results += f"\t- Port: {port}{padding} | State: open " \
+                       f"| Proto: HTTP\n"
+        if len(results) != 0:
             # If there are open http ports on the host
             message = (
-                f"\t{COLOR_MANAGER.HEADER}{COLOR_MANAGER.YELLOW}List of the open http ports on your host:"
-                f"{COLOR_MANAGER.ENDC}\n"
-                + COLOR_MANAGER.YELLOW
-                + message
-                + f"\n\tPlease choose one of the ports above and try again (-p <port>).{COLOR_MANAGER.ENDC}\n"
-            )
+                    f"\t{COLOR_MANAGER.HEADER}{COLOR_MANAGER.YELLOW}List of the open http ports on your host:"
+                    f"{COLOR_MANAGER.ENDC}\n"
+                    + COLOR_MANAGER.YELLOW
+                    + results
+                    + f"\n\tPlease choose one of the ports above and try again (-p <port>).{COLOR_MANAGER.ENDC}\n")
             print(message)
         else:
             # If there are no open http ports on the host
             raise Exception(
-                "There are no open http ports on your host, please check the host.", "\t")
+                "There are no open http ports on your host, please check the host or try again.", "\t")
     else:
         # If the user used -p or used the default port 80
-        print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW} "
-              f"Scanning port {data.port} for HTTP{COLOR_MANAGER.ENDC}")
-        exists = False
-        proto_list = host.all_protocols()
-        for proto in proto_list:
-            # Checking each protocol
-            ports = list(host[proto].keys())  # Get all port numbers as a list.
-            for port in ports:
-                if (port == data.port
-                        and host[proto][port]["name"] == "http"
-                        and host[proto][port]["state"] == "open"):
-                    # If the specified port is http and open
-                    exists = True
-                    break
-        if exists:
+        if len(http_ports):
             # If the specified port is good
             if data.url is None:
                 # If the url field is empty

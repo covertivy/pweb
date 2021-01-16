@@ -105,6 +105,7 @@ class Colors:
         """
         print(
             begins_with
+            + Colors.ENDC
             + "["
             + Colors.BOLD_YELLOW
             + "!"
@@ -116,15 +117,16 @@ class Colors:
         )
 
     @staticmethod
-    def print_error(error: str = "ERROR!", starts_with: str = ""):
+    def print_error(error: str = "ERROR!", begins_with: str = ""):
         """
         Function prints a specified error
         @param error: The specified error
-        @param starts_with: Optional string to start with
+        @param begins_with: Optional string to start with
         @return: None
         """
         print(
-            starts_with
+            begins_with
+            + Colors.ENDC
             + "["
             + Colors.BOLD_RED
             + "!"
@@ -134,6 +136,26 @@ class Colors:
             + error
             + Colors.ENDC
         )
+
+    @staticmethod
+    def print_success(success: str = "SUCCESS!", begins_with: str = ""):
+        """
+        Function prints a specified success message
+        @param success: The specified message
+        @param begins_with: Optional string to start with
+        @return: None
+        """
+        print(
+            begins_with
+            + Colors.ENDC
+            + "["
+            + Colors.BOLD_GREEN
+            + "!"
+            + Colors.ENDC
+            + "] "
+            + Colors.BOLD_GREEN
+            + success
+            + Colors.ENDC)
 
 
 COLOR_MANAGER = Colors()  # Colors instance
