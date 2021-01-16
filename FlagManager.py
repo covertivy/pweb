@@ -109,6 +109,21 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+def get_port_from_url(url: str) -> int:
+    port = None
+    try:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+        port = parsed.port
+        if port is not None:
+            port = int(port)
+    except ImportError:
+        return None
+
+    return port
+
+
 def get_final_args(args) -> Data:
     """
     Function gets the arguments into the Data object
@@ -135,12 +150,29 @@ def get_final_args(args) -> Data:
     if args.all_ports:
         output_obj.port = "1-65535"
     else:  # Not all ports scan.
-        # Check if port is valid.
-        if args.port < 1 or args.port > 65535:
+        # Check if tjere was a port specified within the url.
+        if args.url is not None:
+            url_port = get_port_from_url(args.url)
+            if url_port is not None:  # url has port.
+                # Check if url port is in valid range.
+                if url_port > 0 or url_port < 65536:
+                    output_obj.port = url_port
+                # Check if user specified a port via flag.
+                elif args.port > 0 or args.port < 65536:
+                    output_obj.port = args.port
+                # No valid port was specified.
+                else:
+                    COLOR_MANAGER.print_error(
+                        "Invalid port number, using default port 80."
+                    )
+                    output_obj.port = 80
+        # Check if flag port is in valid range.
+        elif args.port > 0 or args.port < 65536:
+            output_obj.port = args.port
+        else:
+            # No valid port was specified.
             COLOR_MANAGER.print_error("Invalid port number, using default port 80.")
             output_obj.port = 80
-        else:
-            output_obj.port = args.port
 
     # Set limit of pages.
     if args.number_of_pages and args.number_of_pages <= 0:

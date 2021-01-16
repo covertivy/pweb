@@ -3,13 +3,25 @@ from colors import COLOR_MANAGER
 import Data
 import bs4 as soup
 import re as regex  # Used `https://regex101.com/` a lot to verify regex string.
+from selenium import webdriver
 
 
 COLOR = COLOR_MANAGER.rgb(255, 0, 100)
 # The regex strings used to find all dom-xss sources.
-SOURCES_RE = """/(location\s*[\[.])|([.\[]\s*["']?\s*(arguments|dialogArguments|innerHTML|write(ln)?|open(Dialog)?|showModalDialog|cookie|URL|documentURI|baseURI|referrer|name|opener|parent|top|content|self|frames)\W)|(localStorage|sessionStorage|Database)|(\s*URLSearchParams\()/"""
+SOURCES_RE = """(location\s*[\[.])|([.\[]\s*["']?\s*(arguments|dialogArguments|innerHTML|write(ln)?|open(Dialog)?|showModalDialog|cookie|URL|documentURI|baseURI|referrer|name|opener|parent|top|content|self|frames)\W)|(localStorage|sessionStorage|Database)|(\s*URLSearchParams\()"""
 # The regex string used to find all dom-xss sinks.
-SINKS_RE = """/((src|href|data|location|code|value|action)\s*["'\]]*\s*\+?\s*=)|((replace|assign|navigate|getsource_htmlHeader|open(Dialog)?|showModalDialog|eval|evaluate|execCommand|execScript|setTimeout|setInterval)\s*["'\]]*\s*\()/"""
+SINKS_RE = """((src|href|data|location|code|value|action)\s*["'\]]*\s*\+?\s*=)|((replace|assign|navigate|getsource_htmlHeader|open(Dialog)?|showModalDialog|eval|evaluate|execCommand|execScript|setTimeout|setInterval)\s*["'\]]*\s*\()"""
+
+XSS_STRINGS = [
+    "<script>alert(1);</script>",
+    "><script>alert(1);</script>",
+    "'<script>alert(1);</script>",
+    "<img src=x onerror=alert(1)>",
+    '<img src="javascript:alert(1);">',
+    "<img src=javascript:alert(1)>",
+    "<img src=javascript:alert(&quot;XSS&quot;)>",
+    "<<SCRIPT>alert(1);//\<</SCRIPT>",
+]
 
 
 def check(data: Data.Data):
@@ -19,10 +31,15 @@ def check(data: Data.Data):
     data.mutex.release()
 
     for page in pages:
-        possible_vulns = determine_possible_vulns(page.content)
-        very_vulnerable = further_analyse(
-            possible_vulns, find_input_fields(page.content)
-        )
+        possible_vulns = {}
+        very_vulnerable = {}
+        try:
+            possible_vulns = determine_possible_vulns(page.content)
+            very_vulnerable = further_analyse(
+                possible_vulns, find_input_fields(page.content)
+            )
+        except:
+            pass
         if len(very_vulnerable.keys()) > 0:
             amount_str = ""
             if len(very_vulnerable.keys()) == 1:
@@ -38,6 +55,7 @@ def check(data: Data.Data):
             result_str = "The primary rule that you must follow to prevent DOM XSS is: sanitize all untrusted data, even if it is only used in client-side scripts. If you have to use user input on your page, always use it in the text context, never as HTML tags or any other potential code.\nAvoid dangerous methods and instead use safer functions.\nCheck if sources are directly related to sinks and if so prevent them from accessing each other.\nFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html"
             res = Data.PageResult(page, problem_str, result_str)
             dom_xss_results.page_results.append(res)
+
     data.mutex.acquire()
     data.results.append(dom_xss_results)
     data.mutex.release()
@@ -77,6 +95,59 @@ def determine_possible_vulns(source_html: str) -> dict:
             sinks[script_index] = (sink_patterns, len(sink_patterns))
 
     return sinks
+
+
+def check_forms(page_url: str, source_html: str):
+    """
+    This is a function to check every form input for possible xss vulnerability.
+    A web browser checks for an alert and if it finds one it is vulnerable!
+    Args:
+        @param page_url (str): The url of the page to be checked. format should be "http://pageto.check:<optional port>/<required dirctories>/"
+        @param source_html (str): The source html of the page to be checked.
+
+    Returns:
+        dict: A dictionary of all vulnerable inputs and their ids, id for key and `soup.element.Tag` as value.
+    """
+    # Create a chrome web driver.
+    options = webdriver.ChromeOptions()
+    options.add_argument("--log-level=3")
+    options.add_argument("headless")
+    options.add_experimental_option("excludeSwitches", ["enable-logging"])
+    browser = webdriver.Chrome(options=options)
+
+    # Find forms in html.
+    soup_obj = soup.BeautifulSoup(source_html, "html.parser")
+    all_forms = soup_obj.find_all("form")
+
+    # A dictionary containing all the results from our check.
+    vulnerable_inputs = {}
+    index = 0
+
+    for form in all_forms:
+        for input in list(set(form.find_all("input", type="text"))):
+            input_id = index
+            index += 1
+            # Check each known xss string against input (more can be added if needed).
+            for xss in XSS_STRINGS:
+                if input_id in vulnerable_inputs.keys():
+                    break
+                # Generate url with correct url parameters.
+                url = f"{page_url}{form.get('action')}?{input.get('id')}={xss}"
+                # Get page with infected url.
+                browser.get(url)
+                try:
+                    # Check for alert.
+                    alert = browser.switch_to.alert
+                    alert.accept()
+
+                    # Add to vulnerable inputs list.
+                    if input_id not in vulnerable_inputs.keys():
+                        vulnerable_inputs[input_id] = input
+                    else:
+                        continue
+                except:
+                    pass  # No alert and therefor not vulnerable.
+    return vulnerable_inputs
 
 
 def find_input_fields(html: str) -> tuple:
@@ -182,7 +253,7 @@ def check_form_inputs(form_inputs: list, suspicious_scripts: dict) -> dict:
                     or f"getElementsByClassName('{form_object['class']}')" in script_str
                 ):
                     vuln_raises += 1
-        if raises > 0:
+        if vuln_raises > 0:
             very_vulnerable[script_index] = (
                 suspicious_scripts[script_index],
                 vuln_raises,

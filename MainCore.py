@@ -30,7 +30,9 @@ def print_startup():
     for char in LOGO:
         print(COLOR_MANAGER.rand_color() + char, end="")
     print(COLOR_MANAGER.ENDC + "\n")
-    print(f"{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}")
+    print(
+        f"{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}"
+    )
 
 
 def get_data() -> Data:
@@ -38,10 +40,12 @@ def get_data() -> Data:
     Function gets the Data object to a initial check stage
     @return: Data object that ready for the Page manager
     """
-    data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
+    data = FlagManager.get_final_args(
+        FlagManager.parse_args()
+    )  # Get arguments from command line.
     if data.verbose:
         print_startup()  # Print startup logo and current time.
-    AddressManager.set_target(data)
+    # AddressManager.set_target(data)
     return data
 
 
@@ -51,9 +55,13 @@ def print_data(data: Data):
     @param data: The data object of the program
     @return: None
     """
-    print(f"\n{COLOR_MANAGER.PINK + COLOR_MANAGER.HEADER}Inserted data:{COLOR_MANAGER.ENDC}")
+    print(
+        f"\n{COLOR_MANAGER.PINK + COLOR_MANAGER.HEADER}Inserted data:{COLOR_MANAGER.ENDC}"
+    )
     for line in str(data).split("\n"):
-        print(f"\t[{COLOR_MANAGER.PINK}*{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.PINK}{line}{COLOR_MANAGER.ENDC}")
+        print(
+            f"\t[{COLOR_MANAGER.PINK}*{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.PINK}{line}{COLOR_MANAGER.ENDC}"
+        )
     print(COLOR_MANAGER.ENDC)
 
 
@@ -64,7 +72,9 @@ def signal_handler(sig, frame):
     @frame: something related to the signal handler
     @return: None
     """
-    COLOR_MANAGER.print_warning("You have decided to close the process, please wait few seconds...\n", "\n\t")
+    COLOR_MANAGER.print_warning(
+        "You have decided to close the process, please wait few seconds...\n", "\n\t"
+    )
     sys.exit(0)
 
 
@@ -76,7 +86,9 @@ def main():
     os.system("color")
     signal.signal(signal.SIGINT, signal_handler)
     try:
-        data = get_data()  # Get data through flag manager, address manager and page manager.
+        data = (
+            get_data()
+        )  # Get data through flag manager, address manager and page manager.
         if type(data.port) is not int:
             # If the user asked for ports scan (-P) there is no need to continue the run
             exit()
