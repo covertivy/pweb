@@ -30,7 +30,7 @@ def parse_args() -> argparse.Namespace:
         dest="ip",
     )
     parser.add_argument(
-        "-v",
+        "-V",
         "--verbose",
         action="store_false",
         help="Specify this flag when you don't want to print our cool logo.",
