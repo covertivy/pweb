@@ -35,8 +35,10 @@ def check(data: Data.Data):
     for page in pages:
         if "html" not in page.type:
             continue  # Ignore non html pages.
-        if page.url == "http://10.0.0.123/DVWA/vulnerabilities/xss_d/":
-            print("xss")
+
+        # TODO: implement javascript tags with source checks.
+        # ? Need to wait for dror to finish updates to page manager.
+
         possible_vulns = {}
         very_vulnerable = {}
         try:
