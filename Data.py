@@ -45,7 +45,7 @@ class Page:
         self.status = status
         self.type = mime_type
         self.content = content
-        self.parent = Page(parent)
+        self.parent = parent
 
     def __str__(self):
         return (
