@@ -41,20 +41,20 @@ def check(data: Data.Data):
         except:
             pass
         if len(very_vulnerable.keys()) > 0:
-            amount_str = ""
-            if len(very_vulnerable.keys()) == 1:
-                amount_str = "script that is"
-            else:
-                amount_str = "scripts that are"
 
-            scripts_str = ""
             for script_index in possible_vulns.keys():
-                scripts_str = scripts_str + f"Script {script_index}.\n"
+                problem_str = f"Found a quite possibly vulnerable script to DOM based XSS (Script [{script_index}]).\nThe script is: {str(very_vulnerable[script_index])}"
+                result_str = "The primary rule that you must follow to prevent DOM XSS is: sanitize all untrusted data, even if it is only used in client-side scripts. If you have to use user input on your page, always use it in the text context, never as HTML tags or any other potential code.\nAvoid dangerous methods and instead use safer functions.\nCheck if sources are directly related to sinks and if so prevent them from accessing each other.\nFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html"
+                res = Data.PageResult(page, problem_str, result_str)
+                dom_xss_results.page_results.append(res)
 
-            problem_str = f"Found {len(very_vulnerable.keys())} {amount_str} quite possibly vulnerable to DOM based XSS.\nThe scipt indexes are: {str(very_vulnerable.keys())}"
-            result_str = "The primary rule that you must follow to prevent DOM XSS is: sanitize all untrusted data, even if it is only used in client-side scripts. If you have to use user input on your page, always use it in the text context, never as HTML tags or any other potential code.\nAvoid dangerous methods and instead use safer functions.\nCheck if sources are directly related to sinks and if so prevent them from accessing each other.\nFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html"
-            res = Data.PageResult(page, problem_str, result_str)
-            dom_xss_results.page_results.append(res)
+        vulnerable_inputs = check_forms(page.url, page.content)
+        if len(vulnerable_inputs.keys()) > 0:
+            for vulnerable_input_id in vulnerable_inputs.keys():
+                problem_str = f"Found xss vulnerability in input [{vulnerable_input_id}].\nThe input is: {str(vulnerable_inputs[vulnerable_input_id])}"
+                result_str = "The primary rule that you must follow to prevent DOM XSS is: sanitize all untrusted data, even if it is only used in client-side scripts. If you have to use user input on your page, always use it in the text context, never as HTML tags or any other potential code.\nAvoid dangerous methods and instead use safer functions.\nCheck if sources are directly related to sinks and if so prevent them from accessing each other.\nFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html"
+                res = Data.PageResult(page, problem_str, result_str)
+                dom_xss_results.page_results.append(res)
 
     data.mutex.acquire()
     data.results.append(dom_xss_results)
@@ -97,7 +97,7 @@ def determine_possible_vulns(source_html: str) -> dict:
     return sinks
 
 
-def check_forms(page_url: str, source_html: str):
+def check_forms(page_url: str, source_html: str) -> dict(int, soup.element.Tag):
     """
     This is a function to check every form input for possible xss vulnerability.
     A web browser checks for an alert and if it finds one it is vulnerable!
