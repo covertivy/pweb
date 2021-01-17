@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import requests
 import time
+import random
 
 COLOR = COLOR_MANAGER.rgb(255, 0, 128)
 comments = {"#": ["sleep(5)"],
@@ -192,7 +193,7 @@ def submit_form(action_url: str, form: dict, cookies, curr_text_input: dict, tex
             if input_tag["name"] == curr_text_input["name"]:
                 args[input_tag["name"]] = f"{text}"
             else:
-                args[input_tag["name"]] = input_tag["value"]
+                args[input_tag["name"]] = CHECK_STRING + str(random.randint(1, 200))
     # Sending the request
     content = str()
     if form["method"] == "post":

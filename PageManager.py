@@ -144,14 +144,16 @@ def get_pages(
     browser: webdriver.Chrome,
     recursive=True,
     session: requests.Session = None,
+    previous: Page = None
 ):
     """
     Function gets the lists of pages to the data object
     @param data: The data object of the program
     @param curr_url: The current URL the function checks
-    @param browser:
+    @param browser: The web driver that gets the rendered content
     @param recursive: True- check all website pages, False- only the first reachable one
     @param session: In case of session page, the session is important for the connection
+    @param previous: the previous page
     @return: None
     """
     if len(data.pages) == data.max_pages:
@@ -208,6 +210,7 @@ def get_pages(
                     res.content.decode(),
                     session.cookies,
                     current_login_page,
+                    previous
                 )
                 color = COLOR_MANAGER.ORANGE
             except:
@@ -222,6 +225,7 @@ def get_pages(
                 res.status_code,
                 res.headers.get("Content-Type").split(";")[0],
                 res.content.decode(),
+                previous
             )
             color = COLOR_MANAGER.BLUE
         except Exception as e:
@@ -294,14 +298,6 @@ def get_pages(
 
     if not soup:
         # There is no reason check non-html page.
-        for to_find_page in data.pages[::-1]:
-            if "html" in to_find_page.type:
-                if to_find_page.addons is not None:
-                    to_find_page.addons.append(page)
-                else:
-                    to_find_page.addons = [page]
-            else:
-                continue
         return
 
     # Getting every application script in the page.
@@ -336,7 +332,7 @@ def get_pages(
                 and all(word not in link for word in black_list)
             ):
                 # Page was not checked
-                get_pages(data, link, browser, data.recursive, session)
+                get_pages(data, link, browser, data.recursive, session, page)
 
     if not session and data.username and data.password:
         # If not session page and there are username and password specified

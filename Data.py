@@ -39,7 +39,7 @@ class Data:
 
 class Page:
     def __init__(
-        self, url: str, status: int, mime_type: str, content: str, parent=None
+        self, url: str, status: int, mime_type: str, content: str, parent
     ):
         self.url = url
         self.status = status
@@ -66,7 +66,7 @@ class SessionPage(Page):
         content: str,
         cookies,
         login: set,
-        parent=None,
+        parent,
     ):
         super(SessionPage, self).__init__(url, status, mime_type, content, parent)
         self.cookies = cookies
