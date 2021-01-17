@@ -38,12 +38,12 @@ class Data:
 
 
 class Page:
-    def __init__(self, url, status, mime_type, content, addons=None):
+    def __init__(self, url, status, mime_type, content, parent: Data.Page = None):
         self.url = url
         self.status = status
         self.type = mime_type
         self.content = content
-        self.addons = addons  # Included pages (css, js, etc...).
+        self.parent = parent
 
     def __str__(self):
         return (
@@ -51,7 +51,7 @@ class Page:
             f"STATUS: {self.status}\n"
             f"CONTENT-TYPE: {self.type}\n"
             f"CONTENT: {self.content}\n"
-            f"Addon Pages: {self.addons}\n"
+            f"PARENT URL: {self.parent.url}\n"
         )
 
 
