@@ -52,7 +52,7 @@ def get_links(links: list, url: str) -> list:
     return valid_links
 
 
-def get_login_form(data: Data, url: str) -> set(dict, requests.Session):
+def get_login_form(data: Data, url: str) -> (dict, requests.Session):
     """
     Function gets the login form of the page
     @param data: The data object of the program
@@ -200,15 +200,19 @@ def get_pages(
             troublesome.append(curr_url)
             return
         else:
-            page = SessionPage(
-                res.url,
-                res.status_code,
-                res.headers.get("Content-Type").split(";")[0],
-                res.content.decode(),
-                session.cookies,
-                current_login_page,
-            )
-            color = COLOR_MANAGER.ORANGE
+            try:
+                page = SessionPage(
+                    res.url,
+                    res.status_code,
+                    res.headers.get("Content-Type").split(";")[0],
+                    res.content.decode(),
+                    session.cookies,
+                    current_login_page,
+                )
+                color = COLOR_MANAGER.ORANGE
+            except:
+                troublesome.append(curr_url)
+                return
     else:
         # Non-Session page
         try:
@@ -285,19 +289,27 @@ def get_pages(
         # Adding to the page list
         data.pages.append(page)
 
-    # Adding to the already-checked list
+    # Adding to the already-checked list.
     already_checked.append(page)
 
     if not soup:
-        # There is no reason check non-html page
+        # There is no reason check non-html page.
+        for to_find_page in data.pages[::-1]:
+            if "html" in to_find_page.type:
+                if to_find_page.addons is not None:
+                    to_find_page.addons.append(page)
+                else:
+                    to_find_page.addons = [page]
+            else:
+                continue
         return
 
-    # Getting every application script in the page
+    # Getting every application script in the page.
     links = get_links(
         [script.get("src") for script in soup.find_all("script")], page.url
     )
 
-    # Getting every css style in the page
+    # Getting every css style in the page.
     links.extend(
         get_links(
             [script.get("href") for script in soup.find_all(type="text/css")], page.url
@@ -305,16 +317,16 @@ def get_pages(
     )
 
     if recursive:
-        # If the function is recursive
-        # Getting every link in the page
+        # If the function is recursive.
+        # Getting every link in the page.
         links.extend(
             get_links([link.get("href") for link in soup.find_all("a")], page.url)
         )
 
     for link in links:
         if logged_out or len(data.pages) == data.max_pages:
-            # More efficient to check every time
-            # If the session logged out or the pages amount is at its maximum
+            # More efficient to check every time.
+            # If the session logged out or the pages amount is at its maximum.
             return
         if all(link != page.url for page in data.pages) or session:
             # If the page is not in the page list

@@ -19,7 +19,9 @@ XSS_STRINGS = [
     "<img src=x onerror=alert(1)>",
     '<img src="javascript:alert(1);">',
     "<img src=javascript:alert(1)>",
-    "<img src=javascript:alert(&quot;XSS&quot;)>",
+    "<img src=javascript:alert(&quot;1&quot;)>",
+    "<img src=x onerror=javascript:alert(1)>",
+    "<img src=x onerror=javascript:alert(1);>",
     "<<SCRIPT>alert(1);//\<</SCRIPT>",
 ]
 
@@ -31,6 +33,10 @@ def check(data: Data.Data):
     data.mutex.release()
 
     for page in pages:
+        if "html" not in page.type:
+            continue  # Ignore non html pages.
+        if page.url == "http://10.0.0.123/DVWA/vulnerabilities/xss_d/":
+            print("xss")
         possible_vulns = {}
         very_vulnerable = {}
         try:
@@ -91,13 +97,17 @@ def determine_possible_vulns(source_html: str) -> dict:
         for match in regex_sink_matches:
             match_groups = tuple(group for group in match.groups() if group is not None)
             sink_patterns.append(match_groups)
+
+        # Get rid of duplicate regex matches.
+        sink_patterns = list(set(sink_patterns))
+
         if len(sink_patterns) > 0:
             sinks[script_index] = (sink_patterns, len(sink_patterns))
 
     return sinks
 
 
-def check_forms(page_url: str, source_html: str) -> dict(int, soup.element.Tag):
+def check_forms(page_url: str, source_html: str) -> dict:
     """
     This is a function to check every form input for possible xss vulnerability.
     A web browser checks for an alert and if it finds one it is vulnerable!
@@ -176,7 +186,14 @@ def find_input_fields(html: str) -> tuple:
             return False
         type_str = tag["type"].lower()
         # If input type is the type we want.
-        if any([type_str == "text", type_str == "url", type_str == "search"]):
+        if any(
+            [
+                type_str == "text",
+                type_str == "url",
+                type_str == "search",
+                type_str == "select",
+            ]
+        ):
             return True
 
     soup_obj = soup.BeautifulSoup(html, "html.parser")
@@ -348,9 +365,13 @@ def further_analyse(suspicious_scripts: dict, input_sources: tuple) -> dict:
         )
         # Look for dom_sources in script.
         source_patterns = []
-        for match_index, match in enumerate(regex_source_matches):
+        for match in regex_source_matches:
             match_groups = tuple(group for group in match.groups() if group is not None)
             source_patterns.append(match_groups)
+
+        # Get rid of duplicate regex matches.
+        source_patterns = list(set(source_patterns))
+
         if len(source_patterns) > 0:
             dom_sources[script_index] = (source_patterns, len(regex_source_matches))
 
@@ -369,12 +390,18 @@ def further_analyse(suspicious_scripts: dict, input_sources: tuple) -> dict:
 
     for script_index in dom_sources.keys():
         if script_index not in final_scripts.keys():
+            print(
+                f"Adding vulnerable script to final_scripts!\n{suspicious_scripts[script_index]}"
+            )
             final_scripts[script_index] = dom_sources[script_index]
         else:
             final_scripts[script_index] = (
                 final_scripts[script_index][0],
                 final_scripts[script_index][1] + dom_sources[script_index][1],
             )
+
+    if len(general_scripts.keys()) == 0:
+        return final_scripts
     for script_index in general_scripts.keys():
         if script_index not in final_scripts.keys():
             final_scripts[script_index] = general_scripts[script_index]
