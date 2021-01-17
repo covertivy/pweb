@@ -8,7 +8,7 @@ from selenium import webdriver
 
 COLOR = COLOR_MANAGER.rgb(255, 0, 100)
 # The regex strings used to find all dom-xss sources.
-SOURCES_RE = """(location\s*[\[.])|([.\[]\s*["']?\s*(arguments|dialogArguments|innerHTML|write(ln)?|open(Dialog)?|showModalDialog|cookie|URL|documentURI|baseURI|referrer|name|opener|parent|top|content|self|frames)\W)|(localStorage|sessionStorage|Database)|(\s*URLSearchParams\()"""
+SOURCES_RE = """(location\s*[\[.])|([.\[]\s*["']?\s*(arguments|dialogArguments|innerHTML|write(ln)?|open(Dialog)?|showModalDialog|cookie|URL|documentURI|baseURI|referrer|name|opener|parent|top|content|self|frames)\W)|(localStorage|sessionStorage|Database)|\s*URLSearchParams[\(.]|\s*[.]*(getElementById|getElementByName|getElementByClassName)\("""
 # The regex string used to find all dom-xss sinks.
 SINKS_RE = """((src|href|data|location|code|value|action)\s*["'\]]*\s*\+?\s*=)|((replace|assign|navigate|getsource_htmlHeader|open(Dialog)?|showModalDialog|eval|evaluate|execCommand|execScript|setTimeout|setInterval)\s*["'\]]*\s*\()"""
 
@@ -34,13 +34,25 @@ def check(data: Data.Data):
 
     for page in pages:
         if "html" not in page.type:
-            continue  # Ignore non html pages.
-
-        # TODO: implement javascript tags with source checks.
-        # ? Need to wait for dror to finish updates to page manager.
+            if "javascript" in page.type:
+                # Look for sources and sinks in javascript source code.
+                if analyse_javascript(page.content):
+                    problem_str = f"Found javascript code that is quite possibly vulnerable to DOM based XSS:\n" \
+                                  f"\tThe Line is: {find_script_by_src(page.parent.content, page.url)}\n" \
+                                  f"\tFrom page {page.parent.url}\n"
+                    result_str = "The primary rule that you must follow to prevent DOM XSS is: sanitize all untrusted data, even if it is only used in client-side scripts.\n" \
+                                 "\tIf you have to use user input on your page, always use it in the text context, never as HTML tags or any other potential code.\n" \
+                                 "\tAvoid dangerous methods and instead use safer functions.\n" \
+                                 "\tCheck if sources are directly related to sinks and if so prevent them from accessing each other.\n" \
+                                 "\tFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html\n"
+                    res = Data.PageResult(page.parent, problem_str, result_str)
+                    dom_xss_results.page_results.append(res)
+            else:
+                 continue  # Ignore non javascript pages.       
 
         possible_vulns = {}
         very_vulnerable = {}
+
         try:
             possible_vulns = determine_possible_vulns(page.content)
             very_vulnerable = further_analyse(
@@ -51,17 +63,16 @@ def check(data: Data.Data):
         if len(very_vulnerable.keys()) > 0:
 
             for script_index in possible_vulns.keys():
-                problem_str = f"Found a quite possibly vulnerable script to DOM based XSS (Script [{script_index}]).\nThe script is: {str(very_vulnerable[script_index])}"
-                result_str = "The primary rule that you must follow to prevent DOM XSS is: sanitize all untrusted data, even if it is only used in client-side scripts. If you have to use user input on your page, always use it in the text context, never as HTML tags or any other potential code.\nAvoid dangerous methods and instead use safer functions.\nCheck if sources are directly related to sinks and if so prevent them from accessing each other.\nFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html"
-                res = Data.PageResult(page, problem_str, result_str)
-                dom_xss_results.page_results.append(res)
-
-        vulnerable_inputs = check_forms(page.url, page.content)
-        if len(vulnerable_inputs.keys()) > 0:
-            for vulnerable_input_id in vulnerable_inputs.keys():
-                problem_str = f"Found xss vulnerability in input [{vulnerable_input_id}].\nThe input is: {str(vulnerable_inputs[vulnerable_input_id])}"
-                result_str = "The primary rule that you must follow to prevent DOM XSS is: sanitize all untrusted data, even if it is only used in client-side scripts. If you have to use user input on your page, always use it in the text context, never as HTML tags or any other potential code.\nAvoid dangerous methods and instead use safer functions.\nCheck if sources are directly related to sinks and if so prevent them from accessing each other.\nFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html"
-                res = Data.PageResult(page, problem_str, result_str)
+                script = get_script_by_id(page.content, script_index)
+                if script is None:
+                    continue
+                problem_str = f"Found a quite possibly vulnerable script to DOM based XSS (Script Index [{script_index}]).\n" \
+                                f"\tThe script is: {str(script)}\n"
+                result_str = "The primary rule that you must follow to prevent DOM XSS is: sanitize all untrusted data, even if it is only used in client-side scripts.\n" \
+                                 "\tIf you have to use user input on your page, always use it in the text context, never as HTML tags or any other potential code.\n" \
+                                 "\tAvoid dangerous methods and instead use safer functions.\n" \
+                                 "\tCheck if sources are directly related to sinks and if so prevent them from accessing each other.\n" \
+                                 "\tFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html\n"                res = Data.PageResult(page, problem_str, result_str)
                 dom_xss_results.page_results.append(res)
 
     data.mutex.acquire()
@@ -69,10 +80,59 @@ def check(data: Data.Data):
     data.mutex.release()
 
 
+def analyse_javascript(javascript_code:str) -> bool:
+    """[summary]
+    This function looks for sinks and sources within the javascript included code.
+    If it finds both at least one source and at least one sink it will return true.
+    Args:
+        javascript_code (str): The source javascript page code.
+
+    Returns:
+        bool: is the javascript source code possibly vulnerable (yes/no).
+    """
+    match_sources_in_code = regex.finditer(SOURCES_RE, javascript_code)
+    match_sinks_in_code = regex.finditer(SINKS_RE, javascript_code)
+
+    sources = []
+    # Look for sources in code.
+    for match in match_sources_in_code:
+        match_groups = tuple(group for group in match.groups() if group is not None)
+        sources.append(match_groups)
+    # Look for sinks in code.
+    sinks = []
+    for match in match_sinks_in_code:
+        match_groups = tuple(group for group in match.groups() if group is not None)
+        sinks.append(match_groups)
+    
+    sources = list(set(sources))
+    sinks = list(set(sinks))
+
+    if len(sinks) > 0 and len(sources) > 0:
+        return True
+    return False
+
+
 def get_scripts(html: str, src: bool = False) -> list:
     soup_obj = soup.BeautifulSoup(html, "html.parser")
     source_scripts = soup_obj.find_all("script", src=src)
     return list(enumerate(source_scripts))
+
+
+def find_script_by_src(html: str, page_url:str) -> soup.Tag:
+    soup_obj = soup.BeautifulSoup(html, "html.parser")
+    def script_filter(tag, page_url:str) -> bool:
+        return tag.name == "script" and tag.has_attr("src") and page_url.endswith(tag["src"])
+    script = soup_obj.find(script_filter, page_url)
+    return script
+
+
+def get_script_by_id(source_html:str, script_id:int) -> soup.Tag:
+    soup_obj = soup.BeautifulSoup(source_html, "html.parser")
+    all_scripts = soup_obj.find_all("script")
+    if script_id > -1 and script_id < len(all_scripts):
+        return all_scripts[script_id]
+    else:
+        return None
 
 
 def determine_possible_vulns(source_html: str) -> dict:
@@ -83,7 +143,7 @@ def determine_possible_vulns(source_html: str) -> dict:
         source_html (str): The source html of the web page to analyze.
 
     Returns:
-        dict: a dictionary containing the scripts that have scripts and sink amount as values and the script indexes as keys.
+        dict: a dictionary containing the scripts that has a tuple of sink patterns and their amount as values and the script indexes as keys.
     """
 
     # Fetch all source script tags from page html.
@@ -107,59 +167,6 @@ def determine_possible_vulns(source_html: str) -> dict:
             sinks[script_index] = (sink_patterns, len(sink_patterns))
 
     return sinks
-
-
-def check_forms(page_url: str, source_html: str) -> dict:
-    """
-    This is a function to check every form input for possible xss vulnerability.
-    A web browser checks for an alert and if it finds one it is vulnerable!
-    Args:
-        @param page_url (str): The url of the page to be checked. format should be "http://pageto.check:<optional port>/<required dirctories>/"
-        @param source_html (str): The source html of the page to be checked.
-
-    Returns:
-        dict: A dictionary of all vulnerable inputs and their ids, id for key and `soup.element.Tag` as value.
-    """
-    # Create a chrome web driver.
-    options = webdriver.ChromeOptions()
-    options.add_argument("--log-level=3")
-    options.add_argument("headless")
-    options.add_experimental_option("excludeSwitches", ["enable-logging"])
-    browser = webdriver.Chrome(options=options)
-
-    # Find forms in html.
-    soup_obj = soup.BeautifulSoup(source_html, "html.parser")
-    all_forms = soup_obj.find_all("form")
-
-    # A dictionary containing all the results from our check.
-    vulnerable_inputs = {}
-    index = 0
-
-    for form in all_forms:
-        for input in list(set(form.find_all("input", type="text"))):
-            input_id = index
-            index += 1
-            # Check each known xss string against input (more can be added if needed).
-            for xss in XSS_STRINGS:
-                if input_id in vulnerable_inputs.keys():
-                    break
-                # Generate url with correct url parameters.
-                url = f"{page_url}{form.get('action')}?{input.get('id')}={xss}"
-                # Get page with infected url.
-                browser.get(url)
-                try:
-                    # Check for alert.
-                    alert = browser.switch_to.alert
-                    alert.accept()
-
-                    # Add to vulnerable inputs list.
-                    if input_id not in vulnerable_inputs.keys():
-                        vulnerable_inputs[input_id] = input
-                    else:
-                        continue
-                except:
-                    pass  # No alert and therefor not vulnerable.
-    return vulnerable_inputs
 
 
 def find_input_fields(html: str) -> tuple:
