@@ -38,12 +38,14 @@ class Data:
 
 
 class Page:
-    def __init__(self, url, status, mime_type, content, parent: Data.Page = None):
+    def __init__(
+        self, url: str, status: int, mime_type: str, content: str, parent=None
+    ):
         self.url = url
         self.status = status
         self.type = mime_type
         self.content = content
-        self.parent = parent
+        self.parent = Page(parent)
 
     def __str__(self):
         return (
@@ -56,15 +58,26 @@ class Page:
 
 
 class SessionPage(Page):
-    def __init__(self, url, status, mime_type, content, cookies, login: set):
-        super(SessionPage, self).__init__(url, status, mime_type, content)
+    def __init__(
+        self,
+        url: str,
+        status: int,
+        mime_type: str,
+        content: str,
+        cookies,
+        login: set,
+        parent=None,
+    ):
+        super(SessionPage, self).__init__(url, status, mime_type, content, parent)
         self.cookies = cookies
         self.login = login  # The page which the session started from
 
 
 class PageResult(Page):
     def __init__(self, page: Page, problem: str, solution: str):
-        super(PageResult, self).__init__(page.url, page.status, page.type, page.content)
+        super(PageResult, self).__init__(
+            page.url, page.status, page.type, page.content, page.parent
+        )
         self.problem = problem  # String of problems that were found
         self.solution = solution  # A solution in case of problems
 
