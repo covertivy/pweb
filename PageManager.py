@@ -52,7 +52,7 @@ def get_links(links: list, url: str) -> list:
     return valid_links
 
 
-def get_login_form(data: Data, url: str) -> (dict, requests.Session):
+def get_login_form(data: Data, url: str) -> set(dict, requests.Session):
     """
     Function gets the login form of the page
     @param data: The data object of the program
