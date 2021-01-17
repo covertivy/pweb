@@ -362,10 +362,10 @@ def logic(data: Data):
         + "Scraping pages:"
         + COLOR_MANAGER.ENDC)
     # Block pages
-    if data.block:
+    if data.blacklist:
         try:
             global black_list
-            file = open("blacklist.txt", "r")
+            file = open(data.blacklist, "r")
             black_list = file.read()
             file.close()
             black_list = [word.replace(" ", "") for word in black_list.split(",")]
