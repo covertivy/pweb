@@ -90,12 +90,10 @@ def main():
             get_data()
         )  # Get data through flag manager, address manager and page manager.
         if type(data.port) is not int:
-            # If the user asked for ports scan (-P) there is no need to continue the run
+            # If the user asked for ports scan (-P) there is no need to continue the run.
             exit()
         print_data(data)
-        PageManager.logic(data)  # Get all pages from website
-        for page in data.pages:
-            print(page)
+        PageManager.logic(data)  # Get all pages from website.
         PluginManager.generate_check_device()  # Generate Check Device in our directory.
         VulnerabilityManager.logic(data)
         print(COLOR_MANAGER.ENDC)

@@ -90,12 +90,22 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "-b",
-        "--black_list",
+        "--blacklist",
         type=str,
         default=None,
-        help="Specify a black list of words that may be found in a page's URL, "
+        help="Specify a blacklist of words that may be found in a page's URL, "
         " if the word is in the page url, the page is blocked. blacklist must be a `.txt` file.",
-        dest="block",
+        dest="blacklist",
+    )
+    parser.add_argument(
+        "-w",
+        "--whitelist",
+        type=str,
+        default=None,
+        help="Specify a whitelist of words that may be found in a page's URL, "
+        " if the word is in the page url, the page is will be saved, otherwise we ignore the page,"
+        " whitelist must be a `.txt` file.",
+        dest="whitelist",
     )
     parser.add_argument(
         "-A",
@@ -166,6 +176,15 @@ def get_final_args(args) -> Data:
                         "Invalid port number, using default port 80."
                     )
                     output_obj.port = 80
+
+            # No url port, check if port flag specified.
+            elif args.port > 0 or args.port < 65536:
+                output_obj.port = args.port
+            else:
+                # No valid port was specified.
+                COLOR_MANAGER.print_error("Invalid port number, using default port 80.")
+                output_obj.port = 80
+
         # Check if flag port is in valid range.
         elif args.port > 0 or args.port < 65536:
             output_obj.port = args.port
@@ -195,13 +214,22 @@ def get_final_args(args) -> Data:
         output_obj.output = args.output
 
     # Set blacklist file path
-    if args.block is not None:
-        if args.block.endswith(".txt"):
-            output_obj.blacklist = args.block
+    if args.blacklist is not None:
+        if args.blacklist.endswith(".txt"):
+            output_obj.blacklist = args.blacklist
         else:
-            output_obj.blacklist = args.block + ".txt"
+            output_obj.blacklist = args.blacklist + ".txt"
     else:
-        output_obj.blacklist = args.block
+        output_obj.blacklist = args.blacklist
+
+    # Set whitelist file path
+    if args.whitelist is not None:
+        if args.whitelist.endswith(".txt"):
+            output_obj.whitelist = args.whitelist
+        else:
+            output_obj.whitelist = args.whitelist + ".txt"
+    else:
+        output_obj.whitelist = args.whitelist
 
     # Set recursive flag
     output_obj.recursive = args.recursive

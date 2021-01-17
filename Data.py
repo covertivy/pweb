@@ -14,6 +14,7 @@ class Data:
         self.recursive = False
         self.verbose = True
         self.blacklist = None
+        self.whitelist = None
         self.agreement = False
         self.pages = list()  # Pages
         self.results = list()  # Vulnerabilities results
@@ -31,7 +32,8 @@ class Data:
             f"RECURSIVE: {self.recursive}\n"
             f"VERBOSE: {self.verbose}\n"
             f"AGREEMENT: {self.agreement}\n"
-            f"BLACKLIST: {self.blacklist}"
+            f"BLACKLIST: {self.blacklist}\n"
+            f"WHITELIST: {self.whitelist}"
         )
 
 
