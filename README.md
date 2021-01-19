@@ -1,6 +1,26 @@
 # PWEB
-<img src="https://cdn.discordapp.com/attachments/742134324786102382/745359388608430221/hollow.png"  width="320" height="320" align=center>
 
+<p align="center">
+  <a href="https://github.com/ottomated/CrewLink">
+    <img src="https://cdn.discordapp.com/attachments/742134324786102382/745359388608430221/hollow.png" alt="Logo" width="320" height="320">
+  </a>
+</p>
+
+<!-- TABLE OF CONTENTS -->
+## Table of Contents
+
+* [About](#about)
+* [Installation](#installation)
+* [Usage](#usage)
+  * [Flags, Usage and Description](#flags-usage-and-description)
+  * [Flag Aliases](#flag-aliases)
+* [Installation](#installation-and-setup)
+* [Plugins and Config](#plugins-and-config)
+  * [The Config File](#the-config-file)
+  * [Creating Plugins](#creating-plugins)
+
+
+## About
 **Created by Raz Kissos and Dror Weiss**
 
 This is a tool for pentesting web security flaws in sites and web servers.  
@@ -9,7 +29,8 @@ is a plugin and so you can create you own test scripts and add them as plugins.
 >**NOTE:** The website must be on your `local network` which means no more than one jump from you to your target (on the same subnet) to ensure it is used for ethical causes only.
 
 
-# Usage
+## Usage
+### Flags, Usage and Description:
 | FLag  |  Description  |  Foramt |  Usage  | 
 |:-----:|:--------------|:--------|:--------|
 | **-i** | Specify an `ip address` to be scanned for http ports.| python MainCore.py -i \<ip address\> | python MainCore.py -i 192.168.52.101 |
@@ -35,7 +56,34 @@ is a plugin and so you can create you own test scripts and add them as plugins.
 | **-w** | --whitelist  |
 | **-A** | --aggressive |
 
-# Plugins And Config
+## Installation And Setup
+The pweb tool was found compatible and was tested with both `debian` and `windows` machines.  
+Here is the installation guide for both:
+
+1. First, `clone` the repository:
+```sh
+git clone "https://gitlab.com/sparroweiss/Kineret-206-pweb.git"
+```
+
+2. After cloning step into the main folder, Go to the `config` file and make sure the selected plugins are the plugins you wish to use.
+<img src="https://cdn.discordapp.com/attachments/742134324786102382/801147487263260672/unknown.png">
+> NOTE: you can learn more about this by reading below or clicking [this link](#plugins-and-config).
+
+3. When you have selected all you plugins you should make sure python3 is installed: [python](https://www.python.org/downloads/)
+
+4. After installing python use the pip command and give it the `requirements.txt` file included with the repository:
+```sh
+python pip install -r requirements.txt
+```
+> NOTE: make sure you are doing this in the main folder to ensure you are specifying the correct requirements.txt file path. Please also note that in some linux distributions `python` would be replaced with `python3`, please make sure to check which one is correct for you.
+
+5. After all required modules have been installed you can finally use the tool by typing:
+```sh
+python MainCore.py <flags and parameters>
+```
+> NOTE: we still have not implemented a whay to globalize the tool, this will be coming soon. In the meantime make sure you are using this tool from it's directory only to prevent errors. To learn about the usage and the flags [click here](#usage).
+
+## Plugins And Config
 ### The Config File:
 Our tool operates on a plugin based system, each check script is a plugin that is being fetched from the `pluginconfig.ini` file.  
 The config file is formatted in a very specific manner, each of the attributes can be modified in the `PluginManager.py` file (category name, paths variable name, etc...)
