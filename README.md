@@ -66,7 +66,8 @@ git clone "https://gitlab.com/sparroweiss/Kineret-206-pweb.git"
 ```
 
 2. After cloning step into the main folder, Go to the `config` file and make sure the selected plugins are the plugins you wish to use.
-<img src="https://cdn.discordapp.com/attachments/742134324786102382/801147487263260672/unknown.png">
+<img src="https://cdn.discordapp.com/attachments/742134324786102382/801147487263260672/unknown.png">  
+
 > NOTE: you can learn more about this by reading below or clicking [this link](#plugins-and-config).
 
 3. When you have selected all you plugins you should make sure python3 is installed: [python](https://www.python.org/downloads/)
