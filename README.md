@@ -21,8 +21,19 @@ is a plugin and so you can create you own test scripts and add them as plugins.
 | **-R** | Specify if the scan will be `recursive` or not, if not selected the <br/>scan will find all accessible pages from within the first page <br/>specified and then stops. (This may cause the run to take a lot <br/>of time depending on the size of your website). | python MainCore.py -u \<url address\> -R | python MainCore.py -u "http://192.168.52.101" -R |
 | **-V** | `Verbose flag`, if specified the tool will not display it's banner and startup information. |  python MainCore.py -u \<url address\> -V |  python MainCore.py -u "http://192.168.52.101" -V|
 | **-b** | Specify if blacklist should be used to prevent specific <br/> pages from being scanned (blacklist type must be `.txt`). | python MainCore.py -i \<ip address\> -b \<blacklist path\> | python MainCore.py -i 192.168.52.101 -b ./myblacklist.txt |
+| **-w** | Specify if whitelist should be used to prevent specific <br/> pages from being scanned (whitelist type must be `.txt`). | python MainCore.py -i \<ip address\> -w \<whitelist path\> | python MainCore.py -i 192.168.52.101 -w ./mywhitelist.txt |
 | **-o** | Specify an `xml output file` to which the data from the scan <br/>will be dumped to in xml format. if file does not exist the <br/>tool will create it and if the file already exists the tool will override the data in the file. | python MainCore.py -i \<ip address\> -o \<output file path\> | python MainCore.py -i 192.168.52.101 -o ./pweb_output.xml |
 | **-A** | The user agrees to allow the tool to use potentially agressive <br/> functions to recognize breaches in security. (some functions<br/> may not work without this being activated). | python MainCore.py -i \<ip address\> -A | python MainCore.py -i 192.168.52.101 -A |
+
+### Flag Aliases:
+| Flag   | Aliases      |
+|:------:|:-------------|
+| **-P** | --all_ports  |
+| **-R** | --recursive  |
+| **-V** | --verbose    |
+| **-b** | --blacklist  |
+| **-w** | --whitelist  |
+| **-A** | --aggressive |
 
 # Plugins And Config
 ### The Config File:
