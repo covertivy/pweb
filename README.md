@@ -24,3 +24,55 @@ is a plugin and so you can create you own test scripts and add them as plugins.
 | **-o** | Specify an `xml output file` to which the data from the scan <br/>will be dumped to in xml format. if file does not exist the <br/>tool will create it and if the file already exists the tool will override the data in the file. | python MainCore.py -i \<ip address\> -o \<output file path\> | python MainCore.py -i 192.168.52.101 -o ./pweb_output.xml |
 | **-A** | The user agrees to allow the tool to use potentially agressive <br/> functions to recognize breaches in security. (some functions<br/> may not work without this being activated). | python MainCore.py -i \<ip address\> -A | python MainCore.py -i 192.168.52.101 -A |
 
+# Plugins And Config
+### The Config File:
+Our tool operates on a plugin based system, each check script is a plugin that is being fetched from the `pluginconfig.ini` file.  
+The config file is formatted in a very specific manner, each of the attributes can be modified in the `PluginManager.py` file (category name, paths variable name, etc...)
+```ini
+# Category name is defaulted to `plugins` so make sure to name it accordingly.
+[plugins]
+# To add or remove plugins simply add/remove the path of the desired file and
+# the comma after it, the last path does not require a comma after it.
+
+# It should look something like this:
+# paths = ./plugins/domxss.py,
+#         ./plugins/server_security_check.py,
+#         ./plugins/sql.py
+# IMPORTANT: DO NOT FORGET THE `./` in the beginning of the file path!
+
+# Non of the plugins are mandatory!
+# Make sure to align them nicely so we all have a nice day :)
+
+# Plugin paths variable name is default `paths` so make sure to name it accordingly.
+paths = <plugin paths as described in comments>
+
+# This file is used by the `PluginManager.py` file, to make any changes you should probably go over it.
+```
+> You can create your own plugins if you wish. Read below for more inforamtion or [click on this link](### Creating Plugins:).
+
+### Creating Plugins:
+You can create your own plugins if you wish, each plugin follows the same principals, all of the have a `check` function which receivs a `Data` object.  
+```python
+import Data
+from colors import COLOR_MANAGER
+
+COLOR = COLOR_MANAGER.RED
+# This is an example of a domxss plugin:
+
+def check(data: Data.Data):
+    dom_xss_results = Data.CheckResults("DOMXSS", COLOR)
+    
+    # Use mutexes to avoid race conditions.
+    data.mutex.acquire()
+    pages = data.pages # get pages of the site.
+    data.mutex.release()
+
+    #
+    #   ADD RESULTS TO OUR `CheckResults` OBJECT.
+    #
+
+    # Save results to the data object.
+    data.mutex.acquire()
+    data.results.append(dom_xss_results)
+    data.mutex.release()
+```
