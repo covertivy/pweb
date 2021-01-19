@@ -48,7 +48,7 @@ paths = <plugin paths as described in comments>
 
 # This file is used by the `PluginManager.py` file, to make any changes you should probably go over it.
 ```
-> You can create your own plugins if you wish. Read below for more inforamtion or [click on this link](### Creating Plugins:).
+> You can create your own plugins if you wish. Read below for more inforamtion or [click on this link](#creating-plugins).
 
 ### Creating Plugins:
 You can create your own plugins if you wish, each plugin follows the same principals, all of the have a `check` function which receivs a `Data` object.  
