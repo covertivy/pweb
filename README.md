@@ -82,7 +82,7 @@ python pip install -r requirements.txt
 ```sh
 python MainCore.py <flags and parameters>
 ```
-> NOTE: we still have not implemented a whay to globalize the tool, this will be coming soon. In the meantime make sure you are using this tool from it's directory only to prevent errors. To learn about the usage and the flags [click here](#usage).
+> NOTE: we still have not implemented a way to globalize the tool, this will be coming soon. In the meantime make sure you are using this tool from it's directory only to prevent errors. To learn about the usage and the flags [click here](#usage).
 
 ## Plugins And Config
 ### The Config File:
