@@ -10,8 +10,12 @@ COLOR = COLOR_MANAGER.rgb(255, 0, 100)
 # The regex strings used to find all dom-xss sources.
 SOURCES_RE = """(location\s*[\[.])|([.\[]\s*["']?\s*(arguments|dialogArguments|innerHTML|write(ln)?|open(Dialog)?|showModalDialog|cookie|URL|documentURI|baseURI|referrer|name|opener|parent|top|content|self|frames)\W)|(localStorage|sessionStorage|Database)|\s*URLSearchParams[\(.]|\s*[.]*(getElementById|getElementByName|getElementByClassName)\("""
 # The regex string used to find all dom-xss sinks.
-SINKS_RE = """((src|href|data|location|code|value|action)\s*["'\]]*\s*\+?\s*=)|((replace|assign|navigate|getsource_htmlHeader|open(Dialog)?|showModalDialog|eval|evaluate|execCommand|execScript|setTimeout|setInterval)\s*["'\]]*\s*\()"""
-
+SINKS_RE = """(document\.((write|writeln)\(|(domain\s*=))+)|.(innerHTML|outerHTML|insertAdjacentHTML|onevent)\s*=|((src|href|data|location|code|value|action)\s*["'\]]*\s*\+?\s*=)|((replace|assign|navigate|getsource_htmlHeader|open(Dialog)?|showModalDialog|eval|evaluate|execCommand|execScript|setTimeout|setInterval)\s*["'\]]*\s*\()"""
+RESULT_STR = "The primary rule that you must follow to prevent DOM XSS is: sanitize all untrusted data, even if it is only used in client-side scripts.\n" \
+                "\t\t\tIf you have to use user input on your page, always use it in the text context, never as HTML tags or any other potential code.\n" \
+                "\t\t\tAvoid dangerous methods and instead use safer functions.\n" \
+                "\t\t\tCheck if sources are directly related to sinks and if so prevent them from accessing each other.\n" \
+                "\t\t\tFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html\n"
 XSS_STRINGS = [
     "<script>alert(1);</script>",
     "><script>alert(1);</script>",
@@ -38,41 +42,51 @@ def check(data: Data.Data):
                 # Look for sources and sinks in javascript source code.
                 if analyse_javascript(page.content):
                     problem_str = f"Found javascript code that is quite possibly vulnerable to DOM based XSS:\n" \
-                                  f"\tThe Line is: {find_script_by_src(page.parent.content, page.url)}\n" \
-                                  f"\tFrom page {page.parent.url}\n"
-                    result_str = "The primary rule that you must follow to prevent DOM XSS is: sanitize all untrusted data, even if it is only used in client-side scripts.\n" \
-                                 "\tIf you have to use user input on your page, always use it in the text context, never as HTML tags or any other potential code.\n" \
-                                 "\tAvoid dangerous methods and instead use safer functions.\n" \
-                                 "\tCheck if sources are directly related to sinks and if so prevent them from accessing each other.\n" \
-                                 "\tFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html\n"
-                    res = Data.PageResult(page.parent, problem_str, result_str)
+                                  f"\t\t\tThe Line is: {find_script_by_src(page.parent.content, page.url)}\n" \
+                                  f"\t\t\tFrom page {page.parent.url}\n"
+                    
+                    res = Data.PageResult(page.parent, problem_str, RESULT_STR)
                     dom_xss_results.page_results.append(res)
             else:
                  continue  # Ignore non javascript pages.       
 
         possible_vulns = {}
-        very_vulnerable = {}
-
+        vulnerable_dom_scripts = {}
+        vulnerable_input_scripts = {}
         try:
             possible_vulns = determine_possible_vulns(page.content)
-            very_vulnerable = further_analyse(
+            vulnerable_dom_scripts, vulnerable_input_scripts = further_analyse(
                 possible_vulns, find_input_fields(page.content)
             )
-        except:
-            pass
-        if len(very_vulnerable.keys()) > 0:
+        except Exception as e:
+            pass # No vulnerability was found.
 
-            for script_index in possible_vulns.keys():
-                script = get_script_by_id(page.content, script_index)
-                if script is None:
+        if len(vulnerable_dom_scripts.keys()) > 0:
+            for script_index in vulnerable_dom_scripts.keys():
+                script_tuple = vulnerable_dom_scripts.get(script_index, None)
+                if script_tuple is None:
                     continue
                 problem_str = f"Found a quite possibly vulnerable script to DOM based XSS (Script Index [{script_index}]).\n" \
-                                f"\tThe script is: {str(script)}\n"
-                result_str = "The primary rule that you must follow to prevent DOM XSS is: sanitize all untrusted data, even if it is only used in client-side scripts.\n" \
-                                 "\tIf you have to use user input on your page, always use it in the text context, never as HTML tags or any other potential code.\n" \
-                                 "\tAvoid dangerous methods and instead use safer functions.\n" \
-                                 "\tCheck if sources are directly related to sinks and if so prevent them from accessing each other.\n" \
-                                 "\tFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html\n"                res = Data.PageResult(page, problem_str, result_str)
+                                f"\t\t\tThe script is: {str(script_tuple[0])}\n" \
+                                f"\t\t\tThe sink patterns are: {str(script_tuple[1])}\n" \
+                                f"\t\t\tThe source patterns are: {str(script_tuple[2])}\n" \
+                                f"\t\t\tDanger level is {str(script_tuple[3])}\n"
+               
+                res = Data.PageResult(page, problem_str, RESULT_STR)
+                dom_xss_results.page_results.append(res)
+
+        if len(vulnerable_input_scripts.keys()) > 0:
+            for script_index in vulnerable_input_scripts.keys():
+                script_tuple = vulnerable_input_scripts.get(script_index, None)
+                if script_tuple is None:
+                    continue
+                problem_str = f"Found a quite possibly vulnerable script to DOM based XSS (Script Index [{script_index}]).\n" \
+                                f"\t\t\tThe script is: {str(script_tuple[0])}\n" \
+                                f"\t\t\tThe sink patterns are: {str(script_tuple[1])}\n" \
+                                f"\t\t\tThe input sources are: {str(script_tuple[2])}\n" \
+                                f"\t\t\tDanger level is {str(script_tuple[3])}\n"
+               
+                res = Data.PageResult(page, problem_str, RESULT_STR)
                 dom_xss_results.page_results.append(res)
 
     data.mutex.acquire()
@@ -90,8 +104,8 @@ def analyse_javascript(javascript_code:str) -> bool:
     Returns:
         bool: is the javascript source code possibly vulnerable (yes/no).
     """
-    match_sources_in_code = regex.finditer(SOURCES_RE, javascript_code)
-    match_sinks_in_code = regex.finditer(SINKS_RE, javascript_code)
+    match_sources_in_code = regex.finditer(SOURCES_RE, javascript_code, regex.IGNORECASE)
+    match_sinks_in_code = regex.finditer(SINKS_RE, javascript_code, regex.IGNORECASE)
 
     sources = []
     # Look for sources in code.
@@ -120,10 +134,10 @@ def get_scripts(html: str, src: bool = False) -> list:
 
 def find_script_by_src(html: str, page_url:str) -> soup.Tag:
     soup_obj = soup.BeautifulSoup(html, "html.parser")
-    def script_filter(tag, page_url:str) -> bool:
+    def script_filter(tag) -> bool:
         return tag.name == "script" and tag.has_attr("src") and page_url.endswith(tag["src"])
-    script = soup_obj.find(script_filter, page_url)
-    return script
+    scripts = soup_obj.find_all(script_filter, limit=1)
+    return scripts[0]
 
 
 def get_script_by_id(source_html:str, script_id:int) -> soup.Tag:
@@ -153,7 +167,7 @@ def determine_possible_vulns(source_html: str) -> dict:
     for script_index, script in all_scripts:
         sink_patterns = []
 
-        regex_sink_matches = regex.finditer(SINKS_RE, str(script))
+        regex_sink_matches = regex.finditer(SINKS_RE, str(script), regex.IGNORECASE)
 
         # Look for sinks in script.
         for match in regex_sink_matches:
@@ -164,7 +178,7 @@ def determine_possible_vulns(source_html: str) -> dict:
         sink_patterns = list(set(sink_patterns))
 
         if len(sink_patterns) > 0:
-            sinks[script_index] = (sink_patterns, len(sink_patterns))
+            sinks[script_index] = (script, sink_patterns)
 
     return sinks
 
@@ -222,8 +236,8 @@ def find_input_fields(html: str) -> tuple:
     # [2]: a list all inputs in the web page.
     return (
         len(all_inputs) > 0,
-        form_inputs,
         all_inputs,
+        form_inputs
     )
 
 
@@ -241,10 +255,10 @@ def check_form_inputs(form_inputs: list, suspicious_scripts: dict) -> dict:
         dict: The dictionary of possibly very vulnerable scripts and their danger rating.
     """
     very_vulnerable = {}
-
     for script_index in suspicious_scripts.keys():
         script_str = suspicious_scripts[script_index][0]
         vuln_raises = 0
+        vulnerable_inputs = []
 
         if "FormData" in script_str:
             vuln_raises += script_str.count("FormData")
@@ -261,6 +275,7 @@ def check_form_inputs(form_inputs: list, suspicious_scripts: dict) -> dict:
                     or f"getElementById('{form_object['id']}').value" in script_str
                 ):
                     vuln_raises += 1
+                    vulnerable_inputs.append(form_input)
             if (
                 form_object.get("name") is not None
                 and form_object.get("name") in script_str
@@ -270,6 +285,7 @@ def check_form_inputs(form_inputs: list, suspicious_scripts: dict) -> dict:
                     or f"getElementsByName('{form_object['name']}')" in script_str
                 ):
                     vuln_raises += 1
+                    vulnerable_inputs.append(form_input)
             if (
                 form_object.get("class") is not None
                 and form_object.get("class") in script_str
@@ -279,10 +295,14 @@ def check_form_inputs(form_inputs: list, suspicious_scripts: dict) -> dict:
                     or f"getElementsByClassName('{form_object['class']}')" in script_str
                 ):
                     vuln_raises += 1
+                    vulnerable_inputs.append(form_input)
+
         if vuln_raises > 0:
             very_vulnerable[script_index] = (
-                suspicious_scripts[script_index],
-                vuln_raises,
+                suspicious_scripts[script_index][0], # Script string.
+                suspicious_scripts[script_index][1], # Script sinks.
+                vulnerable_inputs, # Script form input sources.
+                vuln_raises + len(suspicious_scripts[script_index][1]) # Script "danger" level.
             )
 
     return very_vulnerable
@@ -304,6 +324,7 @@ def check_all_inputs(all_inputs: list, suspicious_scripts: dict) -> dict:
     very_vulnerable = {}
     for script_index in suspicious_scripts.keys():
         vuln_raises = 0
+        vulnerable_inputs = []
         for input_tag in all_inputs:
             script_str = str(suspicious_scripts[script_index][0])
 
@@ -313,6 +334,7 @@ def check_all_inputs(all_inputs: list, suspicious_scripts: dict) -> dict:
                     or f"getElementById('{input_tag['id']}').value" in script_str
                 ):
                     vuln_raises += 1
+                    vulnerable_inputs.append(input_tag)
             if (
                 input_tag.get("name") is not None
                 and input_tag.get("name") in script_str
@@ -322,6 +344,7 @@ def check_all_inputs(all_inputs: list, suspicious_scripts: dict) -> dict:
                     or f"getElementsByName('{input_tag['name']}')" in script_str
                 ):
                     vuln_raises += 1
+                    vulnerable_inputs.append(input_tag)
             if (
                 input_tag.get("class") is not None
                 and input_tag.get("class") in script_str
@@ -331,11 +354,14 @@ def check_all_inputs(all_inputs: list, suspicious_scripts: dict) -> dict:
                     or f"getElementsByClassName('{input_tag['class']}')" in script_str
                 ):
                     vuln_raises += 1
+                    vulnerable_inputs.append(input_tag)
 
-        if raises > 0:
+        if vuln_raises > 0:
             very_vulnerable[script_index] = (
-                suspicious_scripts[script_index],
-                vuln_raises,
+                suspicious_scripts[script_index][0], # Script string.
+                suspicious_scripts[script_index][1], # Script sinks.
+                vulnerable_inputs, # Script input sources.
+                vuln_raises + len(suspicious_scripts[script_index][1]) # Script "danger" level.
             )
 
     return very_vulnerable
@@ -348,7 +374,8 @@ def further_analyse(suspicious_scripts: dict, input_sources: tuple) -> dict:
     If so, they are way more likely to be vulnerable!
 
     Args:
-        suspicious_scripts (dict): A dictionary containing all scripts that contain sources and/or sinks.
+        suspicious_scripts (dict): A dictionary containing all scripts that contain sinks.
+                { script_index :  (script_string, regex_sink_patterns), ... }
         input_sources (tuple): The returned tuple from `find_input_fields` function,
             containing various input fields to check individually.
 
@@ -367,10 +394,11 @@ def further_analyse(suspicious_scripts: dict, input_sources: tuple) -> dict:
     elif len(input_sources) != 3:
         raise ValueError("Input sources were given in wrong format!")
 
-    dom_sources = {}
+    # Find all vulnerable scripts to dom xss sources and sinks.
+    vulnerable_scripts = {}
     for script_index in suspicious_scripts.keys():
         regex_source_matches = regex.finditer(
-            SOURCES_RE, str(suspicious_scripts[script_index])
+            SOURCES_RE, str(suspicious_scripts[script_index][0]), regex.IGNORECASE
         )
         # Look for dom_sources in script.
         source_patterns = []
@@ -382,53 +410,53 @@ def further_analyse(suspicious_scripts: dict, input_sources: tuple) -> dict:
         source_patterns = list(set(source_patterns))
 
         if len(source_patterns) > 0:
-            dom_sources[script_index] = (source_patterns, len(regex_source_matches))
+            vulnerable_scripts[script_index] = (suspicious_scripts[script_index][0],suspicious_scripts[script_index][1] , source_patterns)
 
+
+    # Check if there are input fields that might be sources.
     are_there_inputs, form_inputs, all_inputs = input_sources
-    if (
-        not are_there_inputs and len(dom_sources.keys()) == 0
-    ):  # No input sources in html.
-        raise ValueError("There are no input sources in the given page!")
-
+    
     form_scripts = None
-    if len(form_inputs) > 0:
-        form_scripts = check_form_inputs(form_inputs, suspicious_scripts)
-    general_scripts = check_all_inputs(all_inputs, suspicious_scripts)
+    final_input_scripts = {}
+    final_source_sink_scripts = {}
+    if are_there_inputs:
+        if len(form_inputs) > 0:
+            form_scripts = check_form_inputs(form_inputs, suspicious_scripts) # Scripts that access form data.
+        input_scripts = check_all_inputs(all_inputs, suspicious_scripts) # Scripts that access input field data.
 
-    final_scripts = {}
+        for script_index in input_scripts.keys():
+            if script_index not in final_input_scripts.keys():
+                final_input_scripts[script_index] = (
+                    input_scripts[script_index][0], # Script string.
+                    input_scripts[script_index][1], # Script sink patterns.
+                    input_scripts[script_index][2], # Script vulnerable input fields.
+                    input_scripts[script_index][3]  # Total "danger" value.
+                )
 
-    for script_index in dom_sources.keys():
-        if script_index not in final_scripts.keys():
-            print(
-                f"Adding vulnerable script to final_scripts!\n{suspicious_scripts[script_index]}"
+        if form_scripts is not None:
+            for script_index in form_scripts.keys():
+                if script_index not in final_input_scripts.keys():
+                    final_input_scripts[script_index] = {
+                        form_scripts[script_index][0], # Script string.
+                        form_scripts[script_index][1], # Script sink patterns.
+                        form_scripts[script_index][2], # Script vulnerable input fields.
+                        form_scripts[script_index][3]  # Total "danger" value.
+                    }
+                else:
+                    final_input_scripts[script_index] = (
+                        final_input_scripts[script_index][0], # Script string.
+                        final_input_scripts[script_index][1], # Script sink patterns.
+                        final_input_scripts[script_index][2] + form_scripts[script_index][2], # Script vulnerable input fields.
+                        final_input_scripts[script_index][3] + form_scripts[script_index][3] - len(final_input_scripts[script_index][1])  # Total "danger" value.
+                    )
+
+    for script_index in vulnerable_scripts.keys():
+        if script_index not in final_source_sink_scripts.keys():
+            final_source_sink_scripts[script_index] = (
+                vulnerable_scripts[script_index][0], # Script string.
+                vulnerable_scripts[script_index][1], # Script sink patterns.
+                vulnerable_scripts[script_index][2], # Script source patterns.
+                len(vulnerable_scripts[script_index][1]) + len(vulnerable_scripts[script_index][2]) # Total "danger" value.
             )
-            final_scripts[script_index] = dom_sources[script_index]
-        else:
-            final_scripts[script_index] = (
-                final_scripts[script_index][0],
-                final_scripts[script_index][1] + dom_sources[script_index][1],
-            )
 
-    if len(general_scripts.keys()) == 0:
-        return final_scripts
-    for script_index in general_scripts.keys():
-        if script_index not in final_scripts.keys():
-            final_scripts[script_index] = general_scripts[script_index]
-        else:
-            final_scripts[script_index] = (
-                final_scripts[script_index][0],
-                final_scripts[script_index][1] + general_scripts[script_index][1],
-            )
-
-    if form_scripts is None:
-        return final_scripts
-    for script_index in form_scripts.keys():
-        if script_index not in final_scripts.keys():
-            final_scripts[script_index] = form_scripts[script_index]
-        else:
-            final_scripts[script_index] = (
-                final_scripts[script_index][0],
-                final_scripts[script_index][1] + form_scripts[script_index][1],
-            )
-
-    return final_scripts
+    return final_source_sink_scripts, final_input_scripts

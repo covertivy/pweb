@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "-P",
-        "--ALL_PORTS",
+        "--all_ports",
         action="store_true",
         help="Specify this flag when port isn't known and you wish to scan all ports.",
         dest="all_ports",
@@ -82,7 +82,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "-R",
-        "--Recursive",
+        "--recursive",
         action="store_true",
         help="recursive page scraper, will check all the reachable pages in the website.",
         dest="recursive",
