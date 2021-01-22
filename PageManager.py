@@ -23,6 +23,7 @@ logout = []  # List of logout URLs
 logged_out = False  # Logout flag
 current_login_page = set()  # Where the session started
 black_list = list()  # List of words that the user do not want to check
+white_list = list()  # List of words that the user only wants to check
 
 # Consts:
 PADDING = 4
@@ -37,9 +38,7 @@ def get_links(links: list, url: str) -> list:
     """
     valid_links = list()
     for link in [urljoin(url, link) for link in links]:
-        if str(link).startswith(
-            f"http://{str(url).replace('http://', '').split(':')[0].split('/')[0]}"
-        ):
+        if str(link).startswith(f"http://{str(url).replace('http://', '').split(':')[0].split('/')[0]}"):
             # Only URLs that belongs to the website
             valid_links.append(link)
     valid_links = list(set(valid_links))
@@ -57,9 +56,7 @@ def get_login_form(data: Data, url: str) -> (dict, requests.Session):
     session = requests.session()
     session.cookies = http.cookiejar.CookieJar()
     res = session.get(url)  # Opening the URL
-    forms = BeautifulSoup(res.content.decode(), "html.parser").find_all(
-        "form"
-    )  # Getting page forms
+    forms = BeautifulSoup(res.content.decode(), "html.parser").find_all("form")  # Getting page forms
     for form in forms:
         # Get the form action (requested URL)
         action = form.attrs.get("action").lower()
@@ -106,9 +103,8 @@ def get_login_form(data: Data, url: str) -> (dict, requests.Session):
     return None, None
 
 
-def submit_form(
-    form_details: dict, url: str, session: requests.Session
-) -> requests.Response:
+def submit_form(form_details: dict, url: str,
+                session: requests.Session) -> requests.Response:
     """
     Function submits the login form
     @param form_details: Dictionary of the form details
@@ -133,14 +129,8 @@ def submit_form(
     return requests.Response()
 
 
-def get_pages(
-    data: Data,
-    curr_url: str,
-    browser: webdriver.Chrome,
-    recursive=True,
-    session: requests.Session = None,
-    previous: Page = None
-):
+def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=True,
+              session: requests.Session = None, previous: Page = None):
     """
     Function gets the lists of pages to the data object
     @param data: The data object of the program
@@ -174,10 +164,8 @@ def get_pages(
                     elif p.content == res.content.decode():
                         # It redirected to a non-session page, and have the same content
                         if "logout" in curr_url:
-                            print(
-                                f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
-                                f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}"
-                            )
+                            print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
+                                  f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
                             logout.append(curr_url)
                             logged_out = True
                         return
@@ -186,10 +174,8 @@ def get_pages(
             req = requests.get(res.url)
             if req.url == res.url and "logout" in curr_url:
                 # If the URL can be reachable from non-session point the session has logged out
-                print(
-                    f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
-                    f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}"
-                )
+                print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
+                      f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
                 logged_out = True
                 logout.append(curr_url)
                 return
@@ -205,8 +191,7 @@ def get_pages(
                     res.content.decode(),
                     session.cookies,
                     current_login_page,
-                    previous
-                )
+                    previous)
                 color = COLOR_MANAGER.ORANGE
             except:
                 troublesome.append(curr_url)
@@ -220,8 +205,7 @@ def get_pages(
                 res.status_code,
                 res.headers.get("Content-Type").split(";")[0],
                 res.content.decode(),
-                previous
-            )
+                previous)
             color = COLOR_MANAGER.BLUE
         except Exception as e:
             # Couldn't open with the session
@@ -255,12 +239,16 @@ def get_pages(
             # The Redirected link is out of the website
             return
 
+    if any(word in page.url for word in black_list) or\
+            (white_list and all(word not in page.url for word in white_list)):
+        # The page has a black list word or does not have a white list word
+        return
+
     # Checking if the page was already printed
     in_list = False
     for printed_page in already_printed:
-        if printed_page.url == page.url and (
-            printed_page.content == page.content or type(printed_page) == type(page)
-        ):
+        if printed_page.url == page.url and\
+                (printed_page.content == page.content or type(printed_page) == type(page)):
             # Same URL and content or both are session
             in_list = True
     if not in_list:
@@ -279,9 +267,7 @@ def get_pages(
     # Checking if the page was already checked
     in_list = False
     for pages in data.pages:
-        if pages.url == page.url and (
-            pages.content == page.content or type(pages) == type(page)
-        ):
+        if pages.url == page.url and (pages.content == page.content or type(pages) == type(page)):
             # Same URL and content or both are session
             in_list = True
     if not in_list:
@@ -296,23 +282,15 @@ def get_pages(
         return
 
     # Getting every application script in the page.
-    links = get_links(
-        [script.get("src") for script in soup.find_all("script")], page.url
-    )
+    links = get_links([script.get("src") for script in soup.find_all("script")], page.url)
 
     # Getting every css style in the page.
-    links.extend(
-        get_links(
-            [script.get("href") for script in soup.find_all(type="text/css")], page.url
-        )
-    )
+    links.extend(get_links([script.get("href") for script in soup.find_all(type="text/css")], page.url))
 
     if recursive:
         # If the function is recursive.
         # Getting every link in the page.
-        links.extend(
-            get_links([link.get("href") for link in soup.find_all("a")], page.url)
-        )
+        links.extend(get_links([link.get("href") for link in soup.find_all("a")], page.url))
 
     for link in links:
         if logged_out or len(data.pages) == data.max_pages:
@@ -321,13 +299,16 @@ def get_pages(
             return
         if all(link != page.url for page in data.pages) or session:
             # If the page is not in the page list
-            if (
-                not any(link == checked_page.url for checked_page in already_checked)
-                and link not in troublesome
-                and all(word not in link for word in black_list)
-            ):
-                # Page was not checked
-                get_pages(data, link, browser, data.recursive, session, page)
+            if (not any(link == checked_page.url for checked_page in already_checked)
+                    and link not in troublesome
+                    and all(word not in link for word in black_list)):
+                # Page was not checked, it is not troublesome or in the black list
+                if white_list and all(word not in link for word in white_list):
+                    # If there is a white list and
+                    # the link does not have any of the listed words
+                    continue
+                else:
+                    get_pages(data, link, browser, data.recursive, session, page)
 
     if not session and data.username and data.password:
         # If not session page and there are username and password specified
@@ -356,15 +337,17 @@ def get_pages(
                         # Have the same URL
                         if content != p.content:
                             # Different content
-                            login_pages.append(
-                                (page.url, new_url, session, form_details)
-                            )
+                            login_pages.append((page.url, new_url, session, form_details))
                         break
         except Exception as e:
             pass
 
 
-def chromedriver():
+def chromedriver() -> webdriver.Chrome:
+    """
+    Function sets a browser web driver object
+    @return: chrome driver object
+    """
     driver_file = "chromedriver"
     pl = sys.platform
     # Get OS
@@ -379,8 +362,7 @@ def chromedriver():
         # Getting zip file
         print(
             f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
-            f"Downloading Chromedriver...{COLOR_MANAGER.ENDC}"
-        )
+            f"Downloading Chromedriver...{COLOR_MANAGER.ENDC}")
         try:
             # Get latest version
             version = requests.get("http://chromedriver.storage.googleapis.com/LATEST_RELEASE").text
@@ -397,14 +379,65 @@ def chromedriver():
     # There is a chromedriver in the folder
     driver_file = os.getcwd() + "\\" + driver_file  # Full path
     try:
+        print(
+            f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
+            f"Setting up the Chromedriver...{COLOR_MANAGER.ENDC}")
         options = webdriver.ChromeOptions()
-        options.add_argument("--log-level=3")
         options.add_argument("headless")
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
         browser = webdriver.Chrome(executable_path=driver_file, options=options)
         return browser
     except Exception:
         raise Exception("Setting up the web driver failed, please try again.")
+
+
+def set_lists(data: Data):
+    """
+    Function sets the black and white lists
+    @param data: The data object of the program
+    @return: None
+    """
+    global white_list  # Required pages
+    global black_list  # Block pages
+    list_of_lists = [{"file": data.blacklist, "black": True},
+                     {"file": data.whitelist, "black": False}]
+    failed = False  # failed even once
+    for dict_list in list_of_lists:
+        if dict_list["file"]:
+            try:
+                file = open(dict_list["file"], "r")
+                current_list = file.read()
+                file.close()
+            except Exception:
+                COLOR_MANAGER.print_error(f"The file {dict_list['file']} was not found", "\t")
+                failed = True
+            else:
+                try:
+                    current_list = [word for word in current_list.replace(" ", "").split(",") if len(word)]
+                    if not len(current_list):
+                        # Empty list
+                        raise Exception("a")
+                    if dict_list["black"]:
+                        black_list = current_list
+                    else:
+                        white_list = current_list
+                except Exception:
+                    failed = True
+                    COLOR_MANAGER.print_error(f"The file {dict_list['file']} is not in the"
+                                              f" format of <word1>, <word2>.", "\t")
+                else:
+                    COLOR_MANAGER.print_success(f"The file {dict_list['file']} has been"
+                                                f" added to the filtering process.", "\t")
+    if failed:
+        # At least one of the specified lists is invalid
+        COLOR_MANAGER.print_warning("The process will continue "
+                                    "without the problematic list.", "\t")
+    elif white_list and black_list:
+        # The user specified valid data for both
+        COLOR_MANAGER.print_warning("The process will filter"
+                                    " the pages only by the white list.", "\t")
+        black_list = list()  # Setting the black list to default
+    print(COLOR_MANAGER.ENDC)
 
 
 def logic(data: Data):
@@ -419,29 +452,18 @@ def logic(data: Data):
         "Javascript": COLOR_MANAGER.GREEN,
         "CSS": COLOR_MANAGER.PINK,
         "XML": COLOR_MANAGER.YELLOW,
-        "Other": COLOR_MANAGER.PURPLE,
-    }  # Dictionary of the mime-types and their color
+        "Other": COLOR_MANAGER.PURPLE}  # Dictionary of the mime-types and their color
     print(
         COLOR_MANAGER.BLUE
         + COLOR_MANAGER.HEADER
         + "Scraping pages:"
-        + COLOR_MANAGER.ENDC
-    )
-    # Block pages
-    if data.blacklist:
-        try:
-            global black_list
-            file = open(data.blacklist, "r")
-            black_list = file.read()
-            file.close()
-            black_list = [word.replace(" ", "") for word in black_list.split(",")]
-        except Exception as e:
-            COLOR_MANAGER.print_error(
-                "The file blacklist.txt was not found\n"
-                "\tOr was not in the right format <word1>,<word2>",
-                "\t")
+        + COLOR_MANAGER.ENDC)
+
+    set_lists(data)  # Setting white and black lists
+
     try:
         browser = chromedriver()  # Setting web browser driver
+        print(COLOR_MANAGER.ENDC)
     except Exception as e:
         raise Exception(e, "\t")
     try:
@@ -468,16 +490,12 @@ def logic(data: Data):
             while logged_out:
                 # Until it won't encounter a logout page
                 logged_out = False
-                get_pages(
-                    data, url, browser, session=session
-                )  # Attempting to achieve data from page
+                get_pages(data, url, browser, session=session)  # Attempting to achieve data from page
                 if logged_out:
                     # If the session has encountered a logout page
                     already_checked.clear()  # The function needs to go through all the session pages
                     data.pages = list(pages_backup)  # Restoring the pages list
-                    form_details, session = get_login_form(
-                        data, origin
-                    )  # Getting new session
+                    form_details, session = get_login_form(data, origin)  # Getting new session
                     submit_form(form_details, origin, session)  # Updating the session
                     browser.get(origin)  # Setting browser to current page
                     # Doing the loop all over again, without the logout page
@@ -498,15 +516,11 @@ def print_result(data: Data, session_pages: int):
     @param session_pages: The number of session pages
     @return: None
     """
-    print(
-        f"\n\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization:{COLOR_MANAGER.ENDC}"
-    )
+    print(f"\n\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization:{COLOR_MANAGER.ENDC}")
     print_types(data, Page)
     if session_pages != 0:
         # If there are session pages
-        print(
-            f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization:{COLOR_MANAGER.ENDC}"
-        )
+        print(f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization:{COLOR_MANAGER.ENDC}")
         print_types(data, SessionPage)
     print(COLOR_MANAGER.ENDC)
 
@@ -552,7 +566,5 @@ def print_type(mime_type: int, name: str, color: str):
     @return: None
     """
     padding = " " * (PADDING - len(str(mime_type)))
-    print(
-        f"\t\t[{color}+{COLOR_MANAGER.ENDC}]"
-        f"{color} {mime_type}{padding}{name} pages{COLOR_MANAGER.ENDC}"
-    )
+    print(f"\t\t[{color}+{COLOR_MANAGER.ENDC}]"
+          f"{color} {mime_type}{padding}{name} pages{COLOR_MANAGER.ENDC}")
