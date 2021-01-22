@@ -1,3 +1,3 @@
-import plugins.xss as xss
+import plugins.sqli as sqli
 
-ALL_FUNCS = [xss.check]
+ALL_FUNCS = [sqli.check]
