@@ -452,9 +452,6 @@ def further_analyse(suspicious_scripts: dict, input_sources: tuple) -> dict:
 
     for script_index in vulnerable_scripts.keys():
         if script_index not in final_source_sink_scripts.keys():
-            print(
-                f"Adding vulnerable script to final_source_sink_scripts!\n{vulnerable_scripts[script_index]}"
-            )
             final_source_sink_scripts[script_index] = (
                 vulnerable_scripts[script_index][0], # Script string.
                 vulnerable_scripts[script_index][1], # Script sink patterns.
