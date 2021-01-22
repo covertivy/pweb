@@ -6,7 +6,7 @@ import requests
 import requests.utils
 import http.cookiejar
 from selenium import webdriver
-import platform
+import sys
 import os
 import io
 import zipfile
@@ -26,11 +26,6 @@ black_list = list()  # List of words that the user do not want to check
 
 # Consts:
 PADDING = 4
-CHROME_DRIVERS = {
-    "windows": "https://chromedriver.storage.googleapis.com/86.0.4240.22/chromedriver_win32.zip",
-    "darwin": "https://chromedriver.storage.googleapis.com/86.0.4240.22/chromedriver_mac64.zip",
-    "linux": "https://chromedriver.storage.googleapis.com/86.0.4240.22/chromedriver_linux64.zip",
-}
 
 
 def get_links(links: list, url: str) -> list:
@@ -370,20 +365,30 @@ def get_pages(
 
 
 def chromedriver():
-    operating_system = platform.system().lower()
     driver_file = "chromedriver"
-    if operating_system == "windows":
-        driver_file = "chromedriver.exe"
-    if driver_file not in os.listdir("."):
+    pl = sys.platform
+    # Get OS
+    if pl == "linux" or pl == "linux2":
+        operating_system = "linux64"
+    elif pl == "darwin":
+        operating_system = "mac64"
+    else:
+        operating_system = "win32"
+        driver_file += ".exe"
+    if driver_file not in os.listdir("."):  # There is no chromedriver in the folder
         # Getting zip file
         print(
             f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
             f"Downloading Chromedriver...{COLOR_MANAGER.ENDC}"
         )
         try:
+            # Get latest version
+            version = requests.get("http://chromedriver.storage.googleapis.com/LATEST_RELEASE").text
+            # Get zip link
+            link = f"https://chromedriver.storage.googleapis.com/" \
+                   f"{version}/chromedriver_{operating_system}.zip"
             zip_content = io.BytesIO(
-                requests.get(CHROME_DRIVERS[operating_system]).content
-            )
+                requests.get(link).content)
             with zipfile.ZipFile(zip_content) as zip_ref:
                 # Extracting the executable file
                 zip_ref.extractall(".")
@@ -426,7 +431,7 @@ def logic(data: Data):
     if data.blacklist:
         try:
             global black_list
-            file = open("blacklist.txt", "r")
+            file = open(data.blacklist, "r")
             black_list = file.read()
             file.close()
             black_list = [word.replace(" ", "") for word in black_list.split(",")]
@@ -434,8 +439,7 @@ def logic(data: Data):
             COLOR_MANAGER.print_error(
                 "The file blacklist.txt was not found\n"
                 "\tOr was not in the right format <word1>,<word2>",
-                "\t",
-            )
+                "\t")
     try:
         browser = chromedriver()  # Setting web browser driver
     except Exception as e:
