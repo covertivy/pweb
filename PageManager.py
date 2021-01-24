@@ -458,9 +458,17 @@ def logic(data: Data):
         + COLOR_MANAGER.HEADER
         + "Scraping pages:"
         + COLOR_MANAGER.ENDC)
-
-    set_lists(data)  # Setting white and black lists
-
+    # Block pages
+    if data.blacklist:
+        try:
+            global black_list
+            file = open(data.blacklist, "r")
+            black_list = file.read()
+            file.close()
+            black_list = [word.replace(" ", "") for word in black_list.split(",")]
+        except Exception as e:
+            COLOR_MANAGER.print_error("The file blacklist.txt was not found\n"
+                                      "\tOr was not in the right format <word1>,<word2>", "\t")
     try:
         browser = chromedriver()  # Setting web browser driver
         print(COLOR_MANAGER.ENDC)
