@@ -76,24 +76,15 @@ class Colors:
         )
 
     @staticmethod
-    def print(
-        text: str,
-        characteristics: list = None,
-        r: int = None,
-        g: int = None,
-        b: int = None,
-        end="\n",
-    ):
-        if characteristics == None:
+    def print(text: str, characteristics: list = None,
+              r: int = None, g: int = None, b: int = None, end="\n"):
+        if characteristics is None:
             if all((r > -1 and r < 256, g > -1 and g < 256, b > -1 and b < 256)):
                 print(rgb(r, g, b) + text + Colors.ENDC, end=end)
             else:
                 print(text, end=end)
-        elif characteristics != None:
-            print(
-                string_characteristics(set(characteristics)) + text + Colors.ENDC,
-                end=end,
-            )
+        else:
+            print(string_characteristics(set(characteristics)) + text + Colors.ENDC, end=end)
 
     @staticmethod
     def print_warning(warning: str = "WARNING!", begins_with: str = ""):

@@ -129,6 +129,18 @@ def submit_form(form_details: dict, url: str,
     return requests.Response()
 
 
+def valid_in_list(page: Page) -> bool:
+    """
+    Function checks if a page is valid by the black and white lists
+    @param page: A page object
+    @return: True - valid page, False - otherwise
+    """
+    # If there is a whitelist and the URL does not have any of the words
+    # Or there is a black list and the URL have one of the words
+    return not ((white_list and all(word not in page.url for word in white_list)) or
+                (black_list and any(word in page.url for word in black_list)))
+
+
 def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=True,
               session: requests.Session = None, previous: Page = None):
     """
@@ -239,11 +251,6 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
             # The Redirected link is out of the website
             return
 
-    if any(word in page.url for word in black_list) or\
-            (white_list and all(word not in page.url for word in white_list)):
-        # The page has a black list word or does not have a white list word
-        return
-
     # Checking if the page was already printed
     in_list = False
     for printed_page in already_printed:
@@ -261,7 +268,10 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
                     color = type_colors[key]
                     break
         # Printing the page
-        print(f"\t[{color}+{COLOR_MANAGER.ENDC}] {color}{page.url}{COLOR_MANAGER.ENDC}")
+        sign = "+"
+        if not valid_in_list(page):
+            sign = "-"  # Sign of not checking
+        print(f"\t[{color}{sign}{COLOR_MANAGER.ENDC}] {color}{page.url}{COLOR_MANAGER.ENDC}")
         already_printed.append(page)
 
     # Checking if the page was already checked
@@ -300,15 +310,9 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
         if all(link != page.url for page in data.pages) or session:
             # If the page is not in the page list
             if (not any(link == checked_page.url for checked_page in already_checked)
-                    and link not in troublesome
-                    and all(word not in link for word in black_list)):
+                    and link not in troublesome):
                 # Page was not checked, it is not troublesome or in the black list
-                if white_list and all(word not in link for word in white_list):
-                    # If there is a white list and
-                    # the link does not have any of the listed words
-                    continue
-                else:
-                    get_pages(data, link, browser, data.recursive, session, page)
+                get_pages(data, link, browser, data.recursive, session, page)
 
     if not session and data.username and data.password:
         # If not session page and there are username and password specified
@@ -458,17 +462,8 @@ def logic(data: Data):
         + COLOR_MANAGER.HEADER
         + "Scraping pages:"
         + COLOR_MANAGER.ENDC)
-    # Block pages
-    if data.blacklist:
-        try:
-            global black_list
-            file = open(data.blacklist, "r")
-            black_list = file.read()
-            file.close()
-            black_list = [word.replace(" ", "") for word in black_list.split(",")]
-        except Exception as e:
-            COLOR_MANAGER.print_error("The file blacklist.txt was not found\n"
-                                      "\tOr was not in the right format <word1>,<word2>", "\t")
+    # Setting white and black list
+    set_lists(data)
     try:
         browser = chromedriver()  # Setting web browser driver
         print(COLOR_MANAGER.ENDC)
@@ -514,6 +509,7 @@ def logic(data: Data):
             if type(page) is SessionPage:
                 session_pages += 1
     print_result(data, session_pages)
+    data.pages = [page for page in data.pages if valid_in_list(page)]
     browser.close()
 
 
@@ -524,16 +520,21 @@ def print_result(data: Data, session_pages: int):
     @param session_pages: The number of session pages
     @return: None
     """
-    print(f"\n\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization:{COLOR_MANAGER.ENDC}")
-    print_types(data, Page)
+    print("")
+    if any(valid_in_list(page) and type(page) != SessionPage for page in data.pages):
+        print(f"\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization:{COLOR_MANAGER.ENDC}")
+        print_types(data, Page)
     if session_pages != 0:
         # If there are session pages
         print(f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization:{COLOR_MANAGER.ENDC}")
         print_types(data, SessionPage)
+    if any(not valid_in_list(page) for page in data.pages):
+        print(f"\t{COLOR_MANAGER.RED}Pages that are blocked from being checked:{COLOR_MANAGER.ENDC}")
+        print_types(data)
     print(COLOR_MANAGER.ENDC)
 
 
-def print_types(data: Data, page_type):
+def print_types(data: Data, page_type=None):
     """
     Function counts the different mime-types of pages
     @param data: The data object of the program
@@ -546,7 +547,8 @@ def print_types(data: Data, page_type):
         type_count[key] = 0
 
     for page in data.pages:
-        if type(page) == page_type:
+        if (not page_type and not valid_in_list(page)) or \
+                (type(page) == page_type and valid_in_list(page)):
             found = False
             for key in type_count.keys():
                 if str(key).lower() in page.type:
@@ -562,17 +564,21 @@ def print_types(data: Data, page_type):
         type_colors["HTML"] = COLOR_MANAGER.BLUE
     for key in type_count.keys():
         if type_count[key] != 0:
-            print_type(type_count[key], key, type_colors[key])
+            sign = "+"
+            if not page_type:
+                sign = "-"
+            print_type(type_count[key], key, type_colors[key], sign)
 
 
-def print_type(mime_type: int, name: str, color: str):
+def print_type(mime_type: int, name: str, color: str, sign: str):
     """
     Function print the page mime-type
     @param mime_type: The number of page of the mime-type
     @param name: The name of the mime-type
     @param color: The color of the print
+    @param sign: The sign of the print
     @return: None
     """
     padding = " " * (PADDING - len(str(mime_type)))
-    print(f"\t\t[{color}+{COLOR_MANAGER.ENDC}]"
+    print(f"\t\t[{color}{sign}{COLOR_MANAGER.ENDC}]"
           f"{color} {mime_type}{padding}{name} pages{COLOR_MANAGER.ENDC}")
