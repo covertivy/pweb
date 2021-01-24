@@ -6,14 +6,16 @@ import requests
 import requests.utils
 import http.cookiejar
 from selenium import webdriver
-import platform
+import sys
 import os
 import io
 import zipfile
 
 # Global variables
-type_colors = dict()  # Dictionary of the mime-types and their color (find values in the logic function)
-login_pages = []  # List of (login URL, logged-in URL, the session, login-form of the login URL)
+# Dictionary of the mime-types and their color (find values in the logic function)
+type_colors = dict()
+# List of (login URL, logged-in URL, the session, login-form of the login URL)
+login_pages = []
 already_printed = []  # List of printed Pages/SessionPages
 already_checked = []  # List of checked Pages/SessionPages
 troublesome = []  # List of troublesome URLs
@@ -21,12 +23,10 @@ logout = []  # List of logout URLs
 logged_out = False  # Logout flag
 current_login_page = set()  # Where the session started
 black_list = list()  # List of words that the user do not want to check
+white_list = list()  # List of words that the user only wants to check
 
 # Consts:
 PADDING = 4
-CHROME_DRIVERS = {"windows": "https://chromedriver.storage.googleapis.com/86.0.4240.22/chromedriver_win32.zip",
-                  "darwin": "https://chromedriver.storage.googleapis.com/86.0.4240.22/chromedriver_mac64.zip",
-                  "linux": "https://chromedriver.storage.googleapis.com/86.0.4240.22/chromedriver_linux64.zip"}
 
 
 def get_links(links: list, url: str) -> list:
@@ -103,7 +103,8 @@ def get_login_form(data: Data, url: str) -> (dict, requests.Session):
     return None, None
 
 
-def submit_form(form_details: dict, url: str, session: requests.Session) -> requests.Response:
+def submit_form(form_details: dict, url: str,
+                session: requests.Session) -> requests.Response:
     """
     Function submits the login form
     @param form_details: Dictionary of the form details
@@ -128,14 +129,16 @@ def submit_form(form_details: dict, url: str, session: requests.Session) -> requ
     return requests.Response()
 
 
-def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=True, session: requests.Session = None):
+def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=True,
+              session: requests.Session = None, previous: Page = None):
     """
     Function gets the lists of pages to the data object
     @param data: The data object of the program
     @param curr_url: The current URL the function checks
-    @param browser:
+    @param browser: The web driver that gets the rendered content
     @param recursive: True- check all website pages, False- only the first reachable one
     @param session: In case of session page, the session is important for the connection
+    @param previous: the previous page
     @return: None
     """
     if len(data.pages) == data.max_pages:
@@ -180,15 +183,29 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
             troublesome.append(curr_url)
             return
         else:
-            page = SessionPage(res.url, res.status_code, res.headers.get("Content-Type").split(";")[0],
-                               res.content.decode(), session.cookies, current_login_page)
-            color = COLOR_MANAGER.ORANGE
+            try:
+                page = SessionPage(
+                    res.url,
+                    res.status_code,
+                    res.headers.get("Content-Type").split(";")[0],
+                    res.content.decode(),
+                    session.cookies,
+                    current_login_page,
+                    previous)
+                color = COLOR_MANAGER.ORANGE
+            except:
+                troublesome.append(curr_url)
+                return
     else:
         # Non-Session page
         try:
             res = requests.get(curr_url)
-            page = Page(res.url, res.status_code,
-                        res.headers.get("Content-Type").split(";")[0], res.content.decode())
+            page = Page(
+                res.url,
+                res.status_code,
+                res.headers.get("Content-Type").split(";")[0],
+                res.content.decode(),
+                previous)
             color = COLOR_MANAGER.BLUE
         except Exception as e:
             # Couldn't open with the session
@@ -222,6 +239,11 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
             # The Redirected link is out of the website
             return
 
+    if any(word in page.url for word in black_list) or\
+            (white_list and all(word not in page.url for word in white_list)):
+        # The page has a black list word or does not have a white list word
+        return
+
     # Checking if the page was already printed
     in_list = False
     for printed_page in already_printed:
@@ -233,7 +255,7 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
         # If the page was not printed
         if not soup:
             # If it is a non-html page
-            color = type_colors['Other']
+            color = type_colors["Other"]
             for key in type_colors.keys():
                 if str(key).lower() in page.type:
                     color = type_colors[key]
@@ -252,35 +274,41 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
         # Adding to the page list
         data.pages.append(page)
 
-    # Adding to the already-checked list
+    # Adding to the already-checked list.
     already_checked.append(page)
 
     if not soup:
-        # There is no reason check non-html page
+        # There is no reason check non-html page.
         return
 
-    # Getting every application script in the page
+    # Getting every application script in the page.
     links = get_links([script.get("src") for script in soup.find_all("script")], page.url)
 
-    # Getting every css style in the page
+    # Getting every css style in the page.
     links.extend(get_links([script.get("href") for script in soup.find_all(type="text/css")], page.url))
 
     if recursive:
-        # If the function is recursive
-        # Getting every link in the page
+        # If the function is recursive.
+        # Getting every link in the page.
         links.extend(get_links([link.get("href") for link in soup.find_all("a")], page.url))
 
     for link in links:
         if logged_out or len(data.pages) == data.max_pages:
-            # More efficient to check every time
-            # If the session logged out or the pages amount is at its maximum
+            # More efficient to check every time.
+            # If the session logged out or the pages amount is at its maximum.
             return
         if all(link != page.url for page in data.pages) or session:
             # If the page is not in the page list
-            if not any(link == checked_page.url for checked_page in already_checked)\
-                    and link not in troublesome and all(word not in link for word in black_list):
-                # Page was not checked
-                get_pages(data, link, browser, data.recursive, session)
+            if (not any(link == checked_page.url for checked_page in already_checked)
+                    and link not in troublesome
+                    and all(word not in link for word in black_list)):
+                # Page was not checked, it is not troublesome or in the black list
+                if white_list and all(word not in link for word in white_list):
+                    # If there is a white list and
+                    # the link does not have any of the listed words
+                    continue
+                else:
+                    get_pages(data, link, browser, data.recursive, session, page)
 
     if not session and data.username and data.password:
         # If not session page and there are username and password specified
@@ -315,17 +343,34 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
             pass
 
 
-def chromedriver():
-    operating_system = platform.system().lower()
+def chromedriver() -> webdriver.Chrome:
+    """
+    Function sets a browser web driver object
+    @return: chrome driver object
+    """
     driver_file = "chromedriver"
-    if operating_system == "windows":
-        driver_file = "chromedriver.exe"
-    if driver_file not in os.listdir("."):
+    pl = sys.platform
+    # Get OS
+    if pl == "linux" or pl == "linux2":
+        operating_system = "linux64"
+    elif pl == "darwin":
+        operating_system = "mac64"
+    else:
+        operating_system = "win32"
+        driver_file += ".exe"
+    if driver_file not in os.listdir("."):  # There is no chromedriver in the folder
         # Getting zip file
-        print(f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
-              f"Downloading Chromedriver...{COLOR_MANAGER.ENDC}")
+        print(
+            f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
+            f"Downloading Chromedriver...{COLOR_MANAGER.ENDC}")
         try:
-            zip_content = io.BytesIO(requests.get(CHROME_DRIVERS[operating_system]).content)
+            # Get latest version
+            version = requests.get("http://chromedriver.storage.googleapis.com/LATEST_RELEASE").text
+            # Get zip link
+            link = f"https://chromedriver.storage.googleapis.com/" \
+                   f"{version}/chromedriver_{operating_system}.zip"
+            zip_content = io.BytesIO(
+                requests.get(link).content)
             with zipfile.ZipFile(zip_content) as zip_ref:
                 # Extracting the executable file
                 zip_ref.extractall(".")
@@ -334,14 +379,65 @@ def chromedriver():
     # There is a chromedriver in the folder
     driver_file = os.getcwd() + "\\" + driver_file  # Full path
     try:
+        print(
+            f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
+            f"Setting up the Chromedriver...{COLOR_MANAGER.ENDC}")
         options = webdriver.ChromeOptions()
-        options.add_argument('--log-level=3')
-        options.add_argument('headless')
-        options.add_experimental_option('excludeSwitches', ['enable-logging'])
+        options.add_argument("headless")
+        options.add_experimental_option("excludeSwitches", ["enable-logging"])
         browser = webdriver.Chrome(executable_path=driver_file, options=options)
         return browser
     except Exception:
         raise Exception("Setting up the web driver failed, please try again.")
+
+
+def set_lists(data: Data):
+    """
+    Function sets the black and white lists
+    @param data: The data object of the program
+    @return: None
+    """
+    global white_list  # Required pages
+    global black_list  # Block pages
+    list_of_lists = [{"file": data.blacklist, "black": True},
+                     {"file": data.whitelist, "black": False}]
+    failed = False  # failed even once
+    for dict_list in list_of_lists:
+        if dict_list["file"]:
+            try:
+                file = open(dict_list["file"], "r")
+                current_list = file.read()
+                file.close()
+            except Exception:
+                COLOR_MANAGER.print_error(f"The file {dict_list['file']} was not found", "\t")
+                failed = True
+            else:
+                try:
+                    current_list = [word for word in current_list.replace(" ", "").split(",") if len(word)]
+                    if not len(current_list):
+                        # Empty list
+                        raise Exception("a")
+                    if dict_list["black"]:
+                        black_list = current_list
+                    else:
+                        white_list = current_list
+                except Exception:
+                    failed = True
+                    COLOR_MANAGER.print_error(f"The file {dict_list['file']} is not in the"
+                                              f" format of <word1>, <word2>.", "\t")
+                else:
+                    COLOR_MANAGER.print_success(f"The file {dict_list['file']} has been"
+                                                f" added to the filtering process.", "\t")
+    if failed:
+        # At least one of the specified lists is invalid
+        COLOR_MANAGER.print_warning("The process will continue "
+                                    "without the problematic list.", "\t")
+    elif white_list and black_list:
+        # The user specified valid data for both
+        COLOR_MANAGER.print_warning("The process will filter"
+                                    " the pages only by the white list.", "\t")
+        black_list = list()  # Setting the black list to default
+    print(COLOR_MANAGER.ENDC)
 
 
 def logic(data: Data):
@@ -351,11 +447,12 @@ def logic(data: Data):
     @return: None
     """
     global type_colors
-    type_colors = {'HTML': None,  # The session is the one that decides
-                   'Javascript': COLOR_MANAGER.GREEN,
-                   'CSS': COLOR_MANAGER.PINK,
-                   'XML': COLOR_MANAGER.YELLOW,
-                   'Other': COLOR_MANAGER.PURPLE}  # Dictionary of the mime-types and their color
+    type_colors = {
+        "HTML": None,  # The session is the one that decides
+        "Javascript": COLOR_MANAGER.GREEN,
+        "CSS": COLOR_MANAGER.PINK,
+        "XML": COLOR_MANAGER.YELLOW,
+        "Other": COLOR_MANAGER.PURPLE}  # Dictionary of the mime-types and their color
     print(
         COLOR_MANAGER.BLUE
         + COLOR_MANAGER.HEADER
@@ -374,6 +471,7 @@ def logic(data: Data):
                                       "\tOr was not in the right format <word1>,<word2>", "\t")
     try:
         browser = chromedriver()  # Setting web browser driver
+        print(COLOR_MANAGER.ENDC)
     except Exception as e:
         raise Exception(e, "\t")
     try:
@@ -455,13 +553,13 @@ def print_types(data: Data, page_type):
                     type_count[key] += 1
                     found = True
             if not found:
-                type_count['Other'] += 1
-    
+                type_count["Other"] += 1
+
     if page_type == SessionPage:
         # Session page
-        type_colors['HTML'] = COLOR_MANAGER.ORANGE
+        type_colors["HTML"] = COLOR_MANAGER.ORANGE
     else:
-        type_colors['HTML'] = COLOR_MANAGER.BLUE
+        type_colors["HTML"] = COLOR_MANAGER.BLUE
     for key in type_count.keys():
         if type_count[key] != 0:
             print_type(type_count[key], key, type_colors[key])

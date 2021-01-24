@@ -12,19 +12,29 @@ def print_results(results: CheckResults):
     @param results: The check results
     @return: None
     """
-    print(f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:"
-          f"{COLOR_MANAGER.ENDC}{results.color}")
+    print(
+        f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:"
+        f"{COLOR_MANAGER.ENDC}{results.color}"
+    )
     if type(results.page_results) == list:
         if not len(results.page_results):
-            COLOR_MANAGER.print_success("No vulnerabilities were found on the specified website's pages.", "\t")
+            COLOR_MANAGER.print_success(
+                "No vulnerabilities were found on the specified website's pages.", "\t"
+            )
         for res in results.page_results:
-            print(f"\t{COLOR_MANAGER.BOLD}Page: {COLOR_MANAGER.ENDC}{results.color}{res.url}")
+            print(
+                f"\t{COLOR_MANAGER.BOLD}Page: {COLOR_MANAGER.ENDC}{results.color}{res.url}"
+            )
             if res.problem:
-                print(f"\t\t{COLOR_MANAGER.BOLD_RED}Problem:"
-                      f" {COLOR_MANAGER.ENDC}{results.color}{res.problem}")
+                print(
+                    f"\t\t{COLOR_MANAGER.BOLD_RED}Problem:"
+                    f" {COLOR_MANAGER.ENDC}{results.color}{res.problem}"
+                )
             if res.solution:
-                print(f"\t\t{COLOR_MANAGER.BOLD_GREEN}Solution:"
-                      f" {COLOR_MANAGER.ENDC}{results.color}{res.solution}")
+                print(
+                    f"\t\t{COLOR_MANAGER.BOLD_GREEN}Solution:"
+                    f" {COLOR_MANAGER.ENDC}{results.color}{res.solution}"
+                )
     elif type(results.page_results) == str:
         COLOR_MANAGER.print_error(results.page_results, "\t")
     else:
@@ -40,6 +50,8 @@ def save_results(data):
     root = ET.Element("root", name="root")  # Create a root for the element tree.
     for thread_results in data.results:
         # Go over each script's findings and summarize them.
+        if len(thread_results.page_results) == 0:
+            continue
         script_element = ET.SubElement(root, thread_results.headline.replace(" ", "_"))
         for page_res in thread_results.page_results:
             # Save each page's data in an xml tree format.
@@ -67,7 +79,8 @@ def logic(data: Data, all_threads_done_event: threading.Event):
     """
     index = 0
     print(
-            f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
+        f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}"
+    )
     if data.output is None:
         # If there is no specified file path
         while True:
@@ -93,5 +106,6 @@ def logic(data: Data, all_threads_done_event: threading.Event):
         # If there is a specified file path
         all_threads_done_event.wait()  # Waiting for the plugins to finish their run
         print(
-            f"\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Saving to Output File ({data.output})...{COLOR_MANAGER.ENDC}")
+            f"\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Saving to Output File ({data.output})...{COLOR_MANAGER.ENDC}"
+        )
         save_results(data)  # Saving the results
