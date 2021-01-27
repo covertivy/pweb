@@ -55,6 +55,7 @@ def filter_forms(pages: list, agreement: bool) -> list:
     """
     Function filters the pages that has an action form
     @param pages:List of pages
+    @param agreement: The specified user's agreement
     @return: List of pages that has an action form
     """
     filtered_pages = list()
