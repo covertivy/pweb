@@ -16,18 +16,6 @@ RESULT_STR = "The primary rule that you must follow to prevent DOM XSS is: sanit
                 "\t\t\tAvoid dangerous methods and instead use safer functions.\n" \
                 "\t\t\tCheck if sources are directly related to sinks and if so prevent them from accessing each other.\n" \
                 "\t\t\tFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html\n"
-XSS_STRINGS = [
-    "<script>alert(1);</script>",
-    "><script>alert(1);</script>",
-    "'<script>alert(1);</script>",
-    "<img src=x onerror=alert(1)>",
-    '<img src="javascript:alert(1);">',
-    "<img src=javascript:alert(1)>",
-    "<img src=javascript:alert(&quot;1&quot;)>",
-    "<img src=x onerror=javascript:alert(1)>",
-    "<img src=x onerror=javascript:alert(1);>",
-    "<<SCRIPT>alert(1);//\<</SCRIPT>",
-]
 
 
 def check(data: Data.Data):
