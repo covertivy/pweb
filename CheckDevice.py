@@ -1,5 +1,5 @@
 import plugins.sqli as sqli
-import plugins.ci as ci
 import plugins.domxss as domxss
+import plugins.ci as ci
 
-ALL_FUNCS = [sqli.check, ci.check, domxss.check]
+ALL_FUNCS = [sqli.check, domxss.check, ci.check]
