@@ -82,8 +82,8 @@ def main():
             exit()
         print_data(data)
         PageManager.logic(data)  # Get all pages from website
-        PluginManager.generate_check_device()  # Generate Check Device in our directory.
-        VulnerabilityManager.logic(data)
+        # PluginManager.generate_check_device()  # Generate Check Device in our directory.
+        # VulnerabilityManager.logic(data)
         print(COLOR_MANAGER.ENDC)
     except Exception as e:
         if len(e.args) == 2:
