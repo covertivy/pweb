@@ -203,6 +203,7 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
                     res.content.decode(),
                     session.cookies,
                     current_login_page,
+                    res,
                     previous)
                 color = COLOR_MANAGER.ORANGE
             except:
@@ -217,6 +218,7 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
                 res.status_code,
                 res.headers.get("Content-Type").split(";")[0],
                 res.content.decode(),
+                res,
                 previous)
             color = COLOR_MANAGER.BLUE
         except Exception as e:

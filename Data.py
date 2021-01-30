@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 from threading import Lock
+import requests
 
 
 class Data:
@@ -39,12 +40,13 @@ class Data:
 
 class Page:
     def __init__(
-        self, url: str, status: int, mime_type: str, content: str, parent
+        self, url: str, status: int, mime_type: str, content: str, response: requests.Response, parent
     ):
         self.url = url
         self.status = status
         self.type = mime_type
         self.content = content
+        self.http_response = response
         self.parent = parent
 
     def __str__(self):
@@ -66,9 +68,10 @@ class SessionPage(Page):
         content: str,
         cookies,
         login: set,
+        response: requests.Response,
         parent,
     ):
-        super(SessionPage, self).__init__(url, status, mime_type, content, parent)
+        super(SessionPage, self).__init__(url, status, mime_type, content, response, parent)
         self.cookies = cookies
         self.login = login  # The page which the session started from
 
@@ -76,7 +79,7 @@ class SessionPage(Page):
 class PageResult(Page):
     def __init__(self, page: Page, problem: str, solution: str):
         super(PageResult, self).__init__(
-            page.url, page.status, page.type, page.content, page.parent
+            page.url, page.status, page.type, page.content, page.http_response, page.parent
         )
         self.problem = problem  # String of problems that were found
         self.solution = solution  # A solution in case of problems
