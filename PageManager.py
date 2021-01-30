@@ -5,7 +5,7 @@ from Data import Data, SessionPage, Page
 import requests
 import requests.utils
 import http.cookiejar
-from selenium import webdriver
+from seleniumwire import webdriver
 import sys
 import os
 import io
