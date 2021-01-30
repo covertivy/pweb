@@ -3,6 +3,7 @@ from colors import COLOR_MANAGER
 import Data
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+import requests.utils
 import requests
 import random
 
@@ -124,9 +125,15 @@ def csrf(page: Data.SessionPage, form: dict) -> Data.PageResult:
     # Checking for csrf tokens
     session = new_session(page.cookies, page.url)
     session.cookies = page.cookies
-    reload = session.get(page.url).text
+    reload = session.get(page.url)
     token = False
-    for new_form in get_forms(reload):
+    print(any("csrf" in a.lower() for a in dict(reload.headers).keys()))
+    print(dict(reload.request.headers).values())
+    print(reload.headers.get("Set-Cookie"))
+    if reload.headers.get("Set-Cookie") and "SameSite=Strict" in reload.headers.get("Set-Cookie"):
+        # Found a SameSite header
+        return page_result
+    for new_form in get_forms(reload.text):
         if new_form["action"] == form["action"]:
             # Same form
             for input_tag in form["inputs"]:
@@ -184,7 +191,7 @@ def new_session(cookies, referer) -> requests.Session:
     # Setting cookies
     session.cookies = cookies
     # Setting referer
-    session.headers.update({'referer': referer})
+    session.headers.update({'Referer': referer})
     return session
 
 
