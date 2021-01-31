@@ -17,6 +17,7 @@ class Data:
         self.blacklist = None
         self.whitelist = None
         self.agreement = False
+        self.driver = None
         self.pages = list()  # Pages
         self.results = list()  # Vulnerabilities results
         self.mutex = Lock()  # Mutex
@@ -34,14 +35,12 @@ class Data:
             f"VERBOSE: {self.verbose}\n"
             f"AGREEMENT: {self.agreement}\n"
             f"BLACKLIST: {self.blacklist}\n"
-            f"WHITELIST: {self.whitelist}"
-        )
+            f"WHITELIST: {self.whitelist}")
 
 
 class Page:
-    def __init__(
-        self, url: str, status: int, mime_type: str, content: str, request: requests.Request, parent
-    ):
+    def __init__(self, url: str, status: int, mime_type: str,
+                 content: str, request: requests.Request, parent):
         self.url = url
         self.status = status
         self.type = mime_type
@@ -55,32 +54,21 @@ class Page:
             f"STATUS: {self.status}\n"
             f"CONTENT-TYPE: {self.type}\n"
             f"CONTENT: {self.content}\n"
-            f"PARENT URL: {self.parent.url}\n"
-        )
+            f"PARENT URL: {self.parent.url}\n")
 
 
 class SessionPage(Page):
-    def __init__(
-        self,
-        url: str,
-        status: int,
-        mime_type: str,
-        content: str,
-        cookies,
-        login: set,
-        request: requests.Request,
-        parent,
-    ):
+    def __init__(self, url: str, status: int, mime_type: str,
+                 content: str, cookies: list, login: set, request: requests.Request, parent):
         super(SessionPage, self).__init__(url, status, mime_type, content, request, parent)
-        self.cookies = cookies
+        self.cookies = cookies  # List of dictionaries that webdriver can use
         self.login = login  # The page which the session started from
 
 
 class PageResult(Page):
     def __init__(self, page: Page, problem: str, solution: str):
-        super(PageResult, self).__init__(
-            page.url, page.status, page.type, page.content, page.request, page.parent
-        )
+        super(PageResult, self).__init__(page.url, page.status, page.type,
+                                         page.content, page.request, page.parent)
         self.problem = problem  # String of problems that were found
         self.solution = solution  # A solution in case of problems
 
