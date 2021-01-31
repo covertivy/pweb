@@ -55,7 +55,7 @@ class Data:
             f"BLACKLIST: Not Specified.\n"
         else:
             f"BLACKLIST: {self.blacklist}\n"
-        f self.whitelist is None:
+        if self.whitelist is None:
             f"WHITELIST: Not Specified.\n"
         else:
             f"WHITELIST: {self.whitelist}\n"
