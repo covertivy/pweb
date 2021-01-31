@@ -13,6 +13,13 @@ def rgb(red: int, green: int, blue: int):
     return "\033[38;2;{};{};{}m".format(red, green, blue)
 
 
+def string_characteristics(characteristics: set):
+    result = ""
+    for feature in characteristics:
+        result = result + feature
+    return result
+
+
 class Colors:
     ENDC = "\033[0m"  # back to normal
     BOLD = "\033[1m"
@@ -65,7 +72,19 @@ class Colors:
         return rgb(
             random.choice(range(255)),
             random.choice(range(255)),
-            random.choice(range(255)))
+            random.choice(range(255)),
+        )
+
+    @staticmethod
+    def print(text: str, characteristics: list = None,
+              r: int = None, g: int = None, b: int = None, end="\n"):
+        if characteristics is None:
+            if all((r > -1 and r < 256, g > -1 and g < 256, b > -1 and b < 256)):
+                print(rgb(r, g, b) + text + Colors.ENDC, end=end)
+            else:
+                print(text, end=end)
+        else:
+            print(string_characteristics(set(characteristics)) + text + Colors.ENDC, end=end)
 
     @staticmethod
     def print_warning(warning: str = "WARNING!", begins_with: str = ""):
@@ -77,6 +96,7 @@ class Colors:
         """
         print(
             begins_with
+            + Colors.ENDC
             + "["
             + Colors.BOLD_YELLOW
             + "!"
@@ -84,18 +104,20 @@ class Colors:
             + "] "
             + Colors.BOLD_YELLOW
             + warning
-            + Colors.ENDC)
+            + Colors.ENDC
+        )
 
     @staticmethod
-    def print_error(error: str = "ERROR!", starts_with: str = ""):
+    def print_error(error: str = "ERROR!", begins_with: str = ""):
         """
         Function prints a specified error
         @param error: The specified error
-        @param starts_with: Optional string to start with
+        @param begins_with: Optional string to start with
         @return: None
         """
         print(
-            starts_with
+            begins_with
+            + Colors.ENDC
             + "["
             + Colors.BOLD_RED
             + "!"
@@ -103,6 +125,27 @@ class Colors:
             + "] "
             + Colors.BOLD_RED
             + error
+            + Colors.ENDC
+        )
+
+    @staticmethod
+    def print_success(success: str = "SUCCESS!", begins_with: str = ""):
+        """
+        Function prints a specified success message
+        @param success: The specified message
+        @param begins_with: Optional string to start with
+        @return: None
+        """
+        print(
+            begins_with
+            + Colors.ENDC
+            + "["
+            + Colors.BOLD_GREEN
+            + "!"
+            + Colors.ENDC
+            + "] "
+            + Colors.BOLD_GREEN
+            + success
             + Colors.ENDC)
 
 

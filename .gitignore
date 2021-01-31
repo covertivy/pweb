@@ -242,3 +242,6 @@ dkms.conf
 .vscode/
 .idea/
 *.xml
+My Stuff/
+pylama.ini
+*.txt
