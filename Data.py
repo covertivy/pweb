@@ -35,10 +35,6 @@ class Data:
             output_str += f"URL: Not Specified.\n"
         else:
             output_str += f"URL: {self.url}\n"
-        if self.os is None:
-            output_str += f"SERVER INFO: Could not find.\n"
-        else:
-            output_str += f"SERVER INFO: {self.os[:15]}...\n"
         if self.max_pages is None:
             output_str += f"MAXIMUM PAGES: Unlimited.\n"
         else:
@@ -55,9 +51,17 @@ class Data:
             output_str += f"PASSWORD: Not Specified.\n"
         else:
             output_str += f"PASSWORD: {self.password}\n"
-        
+        if self.blacklist is None:
+            f"BLACKLIST: Not Specified.\n"
+        else:
+            f"BLACKLIST: {self.blacklist}\n"
+        f self.whitelist is None:
+            f"WHITELIST: Not Specified.\n"
+        else:
+            f"WHITELIST: {self.whitelist}\n"
         output_str += f"RECURSIVE: {self.recursive}\n"  
         output_str += f"VERBOSE: {self.verbose}\n"
+        output_str += f"AGREEMENT: {self.agreement}\n"
 
         return output_str
 
