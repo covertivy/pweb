@@ -19,17 +19,44 @@ class Data:
         self.mutex = Lock()  # Mutex
 
     def __str__(self):
-        return (
-            f"IP: {self.ip}\n"
-            f"URL: {self.url}\n"
-            f"PORT: {self.port}\n"
-            f"SERVER INFO: {self.os[:15]}...\n"
-            f"MAXIMUM PAGES: {self.max_pages}\n"
-            f"OUTPUT FILE: {self.output}\n"
-            f"USERNAME: {self.username}\n"
-            f"PASSWORD: {self.password}\n"
-            f"RECURSIVE: {self.recursive}\n"
-            f"VERBOSE: {self.verbose}")
+        output_str = ""
+        if self.ip is None:
+            output_str += f"IP: Not Specified.\n"
+        else:
+            output_str += f"IP: {self.ip}\n"
+        if self.ip is None:
+            output_str += f"PORT: Not Specified.\n"
+        else:
+            output_str += f"PORT: {self.port}\n"
+        if self.url is None:
+            output_str += f"URL: Not Specified.\n"
+        else:
+            output_str += f"URL: {self.url}\n"
+        if self.os is None:
+            output_str += f"SERVER INFO: Could not find.\n"
+        else:
+            output_str += f"SERVER INFO: {self.os[:15]}...\n"
+        if self.max_pages is None:
+            output_str += f"MAXIMUM PAGES: Unlimited.\n"
+        else:
+            output_str += f"MAXIMUM PAGES: {self.max_pages}\n"
+        if self.output is None:
+            output_str += f"OUTPUT FILE: Not Specified.\n"
+        else:
+            output_str += f"OUTPUT FILE: {self.output}\n"            
+        if self.username is None:
+            output_str += f"USERNAME: Not Specified.\n"
+        else:
+            output_str += f"USERNAME: {self.username}\n"
+        if self.password is None:
+            output_str += f"PASSWORD: Not Specified.\n"
+        else:
+            output_str += f"PASSWORD: {self.password}\n"
+        
+        output_str += f"RECURSIVE: {self.recursive}\n"  
+        output_str += f"VERBOSE: {self.verbose}\n"
+
+        return output_str
 
 
 class Page:
