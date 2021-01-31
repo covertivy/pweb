@@ -4,6 +4,7 @@ from colors import COLOR_MANAGER
 from Data import Data, SessionPage, Page
 import requests
 from seleniumwire import webdriver
+from selenium.webdriver.common.keys import Keys
 import sys
 import os
 import io
@@ -22,6 +23,8 @@ logged_out = False  # Logout flag
 current_login_page = set()  # Where the session started
 black_list = list()  # List of words that the user do not want to check
 white_list = list()  # List of words that the user only wants to check
+driver_file = str()
+non_session_browser = None
 
 # Consts:
 PADDING = 4
@@ -104,8 +107,6 @@ def submit_form(form_details: dict, browser: webdriver.Chrome) -> [requests.Resp
     @param browser: The session of the request
     @return: The response of the login request
     """
-    # Clearing the requests log
-    browser.requests.clear()
     # The arguments body we want to submit
     elements = list()
     for input_tag in form_details["inputs"]:
@@ -114,13 +115,25 @@ def submit_form(form_details: dict, browser: webdriver.Chrome) -> [requests.Resp
             # Only if the input has a name
             element = browser.find_element_by_name(input_tag["name"])
             element.send_keys(input_tag["value"])
-            elements.append(element)
+            elements.append({"element": element, "name": input_tag["name"], "type": input_tag["type"]})
+    before_submit = [browser.current_url, browser.page_source]
+    # Sending the form
     for element in elements:
-        element.click()  # Sending the form
-    if not len(browser.requests):
+        if element["type"] != "text":
+            element["element"].click()
+    if before_submit[0] == browser.current_url and \
+            browser.page_source == before_submit[1]:
         # Did not do anything
-        return None
-    return [res.response for res in browser.requests if res.url == browser.current_url][0]
+        before_submit = [browser.current_url, browser.page_source]
+        for element in elements:
+            if element["type"] == "text":
+                element["element"].send_keys(Keys.ENTER)  # Sending the form
+        if before_submit[0] == browser.current_url and \
+                browser.page_source == before_submit[1]:
+            # Did not do anything
+            before_submit = [browser.current_url, browser.page_source]
+            elements[0]["element"].submit()  # Sending the form
+    return [res.response for res in browser.requests[::-1] if res.url == browser.current_url][0]
 
 
 def valid_in_list(page: Page) -> bool:
@@ -158,26 +171,32 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
 
     browser.get(curr_url)
     res = None
-    for r in browser.requests:
+    for r in browser.requests[::-1]:
         if r.url == browser.current_url:
             res = r
-            break
+            if r.response.headers.get("Content-Type"):
+                break
     if not res:
         return
 
+    browser.refresh()
     if session:
         # Session page
         try:
+            global non_session_browser
+            if not non_session_browser:
+                non_session_browser = new_browser()
+            non_session_browser.get(browser.current_url)
             for p in data.pages:
-                if p.url == res.url:
+                if p.url == browser.current_url:
                     # Have the same URL
                     if type(p) is SessionPage:
                         # Redirected to another session page
                         troublesome.append(curr_url)  # No need to check
                         return
-                    elif p.content == browser.page_source:
+                    elif p.content == browser.page_source and "html" in p.type:
                         # It redirected to a non-session page, and have the same content
-                        if p.url == browser.current_url:
+                        if p.url == browser.current_url or "logout" in curr_url:
                             print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
                                   f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
                             logout.append(curr_url)
@@ -185,28 +204,32 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
                         return
                     else:
                         break
-            req = requests.get(res.url)
-            if req.url == res.url and "logout" in curr_url:
+            if non_session_browser.current_url == browser.current_url:  # and "logout" in curr_url:
                 # If the URL can be reachable from non-session point the session has logged out
-                print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
-                      f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
-                logged_out = True
-                logout.append(curr_url)
-                return
+                # Non-Session page
+                page = Page(
+                    browser.current_url,
+                    res.response.status_code,
+                    res.response.headers.get("Content-Type").split(";")[0],
+                    browser.page_source,
+                    res,
+                    previous)
+                color = COLOR_MANAGER.BLUE
+            else:
+                page = SessionPage(
+                    browser.current_url,
+                    res.response.status_code,
+                    res.response.headers.get("Content-Type").split(";")[0],
+                    browser.page_source,
+                    browser.get_cookies(),
+                    current_login_page,
+                    res,
+                    previous)
+                color = COLOR_MANAGER.ORANGE
         except Exception as e:
+            print(e)
             troublesome.append(curr_url)
             return
-        else:
-            page = SessionPage(
-                browser.current_url,
-                res.response.status_code,
-                res.response.headers.get("Content-Type").split(";")[0],
-                browser.page_source,
-                browser.get_cookies(),
-                current_login_page,
-                res,
-                previous)
-            color = COLOR_MANAGER.ORANGE
     else:
         # Non-Session page
         page = Page(
@@ -307,6 +330,8 @@ def get_login_pages(data: Data, browser: webdriver.Chrome):
     pages_backup = list(data.pages)
     global logged_out
     for page in not_session_pages:
+        if "html" not in page.type:
+            continue
         # Setting browser for current page
         browser.get(page.url)
         form_details = get_login_form(data, page)
@@ -358,6 +383,7 @@ def chromedriver() -> webdriver.Chrome:
     Function sets a browser web driver object
     @return: chrome driver object
     """
+    global driver_file
     driver_file = "chromedriver"
     pl = sys.platform
     # Get OS
@@ -392,13 +418,18 @@ def chromedriver() -> webdriver.Chrome:
         print(
             f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
             f"Setting up the Chromedriver...{COLOR_MANAGER.ENDC}")
-        options = webdriver.ChromeOptions()
-        options.add_argument("headless")
-        options.add_experimental_option("excludeSwitches", ["enable-logging"])
-        browser = webdriver.Chrome(executable_path=driver_file, options=options)
-        return browser
+        return new_browser()
     except Exception:
         raise Exception("Setting up the web driver failed, please try again.")
+
+
+def new_browser() -> webdriver.Chrome:
+    global driver_file
+    options = webdriver.ChromeOptions()
+    options.add_argument("headless")
+    options.add_experimental_option("excludeSwitches", ["enable-logging"])
+    browser = webdriver.Chrome(executable_path=driver_file, options=options)
+    return browser
 
 
 def set_lists(data: Data):
@@ -495,6 +526,8 @@ def logic(data: Data):
     print_result(data, session_pages)
     data.pages = [page for page in data.pages if valid_in_list(page)]
     browser.close()
+    if non_session_browser is webdriver.Chrome:
+        non_session_browser.close()
 
 
 def print_result(data: Data, session_pages: int):
