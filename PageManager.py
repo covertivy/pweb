@@ -4,12 +4,10 @@ from colors import COLOR_MANAGER
 from Data import Data, SessionPage, Page
 import requests
 from seleniumwire import webdriver
-from selenium.webdriver.common.keys import Keys
 import sys
 import os
 import io
 import zipfile
-import traceback
 
 # Global variables
 # Dictionary of the mime-types and their color (find values in the logic function)
@@ -99,42 +97,6 @@ def get_login_form(data: Data, page: Page) -> [dict]:
         except Exception:
             continue
     return None
-
-
-def submit_form(form_details: dict, browser: webdriver.Chrome) -> [requests.Response]:
-    """
-    Function submits the login form
-    @param form_details: Dictionary of the form details
-    @param browser: The session of the request
-    @return: The response of the login request
-    """
-    # The arguments body we want to submit
-    elements = list()
-    for input_tag in form_details["inputs"]:
-        # Using the specified value
-        if "name" in input_tag.keys():
-            # Only if the input has a name
-            element = browser.find_element_by_name(input_tag["name"])
-            element.send_keys(input_tag["value"])
-            elements.append({"element": element, "name": input_tag["name"], "type": input_tag["type"]})
-    before_submit = [browser.current_url, browser.page_source]
-    # Sending the form
-    for element in elements:
-        if element["type"] != "text":
-            element["element"].click()
-    if before_submit[0] == browser.current_url and \
-            browser.page_source == before_submit[1]:
-        # Did not do anything
-        before_submit = [browser.current_url, browser.page_source]
-        for element in elements:
-            if element["type"] == "text":
-                element["element"].send_keys(Keys.ENTER)  # Sending the form
-        if before_submit[0] == browser.current_url and \
-                browser.page_source == before_submit[1]:
-            # Did not do anything
-            before_submit = [browser.current_url, browser.page_source]
-            elements[0]["element"].submit()  # Sending the form
-    return [res.response for res in browser.requests[::-1] if res.url == browser.current_url][0]
 
 
 def valid_in_list(page: Page) -> bool:
@@ -333,14 +295,14 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
     """
     Function looking for login forms and scraping session pages through them
     @param data: The data object of the program
-    @param browser:
-    @return:
+    @param browser: The webdriver browser
+    @return: None
     """
     if not (data.username and data.password):
         # If there are no username or password
         return
     non_session_pages = list(data.pages)
-    non_session_browser = new_browser(data)
+    non_session_browser = data.new_browser()  # New session for non-session page
     pages_backup = list(data.pages)
     login_pages = list()
     global logged_out
@@ -354,7 +316,7 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
             # The page doesn't have valid login form
             continue
         try:
-            response = submit_form(form_details, browser)
+            response = data.submit_form(form_details, browser).response
             if not response:
                 # Something went wrong in the form
                 continue
@@ -391,7 +353,7 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
                 data.pages = list(pages_backup)  # Restoring the pages list
                 browser.get(page.url)
                 form_details = get_login_form(data, page)  # Getting new session
-                submit_form(form_details, browser)  # Updating the session
+                data.submit_form(form_details, browser)  # Updating the session
                 # Doing the loop all over again, without the logout page
         # If the session has not encountered a logout page
         pages_backup = list(data.pages)
@@ -436,22 +398,9 @@ def set_chromedriver(data: Data) -> webdriver.Chrome:
     try:
         print(f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
               f"Setting up the Chromedriver...{COLOR_MANAGER.ENDC}")
-        return new_browser(data)
+        return data.new_browser()
     except Exception:
         raise Exception("Setting up the web driver failed, please try again.")
-
-
-def new_browser(data: Data) -> webdriver.Chrome:
-    """
-    Function creates new browser instance for new session
-    @param data: The data object of the program
-    @return: Chrome driver object
-    """
-    options = webdriver.ChromeOptions()
-    options.add_argument("headless")
-    options.add_experimental_option("excludeSwitches", ["enable-logging"])
-    browser = webdriver.Chrome(executable_path=data.driver, options=options)
-    return browser
 
 
 def set_lists(data: Data):
@@ -536,12 +485,7 @@ def logic(data: Data):
     if len(data.pages) == 0:
         raise Exception("Your website doesn't have any valid web pages", "\t")
     # Getting session pages
-    try:
-        get_session_pages(data, browser)
-    except Exception as e:
-        print(e)
-        print(traceback.format_exc())
-        return
+    get_session_pages(data, browser)
     # Counting the session pages
     session_pages = 0
     for page in data.pages:
