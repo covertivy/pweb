@@ -244,3 +244,4 @@ dkms.conf
 *.xml
 My Stuff/
 pylama.ini
+*.txt
