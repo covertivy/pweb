@@ -3,6 +3,7 @@ from colors import COLOR_MANAGER
 import Data
 from bs4 import BeautifulSoup
 import time
+import random
 
 # Consts:
 COLOR = COLOR_MANAGER.rgb(255, 255, 0)
@@ -131,14 +132,18 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
         for curr_text_input in text_inputs:  # In case of more than one text input
             # Getting content of non-blind injection
             browser.get(page.url)
+            while True:
+                string = NON_BLIND_STRING + str(random.randint(0, 1000))
+                if string not in browser.page_source:
+                    break
             start = time.time()  # Getting time of normal input
             content = submit_form(form, curr_text_input,
-                                  f"{char}echo {NON_BLIND_STRING}", data, browser)
+                                  f"{char}echo {string}", data, browser)
             normal_time = time.time() - start
             average_time += normal_time
             attempts += 1
-            if NON_BLIND_STRING in content and \
-                    f"echo {NON_BLIND_STRING}" not in content:
+            if string in content and \
+                    f"echo {string}" not in content:
                 # The web page printed the echo message
                 results[curr_text_input["name"]].append(char)
                 check_for_blind = False
