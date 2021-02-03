@@ -142,8 +142,7 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
             normal_time = time.time() - start
             average_time += normal_time
             attempts += 1
-            if string in content and \
-                    f"echo {string}" not in content:
+            if content.count(string) > content.count(f"echo {string}"):
                 # The web page printed the echo message
                 results[curr_text_input["name"]].append(char)
                 check_for_blind = False
@@ -169,14 +168,17 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
                     submit_form(form, curr_text_input,
                                 f"{char} ping -c 5 127.0.0.1", data, browser)
                     injection_time = time.time() - start
-                    if injection_time - average_time > 3:
+                    print(f"{char}   =  {injection_time - average_time}")
+                    if injection_time - average_time > 7:
+                        # Too much time
+                        again = True
+                        browser.close()
+                        browser = data.new_browser()
+                    elif injection_time - average_time > 3:
                         # The injection slowed down the server response
-                        if injection_time - average_time > 7:
-                            # Too much time
-                            again = True
-                        else:
-                            results[curr_text_input["name"]].append(char)
-                            found_vulnerability = True
+                        results[curr_text_input["name"]].append(char)
+                        found_vulnerability = True
+
         if found_vulnerability:
             # In case of blind OS injection
             write_vulnerability(results, page_result,
