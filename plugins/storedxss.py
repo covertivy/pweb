@@ -5,20 +5,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 
 COLOR = COLOR_MANAGER.TURQUOISE
-
-XSS_STRINGS = [
-    "<script>alert(1);</script>",
-    "><script>alert(1);</script>",
-    "'<script>alert(1);</script>",
-    "<img src=x onerror=alert(1)>",
-    '<img src="javascript:alert(1);">',
-    "<img src=javascript:alert(1)>",
-    "<img src=javascript:alert(&quot;1&quot;)>",
-    "<img src=x onerror=javascript:alert(1)>",
-    "<img src=x onerror=javascript:alert(1);>",
-    "<<SCRIPT>alert(1);//\<</SCRIPT>",
-]
-
+PAYLOADS_PATH = "./xsspayloads.txt" # Assuming the payloads are in the same directory as the StoredXSS script.
 
 def logic(data: Data.Data):
     stored_xss_results = Data.CheckResults("Stored XSS", COLOR)
@@ -40,10 +27,11 @@ def logic(data: Data.Data):
     data.mutex.release()
 
 
-def check_forms(page_url: str, source_html: str) -> dict:
+def brute_force_alert(page_url: str, source_html: str) -> dict:
     """
-    This is a function to check every form input for possible xss vulnerability.
+    This is a function to check every form input for possible stored xss vulnerability.
     A web browser checks for an alert and if it finds one it is vulnerable!
+    !This method is extremely aggressive and should be used with caution!
     Args:
         @param page_url (str): The url of the page to be checked. format should be "http://pageto.check:<optional port>/<required dirctories>/"
         @param source_html (str): The source html of the page to be checked.
