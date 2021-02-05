@@ -38,17 +38,19 @@ class Data:
             f"BLACKLIST: {self.blacklist}\n"
             f"WHITELIST: {self.whitelist}")
 
-    def new_browser(self) -> [webdriver.Chrome]:
+    def new_browser(self, headless=True) -> [webdriver.Chrome]:
         """
         Function creates new browser instance for new session
         @param self: The data object of the program
+        @param headless: In case of debugging, False will make the chromium appear
         @return: Chrome driver object
         """
         if not self.driver:
             # There is no driver file path
             raise Exception("There is no driver file path", "\t")
         options = webdriver.ChromeOptions()
-        options.add_argument("headless")
+        if headless:
+            options.add_argument("headless")
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
         return webdriver.Chrome(executable_path=self.driver, options=options)
 
@@ -122,7 +124,7 @@ class SessionPage(Page):
                  content: str, cookies: list, login: set, request, parent):
         super(SessionPage, self).__init__(url, status, mime_type, content, request, parent)
         self.cookies = cookies  # List of dictionaries that webdriver can use
-        self.login = login  # The page which the session started from
+        self.login = login  # Set(The page which the session started from, It's Login form)
 
 
 class PageResult(Page):

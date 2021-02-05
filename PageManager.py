@@ -144,7 +144,8 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
                     # Only if the page has content type
                     break
         if not request:
-            raise Exception()
+            # Did not find the request
+            raise Exception()  # The request is not found
         browser.refresh()
     except Exception:
         troublesome.append(curr_url)
@@ -153,24 +154,39 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
     if non_session_browser:
         # Session page
         try:
-            non_session_browser.get(browser.current_url)
+            same_content = False
+            same_url = False
             for p in data.pages:
-                if p.url == browser.current_url:
-                    # Have the same URL
+                if p.url.replace("https://", "http://") == \
+                        browser.current_url.replace("https://", "http://"):
+                    # Have the same URL (without the http://)
                     if type(p) is SessionPage:
                         # Redirected to another session page
                         troublesome.append(curr_url)  # No need to check
                         return
-                    elif p.content == browser.page_source and "html" in p.type:
-                        # It redirected to a non-session page, and have the same content
-                        if p.url == browser.current_url or "logout" in curr_url:
-                            print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
-                                  f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
-                            logout.append(curr_url)
-                            logged_out = True
+                    same_url = True
+                if "html" in p.type and p.content == browser.page_source:
+                    # Have the same content of another page
+                    if type(p) is SessionPage or same_url:
+                        # Redirected to another session page
+                        troublesome.append(curr_url)  # No need to check
                         return
-                    else:
-                        break
+                    same_content = True
+                if same_url or same_content:
+                    # Already found what we were looking for
+                    break
+
+            if "logout" in curr_url.lower() or same_content:
+                if not is_session_alive(data, browser):
+                    # It redirected to a non-session page, and have the same content or logout in name
+                    print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
+                          f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
+                    logout.append(curr_url)
+                    logged_out = True
+                    return
+                else:
+                    browser.get(request.url)
+            non_session_browser.get(browser.current_url)
             if non_session_browser.current_url == browser.current_url and \
                     non_session_browser.page_source == browser.page_source:
                 # If the URL can be reachable from non-session point the session has logged out
@@ -194,8 +210,7 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
                     request,
                     previous)
                 color = COLOR_MANAGER.ORANGE
-        except Exception as e:
-            print(e)
+        except Exception:
             troublesome.append(curr_url)
             return
     else:
@@ -230,9 +245,9 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
     # Checking if the page was already printed
     in_list = False
     for printed_page in already_printed:
-        if printed_page.url == page.url and\
+        if printed_page.url.replace("https://", "http://") == page.url.replace("https://", "http://") and\
                 (printed_page.content == page.content or type(printed_page) == type(page)):
-            # Same URL and content or both are session
+            # Same URL (without the http://) and content or both are session
             in_list = True
     if not in_list:
         # If the page was not printed
@@ -253,8 +268,9 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
     # Checking if the page was already checked
     in_list = False
     for pages in data.pages:
-        if pages.url == page.url and (pages.content == page.content or type(pages) == type(page)):
-            # Same URL and content or both are session
+        if pages.url.replace("https://", "http://") == page.url.replace("https://", "http://") and\
+                (pages.content == page.content or type(pages) == type(page)):
+            # Same URL (without the http://) and (content or both are session)
             in_list = True
     if not in_list:
         # Adding to the page list
@@ -324,7 +340,7 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
             continue
         new_url = browser.current_url
         content = browser.page_source
-        if any(new_url == url for origin, url, ses, form in login_pages):
+        if any(new_url == url for origin, url, form in login_pages):
             # The new url is already in the list
             continue
         if all(new_url != p.url for p in data.pages):
@@ -342,6 +358,8 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
                     break
         # Starting session
         logged_out = True
+        global current_login_page
+        current_login_page = (page.url, form_details)
         while logged_out:
             # Until it won't encounter a logout page
             logged_out = False
@@ -351,13 +369,36 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
                 # If the session has encountered a logout page
                 already_checked.clear()  # The function needs to go through all the session pages
                 data.pages = list(pages_backup)  # Restoring the pages list
+                browser.delete_all_cookies()
                 browser.get(page.url)
-                form_details = get_login_form(data, page)  # Getting new session
                 data.submit_form(form_details, browser)  # Updating the session
                 # Doing the loop all over again, without the logout page
         # If the session has not encountered a logout page
         pages_backup = list(data.pages)
     non_session_browser.close()  # Closing the webdriver
+
+
+def is_session_alive(data: Data, browser: webdriver.Chrome) -> bool:
+    """
+    Function checks if the session of the browser is still alive
+    @param data: The data object of the program
+    @param browser: Chrome driver object
+    @return: True - session still alive, False - session has logged out
+    """
+    same_content = 0
+    different_content = 0
+    for page in data.pages:
+        if type(page) is SessionPage:
+            browser.get(page.url)
+            browser.refresh()
+            if browser.page_source != page.content:
+                # Does not have the same content
+                different_content += 1
+            else:
+                # Have the same content
+                same_content += 1
+    # If there are more same-content pages than different-content pages
+    return different_content <= same_content
 
 
 def set_chromedriver(data: Data) -> webdriver.Chrome:

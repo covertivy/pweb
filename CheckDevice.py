@@ -1,3 +1,3 @@
-import plugins.ci as ci
+import plugins.csrf as csrf
 
-ALL_FUNCS = [ci.check]
+ALL_FUNCS = [csrf.check]
