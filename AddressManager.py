@@ -158,7 +158,7 @@ def ping(data: Data):
           f"Pinging {data.ip}{COLOR_MANAGER.ENDC}")
 
     result = subprocess.Popen(
-        ["ping", "-r", "9", "-n", f"{NUMBER_OF_PACKETS}", data.ip],
+        ["ping", "-i", str(TTL), data.ip],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE)
     result.wait()  # Wait for the thread to finish the ping
@@ -167,19 +167,13 @@ def ping(data: Data):
         # If the ping made an output
         if "Access denied." in out.decode():
             # If the ping requires sudo privileges
-            raise Exception("The process requires administrative privileges", "\t")
-        elif "Lost = 0" in out.decode():
-            # If the host is up
-            if out.decode().count("->") > NUMBER_OF_PACKETS * TTL:
-                # Every "->" represents a router that the ping going through
-                # More than 2 routers are usually out of the local network
-                raise Exception(f"The host {data.ip} is not in your local network", "\t")
-        else:
+            raise Exception("The process requires administrative privileges.\n", "\t")
+        elif "TTL expired in transit" in out.decode():
             # If the host is down
-            raise Exception(f"The host {data.ip} is down or too far", "\t")
+            raise Exception(f"The host {data.ip} is down or too far.\n", "\t")
     else:
         # Don't know when it can occur, just in case of unknown error
-        raise Exception("Some error has occurred")
+        raise Exception("Some error has occurred.\n", "\t")
 
 
 def set_target(data: Data):

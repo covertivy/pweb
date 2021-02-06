@@ -2,13 +2,11 @@
 from colors import COLOR_MANAGER
 import Data
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
-import requests.utils
-import requests
 import random
 
 COLOR = COLOR_MANAGER.rgb(255, 255, 0)
 CHECK_STRING = "check"
+current_referer = ""
 
 
 def check(data: Data.Data):
@@ -18,9 +16,8 @@ def check(data: Data.Data):
     @return: None
     """
     csrf_results = Data.CheckResults("CSRF", COLOR)
-
     data.mutex.acquire()
-    pages = data.pages  # Achieving the pages
+    pages = list(data.pages)  # Achieving the pages
     agreement = data.agreement
     data.mutex.release()
     try:
@@ -33,7 +30,7 @@ def check(data: Data.Data):
                 # The user specified his agreement
                 for page, form in pages:
                     try:
-                        result = csrf(page, form)
+                        result = csrf(page, form, data)
                         if result.problem:
                             # If there is a problem with the page
                             csrf_results.page_results.append(result)
@@ -43,7 +40,7 @@ def check(data: Data.Data):
                 # The user did not specified his agreement
                 # and there is a vulnerable page
                 csrf_results.page_results = "The plugin check routine requires submitting web forms," \
-                                            " read about (-a) in our manual and try again."
+                                            " read about (-A) in our manual and try again."
     except Exception:
         csrf_results.page_results = "Something went wrong..."
     data.mutex.acquire()
@@ -113,139 +110,171 @@ def filter_forms(pages: list, agreement: bool) -> list:
     return filtered_pages
 
 
-def csrf(page: Data.SessionPage, form: dict) -> Data.PageResult:
+def csrf(page: Data.SessionPage, form: dict, data: Data.Data) -> Data.PageResult:
     """
     Function checks the page for csrf
     @param page: The current page
     @param form: The page's action form
+    @param data: The data object of the program
     @return: Page result object
     """
     page_result = Data.PageResult(page, "", "")
     vulnerability = [False, False, False]
     # Checking for csrf tokens
-    session = new_session(page.cookies, page.url)
-    session.cookies = page.cookies
-    reload = session.get(page.url)
-    token = False
-    print(any("csrf" in a.lower() for a in dict(reload.headers).keys()))
-    print(dict(reload.request.headers).values())
-    print(reload.headers.get("Set-Cookie"))
-    if reload.headers.get("Set-Cookie") and "SameSite=Strict" in reload.headers.get("Set-Cookie"):
-        # Found a SameSite header
+    request_headers = page.request.headers
+    response_headers = page.request.response.headers
+    if response_headers.get("Set-Cookie") and \
+            ("SameSite=Strict" in response_headers.get("Set-Cookie") or
+             "csrf" in response_headers.get("Set-Cookie")) or request_headers.get("X-Csrf-Token"):
+        # Found a SameSite or csrf token in response header
         return page_result
-    for new_form in get_forms(reload.text):
-        if new_form["action"] == form["action"]:
-            # Same form
-            for input_tag in form["inputs"]:
-                # Using the specified value
-                if "name" in input_tag.keys() and input_tag["value"]:
-                    # Only if the input has a name and a value
-                    for new_input_tag in new_form["inputs"]:
-                        if "name" in new_input_tag.keys() and new_input_tag["name"] == input_tag["name"]:
-                            # If the input tags have the same name
-                            if new_input_tag["value"] != input_tag["value"]:
-                                # If the input tags have different values
-                                token = True
-                                break
-                    if token:
-                        # No need to look for another input tag
-                        break
-            break  # There is only one fitting form
+    # Setting new browser
+    browser = set_browser(data, page)
+    token = False
+    try:
+        for new_form in get_forms(browser.page_source):
+            if new_form["action"] == form["action"]:
+                # Same form
+                for input_tag in form["inputs"]:
+                    # Using the specified value
+                    if "name" in input_tag.keys() and input_tag["value"]:
+                        # Only if the input has a name and a value
+                        for new_input_tag in new_form["inputs"]:
+                            if "name" in new_input_tag.keys() and new_input_tag["name"] == input_tag["name"]:
+                                # If the input tags have the same name
+                                if new_input_tag["value"] != input_tag["value"]:
+                                    # If the input tags have different values
+                                    token = True
+                                    break
+                        if token:
+                            # No need to look for another input tag
+                            break
+                break  # There is only one fitting form
+    except Exception:
+        pass
     if token:
         # Found a csrf token
         return page_result
     # Join the url with the action (form request URL)
-    action_url = urljoin(page.url, form["action"])  # Getting action URL
     if form["method"] == "get":
         # Dangerous by itself
         vulnerability[0] = True
     # Getting normal content
-    normal_content = get_response(new_session(page.cookies, page.url),
-                                  action_url, form)
+    print(form.get("inputs"))
+    normal_content = get_response(form, page.url, data, browser)
     # Getting redirected content
-    referer_content = get_response(new_session(page.cookies, "https://google.com"),
-                                   action_url, form)
+    browser.get(page.url)
+    print(form.get("inputs"))
+    referer_content = get_response(form, "https://google.com", data, browser)
     if normal_content == referer_content:
         # Does not filter referer header
         vulnerability[1] = True
     else:
-        # Getting redirected content
-        referer_content = get_response(new_session(page.cookies, page.parent.url),
-                                       action_url, form)
+        # Getting local redirected content
+        browser.get(page.url)
+        print(form.get("inputs"))
+        referer_content = get_response(form, page.parent.url, data, browser)
         if normal_content == referer_content:
             # Does not filter referer header
             vulnerability[2] = True
-    write_vulnerability(vulnerability, page_result, action_url)
+    if sum(vulnerability):
+        write_vulnerability(vulnerability, page_result)
+    browser.close()
     return page_result
 
 
-def new_session(cookies, referer) -> requests.Session:
-    """
-    Function create a new session
-    @param cookies: We need those cookies to save the session
-    @param referer: The last known URL that called the page
-    @return: The session object
-    """
-    # Setting session for connection
-    session = requests.Session()
-    # Setting cookies
-    session.cookies = cookies
-    # Setting referer
-    session.headers.update({'Referer': referer})
-    return session
-
-
-def get_response(session: requests.Session, action_url: str, form: dict) -> str:
+def get_response(form: dict, referer: str, data: Data.Data, browser) -> str:
     """
     Function submits a specified form and gets the result content
-    @param session: Requests session object
-    @param action_url: Action URL the website asks
     @param form: A dictionary of inputs of action form
+    @param referer: A specified referer address
+    @param data: The data object of the program
+    @param browser: The browser object
     @return: The content of the resulted page
     """
-    # The arguments body we want to submit
-    args = dict()
-    check_strings = list()
-    for input_tag in form["inputs"]:
-        # Using the specified value
-        if "name" in input_tag.keys():
-            # Only if the input has a name
-            if input_tag["value"]:
-                args[input_tag["name"]] = input_tag["value"]
-            else:
-                while True:
-                    # While the random string in the list
-                    check_string = CHECK_STRING + str(random.randint(1, 200))
-                    if check_string not in check_strings:
-                        break
-                check_strings.append(check_string)
-                args[input_tag["name"]] = check_string
-    # Sending the request
-    if form["method"] == "post":
-        # POST request
-        content = session.post(action_url, data=args).text
-    else:
-        # GET request
-        content = session.get(action_url, params=args).text
-    for string in check_strings:
-        # In case that the random string is in the content
-        content = content.replace(string, "")
+    content = browser.page_source
+    try:
+        inputs = list(form["inputs"])
+        check_strings = list()
+        for input_tag in inputs:
+            # Using the specified value
+            input_tag = dict(input_tag)
+            if "name" in input_tag.keys():
+                # Only if the input has a name
+                if not input_tag["value"]:
+                    # There is no value to the input tag
+                    while True:
+                        # While the random string in the list
+                        check_string = CHECK_STRING + str(random.randint(1, 200))
+                        if check_string not in check_strings:
+                            break
+                    check_strings.append(check_string)
+                    input_tag["value"] = check_string
+        # Sending the request
+        global current_referer
+        current_referer = referer
+        print(inputs)
+        data.submit_form(inputs, browser)
+        content = browser.page_source
+        print(check_strings)
+        for string in check_strings:
+            # In case that the random string is in the content
+            print(string in content)
+            content = content.replace(string, "")
+    except Exception as e:
+        pass
     return content
 
 
-def write_vulnerability(results: list, page_result: Data.PageResult, action_url):
+def set_browser(data: Data.Data, page: Data.SessionPage):
+    """
+    Function Sets up a new browser, sets its cookies and checks if the cookies are valid
+    @param data: The data object of the program
+    @param page: The current page
+    @return: The browser object
+    """
+    url = page.url
+    if page.parent:
+        # If the page is not first
+        url = page.parent.url
+    browser = data.new_browser(False)
+    browser.request_interceptor = interceptor
+    browser.set_page_load_timeout(60)
+    browser.get(url)
+    for cookie in page.cookies:
+        browser.add_cookie(cookie)
+    # Getting the page again
+    browser.get(page.url)
+    return browser
+
+
+def interceptor(request):
+    """
+    Function acts like proxy, it changes the requests header
+    @param request: The current request
+    @return: None
+    """
+    # Block PNG, JPEG and GIF images
+    if request.path.endswith(('.png', '.jpg', '.gif')):
+        request.abort()
+    else:
+        global current_referer
+        del request.headers['Referer']  # Remember to delete the header first
+        request.headers['Referer'] = current_referer  # Spoof the referer
+
+
+def write_vulnerability(results: list, page_result: Data.PageResult):
     """
     Function writes the problem and the solution of every problem that is found for a page
     @param results: a dictionary of text input and list of chars it didn't filter
     @param page_result: page result object of the current page
-    @param action_url: The action URL
     @return: None
     """
     lines = sum(results)
     padding = " " * 25
     if results[0]:
         # GET problem
-        page_result.problem += f"The use of GET request when submitting the form '{action_url}' might be vulnerable."
+        page_result.problem += f"The use of GET request when submitting the form might be vulnerable."
         page_result.solution += f"You can change the method of the request to POST.\n{padding} "
         if lines > 1:
             # More than one line
@@ -260,6 +289,6 @@ def write_vulnerability(results: list, page_result: Data.PageResult, action_url)
         else:
             # Referer to inside of the domain
             page_result.problem += "The page did not detect the 'Referer' header," \
-                                   f" which was not the same page that has the action '{action_url}'."
+                                   f" which was not the same page that has the vulnerable form."
     page_result.solution += "The best way to prevent CSRF vulnerability is to use CSRF Tokens, " \
                             f"\n{padding} read more about it in: 'https://portswigger.net/web-security/csrf/tokens'."

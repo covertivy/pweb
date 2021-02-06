@@ -3,8 +3,6 @@ from urllib.parse import urljoin
 from colors import COLOR_MANAGER
 from Data import Data, SessionPage, Page
 import requests
-import requests.utils
-import http.cookiejar
 from seleniumwire import webdriver
 import sys
 import os
@@ -14,8 +12,6 @@ import zipfile
 # Global variables
 # Dictionary of the mime-types and their color (find values in the logic function)
 type_colors = dict()
-# List of (login URL, logged-in URL, the session, login-form of the login URL)
-login_pages = []
 already_printed = []  # List of printed Pages/SessionPages
 already_checked = []  # List of checked Pages/SessionPages
 troublesome = []  # List of troublesome URLs
@@ -38,7 +34,8 @@ def get_links(links: list, url: str) -> list:
     """
     valid_links = list()
     for link in [urljoin(url, link) for link in links]:
-        if str(link).startswith(f"http://{str(url).replace('http://', '').split(':')[0].split('/')[0]}"):
+        if str(link).replace("http://", "").replace("https://", "").startswith(
+                f"{str(url).replace('http://', '').replace('https://', '').split(':')[0].split('/')[0]}"):
             # Only URLs that belongs to the website
             valid_links.append(link)
     valid_links = list(set(valid_links))
@@ -46,87 +43,60 @@ def get_links(links: list, url: str) -> list:
     return valid_links
 
 
-def get_login_form(data: Data, url: str) -> (dict, requests.Session):
+def get_login_form(data: Data, page: Page) -> [dict]:
     """
     Function gets the login form of the page
     @param data: The data object of the program
-    @param url: The current URL
-    @return: Dictionary of the form details, The session of the request
+    @param page: The current page
+    @return: Dictionary of the form details
     """
-    session = requests.session()
-    session.cookies = http.cookiejar.CookieJar()
-    res = session.get(url)  # Opening the URL
-    forms = BeautifulSoup(res.content.decode(), "html.parser").find_all("form")  # Getting page forms
+    forms = BeautifulSoup(page.content, "html.parser").find_all("form")  # Getting page forms
     for form in forms:
-        # Get the form action (requested URL)
-        action = form.attrs.get("action").lower()
-        # Get the form method (POST, GET, DELETE, etc)
-        # If not specified, GET is the default in HTML
-        method = form.attrs.get("method", "get").lower()
-        # Get all form inputs
-        inputs = []
-        login_input = [False, False]  # Check if the form is login form
-        for input_tag in form.find_all("input"):
-            # Get type of input form control
-            input_type = input_tag.attrs.get("type", "text")
-            # Get name attribute
-            input_name = input_tag.attrs.get("name")
-            value = ""  # The default value of the input
-            if input_name:
-                # If there is an input name
-                if input_name.lower() == "username":
-                    # Username input
-                    value = data.username
-                    login_input[0] = True
-                elif input_name.lower() == "password":
-                    # Password input
-                    value = data.password
-                    login_input[1] = True
-            # Get the default value of that input tag
-            input_value = input_tag.attrs.get("value", value)
-            # Add everything to that list
-            input_dict = dict()
-            if input_type:
-                input_dict["type"] = input_type
-            if input_name:
-                input_dict["name"] = input_name
-            input_dict["value"] = input_value
-            inputs.append(input_dict)
-
-        if login_input[0] and login_input[1]:
-            # There both username and password in the form
-            form_details = dict()
-            form_details["action"] = action
-            form_details["method"] = method
-            form_details["inputs"] = inputs
-            return form_details, session
-    return None, None
-
-
-def submit_form(form_details: dict, url: str,
-                session: requests.Session) -> requests.Response:
-    """
-    Function submits the login form
-    @param form_details: Dictionary of the form details
-    @param url: The current URL
-    @param session: The session of the request
-    @return: The response of the login request
-    """
-    # Join the url with the action (form request URL)
-    action_url = urljoin(url, form_details["action"])  # Getting action URL
-    # The arguments body we want to submit
-    args = dict()
-    for input_tag in form_details["inputs"]:
-        # Using the specified value
-        if "name" in input_tag.keys():
-            # Only if the input has a name
-            args[input_tag["name"]] = input_tag["value"]
-    # Sending the request
-    if form_details["method"] == "post":
-        return session.post(action_url, data=args)
-    elif form_details["method"] == "get":
-        return session.get(action_url, params=args)
-    return requests.Response()
+        try:
+            # Get the form action (requested URL)
+            action = form.attrs.get("action").lower()
+            # Get the form method (POST, GET, DELETE, etc)
+            # If not specified, GET is the default in HTML
+            method = form.attrs.get("method", "get").lower()
+            # Get all form inputs
+            inputs = []
+            login_input = [False, False]  # Check if the form is login form
+            for input_tag in form.find_all("input"):
+                # Get type of input form control
+                input_type = input_tag.attrs.get("type", "text")
+                # Get name attribute
+                input_name = input_tag.attrs.get("name")
+                value = ""  # The default value of the input
+                if input_name:
+                    # If there is an input name
+                    if input_name.lower() == "username":
+                        # Username input
+                        value = data.username
+                        login_input[0] = True
+                    elif input_name.lower() == "password":
+                        # Password input
+                        value = data.password
+                        login_input[1] = True
+                # Get the default value of that input tag
+                input_value = input_tag.attrs.get("value", value)
+                # Add everything to that list
+                input_dict = dict()
+                if input_type:
+                    input_dict["type"] = input_type
+                if input_name:
+                    input_dict["name"] = input_name
+                input_dict["value"] = input_value
+                inputs.append(input_dict)
+            if login_input[0] and login_input[1]:
+                # There both username and password in the form
+                form_details = dict()
+                form_details["action"] = action
+                form_details["method"] = method
+                form_details["inputs"] = inputs
+                return form_details
+        except Exception:
+            continue
+    return None
 
 
 def valid_in_list(page: Page) -> bool:
@@ -142,15 +112,15 @@ def valid_in_list(page: Page) -> bool:
 
 
 def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=True,
-              session: requests.Session = None, previous: Page = None):
+              non_session_browser: webdriver.Chrome = None, previous: Page = None):
     """
-    Function gets the lists of pages to the data object
+    Function gets the list of pages to the data object
     @param data: The data object of the program
     @param curr_url: The current URL the function checks
     @param browser: The web driver that gets the rendered content
     @param recursive: True- check all website pages, False- only the first reachable one
-    @param session: In case of session page, the session is important for the connection
-    @param previous: the previous page
+    @param non_session_browser: In case of session, we need another browser to tell us if it is indeed a session
+    @param previous: The previous page
     @return: None
     """
     if len(data.pages) == data.max_pages:
@@ -162,83 +132,102 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
         # Not open logout pages
         return
 
-    if session:
+    try:
+        # Trying to get the current URL
+        browser.get(curr_url)
+        request = None
+        for req in browser.requests[::-1]:
+            if req.url == browser.current_url:
+                # If we found the right URL
+                request = req
+                if req.response.headers.get("Content-Type"):
+                    # Only if the page has content type
+                    break
+        if not request:
+            # Did not find the request
+            raise Exception()  # The request is not found
+        browser.refresh()
+    except Exception:
+        troublesome.append(curr_url)
+        return
+
+    if non_session_browser:
         # Session page
         try:
-            res = session.get(curr_url)
+            same_content = False
+            same_url = False
             for p in data.pages:
-                if p.url == res.url:
-                    # Have the same URL
+                if p.url.replace("https://", "http://") == \
+                        browser.current_url.replace("https://", "http://"):
+                    # Have the same URL (without the http://)
                     if type(p) is SessionPage:
                         # Redirected to another session page
                         troublesome.append(curr_url)  # No need to check
                         return
-                    elif p.content == res.content.decode():
-                        # It redirected to a non-session page, and have the same content
-                        if "logout" in curr_url:
-                            print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
-                                  f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
-                            logout.append(curr_url)
-                            logged_out = True
+                    same_url = True
+                if "html" in p.type and p.content == browser.page_source:
+                    # Have the same content of another page
+                    if type(p) is SessionPage or same_url:
+                        # Redirected to another session page
+                        troublesome.append(curr_url)  # No need to check
                         return
-                    else:
-                        break
-            req = requests.get(res.url)
-            if req.url == res.url and "logout" in curr_url:
+                    same_content = True
+                if same_url or same_content:
+                    # Already found what we were looking for
+                    break
+
+            if "logout" in curr_url.lower() or same_content:
+                if not is_session_alive(data, browser):
+                    # It redirected to a non-session page, and have the same content or logout in name
+                    print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
+                          f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
+                    logout.append(curr_url)
+                    logged_out = True
+                    return
+                else:
+                    browser.get(request.url)
+            non_session_browser.get(browser.current_url)
+            if non_session_browser.current_url == browser.current_url and \
+                    non_session_browser.page_source == browser.page_source:
                 # If the URL can be reachable from non-session point the session has logged out
-                print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
-                      f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
-                logged_out = True
-                logout.append(curr_url)
-                return
-        except Exception as e:
-            troublesome.append(curr_url)
-            return
-        else:
-            try:
+                # Non-Session page
+                page = Page(
+                    browser.current_url,
+                    request.response.status_code,
+                    request.response.headers.get("Content-Type").split(";")[0],
+                    browser.page_source,
+                    request,
+                    previous)
+                color = COLOR_MANAGER.BLUE
+            else:
                 page = SessionPage(
-                    res.url,
-                    res.status_code,
-                    res.headers.get("Content-Type").split(";")[0],
-                    res.content.decode(),
-                    session.cookies,
+                    browser.current_url,
+                    request.response.status_code,
+                    request.response.headers.get("Content-Type").split(";")[0],
+                    browser.page_source,
+                    browser.get_cookies(),
                     current_login_page,
-                    res,
+                    request,
                     previous)
                 color = COLOR_MANAGER.ORANGE
-            except:
-                troublesome.append(curr_url)
-                return
-    else:
-        # Non-Session page
-        try:
-            res = requests.get(curr_url)
-            page = Page(
-                res.url,
-                res.status_code,
-                res.headers.get("Content-Type").split(";")[0],
-                res.content.decode(),
-                res,
-                previous)
-            color = COLOR_MANAGER.BLUE
-        except Exception as e:
-            # Couldn't open with the session
+        except Exception:
             troublesome.append(curr_url)
             return
+    else:
+        # Non-Session page
+        page = Page(
+            browser.current_url,
+            request.response.status_code,
+            request.response.headers.get("Content-Type").split(";")[0],
+            browser.page_source,
+            request,
+            previous)
+        color = COLOR_MANAGER.BLUE
 
     soup = None
     if "html" in page.type:
         # Only if the page is html
         try:
-            # Rendering page
-            if type(page) == SessionPage:
-                # Setting cookies
-                cookies = requests.utils.dict_from_cookiejar(page.cookies)
-                for key in cookies.keys():
-                    browser.add_cookie({"name": key, "value": cookies[key]})
-            browser.get(page.url)
-            page.url = browser.current_url  # Rendered URL
-            page.content = browser.page_source  # Rendered content
             # Creating a BeautifulSoup object
             soup = BeautifulSoup(page.content, "html.parser")
         except Exception as e:
@@ -256,9 +245,9 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
     # Checking if the page was already printed
     in_list = False
     for printed_page in already_printed:
-        if printed_page.url == page.url and\
+        if printed_page.url.replace("https://", "http://") == page.url.replace("https://", "http://") and\
                 (printed_page.content == page.content or type(printed_page) == type(page)):
-            # Same URL and content or both are session
+            # Same URL (without the http://) and content or both are session
             in_list = True
     if not in_list:
         # If the page was not printed
@@ -279,8 +268,9 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
     # Checking if the page was already checked
     in_list = False
     for pages in data.pages:
-        if pages.url == page.url and (pages.content == page.content or type(pages) == type(page)):
-            # Same URL and content or both are session
+        if pages.url.replace("https://", "http://") == page.url.replace("https://", "http://") and\
+                (pages.content == page.content or type(pages) == type(page)):
+            # Same URL (without the http://) and (content or both are session)
             in_list = True
     if not in_list:
         # Adding to the page list
@@ -309,50 +299,113 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
             # More efficient to check every time.
             # If the session logged out or the pages amount is at its maximum.
             return
-        if all(link != page.url for page in data.pages) or session:
+        if all(link != page.url for page in data.pages) or non_session_browser:
             # If the page is not in the page list
             if (not any(link == checked_page.url for checked_page in already_checked)
                     and link not in troublesome):
                 # Page was not checked, it is not troublesome or in the black list
-                get_pages(data, link, browser, data.recursive, session, page)
+                get_pages(data, link, browser, data.recursive, non_session_browser, page)
 
-    if not session and data.username and data.password:
-        # If not session page and there are username and password specified
+
+def get_session_pages(data: Data, browser: webdriver.Chrome):
+    """
+    Function looking for login forms and scraping session pages through them
+    @param data: The data object of the program
+    @param browser: The webdriver browser
+    @return: None
+    """
+    if not (data.username and data.password):
+        # If there are no username or password
+        return
+    non_session_pages = list(data.pages)
+    non_session_browser = data.new_browser()  # New session for non-session page
+    pages_backup = list(data.pages)
+    login_pages = list()
+    global logged_out
+    for page in non_session_pages:
+        if "html" not in page.type:
+            continue
+        # Setting browser for current page
+        browser.get(page.url)
+        form_details = get_login_form(data, page)
+        if not form_details:
+            # The page doesn't have valid login form
+            continue
         try:
-            form_details, session = get_login_form(data, page.url)
-            if not form_details:
-                # The page doesn't have valid login form
-                return
-            res = submit_form(form_details, page.url, session)
-            if not res:
+            response = data.submit_form(form_details["inputs"], browser).response
+            if not response:
                 # Something went wrong in the form
-                return
-            new_url = res.url
-            content = res.content.decode()
-            if any(new_url == url for origin, url, ses, form in login_pages):
-                # The new url is already in the list
-                return
-            if all(new_url != p.url for p in data.pages):
-                # If the new URL is not in list
-                # It is also redirecting
-                login_pages.append((page.url, new_url, session, form_details))
+                continue
+        except Exception:
+            continue
+        new_url = browser.current_url
+        content = browser.page_source
+        if any(new_url == url for origin, url, form in login_pages):
+            # The new url is already in the list
+            continue
+        if all(new_url != p.url for p in data.pages):
+            # If the new URL is not in list
+            # And it is also redirecting
+            login_pages.append((page.url, new_url, form_details))
+        else:
+            # If the new URL is in the list
+            for p in data.pages:
+                if new_url == p.url:
+                    # Have the same URL
+                    if content != p.content:
+                        # Different content
+                        login_pages.append((page.url, new_url, form_details))
+                    break
+        # Starting session
+        logged_out = True
+        global current_login_page
+        current_login_page = (page.url, form_details)
+        while logged_out:
+            # Until it won't encounter a logout page
+            logged_out = False
+            # Attempting to achieve data from page
+            get_pages(data, new_url, browser, non_session_browser=non_session_browser)
+            if logged_out:
+                # If the session has encountered a logout page
+                already_checked.clear()  # The function needs to go through all the session pages
+                data.pages = list(pages_backup)  # Restoring the pages list
+                browser.delete_all_cookies()
+                browser.get(page.url)
+                data.submit_form(form_details["inputs"], browser)  # Updating the session
+                # Doing the loop all over again, without the logout page
+        # If the session has not encountered a logout page
+        pages_backup = list(data.pages)
+    non_session_browser.close()  # Closing the webdriver
+
+
+def is_session_alive(data: Data, browser: webdriver.Chrome) -> bool:
+    """
+    Function checks if the session of the browser is still alive
+    @param data: The data object of the program
+    @param browser: Chrome driver object
+    @return: True - session still alive, False - session has logged out
+    """
+    same_content = 0
+    different_content = 0
+    for page in data.pages:
+        if type(page) is SessionPage:
+            browser.get(page.url)
+            browser.refresh()
+            if browser.page_source != page.content:
+                # Does not have the same content
+                different_content += 1
             else:
-                # If the new URL is in the list
-                for p in data.pages:
-                    if new_url == p.url:
-                        # Have the same URL
-                        if content != p.content:
-                            # Different content
-                            login_pages.append((page.url, new_url, session, form_details))
-                        break
-        except Exception as e:
-            pass
+                # Have the same content
+                same_content += 1
+    # If there are more same-content pages than different-content pages
+    return different_content <= same_content
 
 
-def chromedriver() -> webdriver.Chrome:
+def set_chromedriver(data: Data) -> webdriver.Chrome:
     """
     Function sets a browser web driver object
-    @return: chrome driver object
+    @param data: The data object of the program
+    @return: Chrome driver object
     """
     driver_file = "chromedriver"
     pl = sys.platform
@@ -366,9 +419,8 @@ def chromedriver() -> webdriver.Chrome:
         driver_file += ".exe"
     if driver_file not in os.listdir("."):  # There is no chromedriver in the folder
         # Getting zip file
-        print(
-            f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
-            f"Downloading Chromedriver...{COLOR_MANAGER.ENDC}")
+        print(f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
+              f"Downloading Chromedriver...{COLOR_MANAGER.ENDC}")
         try:
             # Get latest version
             version = requests.get("http://chromedriver.storage.googleapis.com/LATEST_RELEASE").text
@@ -383,16 +435,11 @@ def chromedriver() -> webdriver.Chrome:
         except Exception:
             raise Exception("Download failed, please check your internet connection.")
     # There is a chromedriver in the folder
-    driver_file = os.getcwd() + "\\" + driver_file  # Full path
+    data.driver = os.getcwd() + "\\" + driver_file  # Full path
     try:
-        print(
-            f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
-            f"Setting up the Chromedriver...{COLOR_MANAGER.ENDC}")
-        options = webdriver.ChromeOptions()
-        options.add_argument("headless")
-        options.add_experimental_option("excludeSwitches", ["enable-logging"])
-        browser = webdriver.Chrome(executable_path=driver_file, options=options)
-        return browser
+        print(f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
+              f"Setting up the Chromedriver...{COLOR_MANAGER.ENDC}")
+        return data.new_browser()
     except Exception:
         raise Exception("Setting up the web driver failed, please try again.")
 
@@ -419,7 +466,8 @@ def set_lists(data: Data):
                 failed = True
             else:
                 try:
-                    current_list = [word for word in current_list.replace(" ", "").split(",") if len(word)]
+                    current_list = [word for word in
+                                    current_list.replace("\n", " ").replace(" ", "").split(",") if len(word)]
                     if not len(current_list):
                         # Empty list
                         raise Exception("a")
@@ -459,15 +507,11 @@ def logic(data: Data):
         "CSS": COLOR_MANAGER.PINK,
         "XML": COLOR_MANAGER.YELLOW,
         "Other": COLOR_MANAGER.PURPLE}  # Dictionary of the mime-types and their color
-    print(
-        COLOR_MANAGER.BLUE
-        + COLOR_MANAGER.HEADER
-        + "Scraping pages:"
-        + COLOR_MANAGER.ENDC)
+    print(f"{COLOR_MANAGER.BLUE + COLOR_MANAGER.HEADER}Scraping pages:{COLOR_MANAGER.ENDC}")
     # Setting white and black list
     set_lists(data)
     try:
-        browser = chromedriver()  # Setting web browser driver
+        browser = set_chromedriver(data)  # Setting web browser driver
         print(COLOR_MANAGER.ENDC)
     except Exception as e:
         raise Exception(e, "\t")
@@ -478,38 +522,16 @@ def logic(data: Data):
         already_checked.clear()
     except Exception as e:
         raise Exception("Unknown problem occurred.", "\t")
-
+    # In case of empty website
     if len(data.pages) == 0:
         raise Exception("Your website doesn't have any valid web pages", "\t")
-
+    # Getting session pages
+    get_session_pages(data, browser)
+    # Counting the session pages
     session_pages = 0
-    if len(login_pages):
-        # If there are specified username and password
-        global logged_out
-        global current_login_page
-        pages_backup = list(data.pages)
-        for origin, url, session, form in login_pages:
-            # Check every login page
-            logged_out = True
-            current_login_page = (origin, form)
-            while logged_out:
-                # Until it won't encounter a logout page
-                logged_out = False
-                get_pages(data, url, browser, session=session)  # Attempting to achieve data from page
-                if logged_out:
-                    # If the session has encountered a logout page
-                    already_checked.clear()  # The function needs to go through all the session pages
-                    data.pages = list(pages_backup)  # Restoring the pages list
-                    form_details, session = get_login_form(data, origin)  # Getting new session
-                    submit_form(form_details, origin, session)  # Updating the session
-                    browser.get(origin)  # Setting browser to current page
-                    # Doing the loop all over again, without the logout page
-            # If the session has not encountered a logout page
-            pages_backup = list(data.pages)
-        # Counting the session pages
-        for page in data.pages:
-            if type(page) is SessionPage:
-                session_pages += 1
+    for page in data.pages:
+        if type(page) is SessionPage:
+            session_pages += 1
     print_result(data, session_pages)
     data.pages = [page for page in data.pages if valid_in_list(page)]
     browser.close()
