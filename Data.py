@@ -53,11 +53,14 @@ class Data:
             output_str += f"PASSWORD: Not Specified.\n"
         else:
             output_str += f"PASSWORD: {self.password}\n"
-        if self.blacklist is None:
-            f"BLACKLIST: Not Specified.\n"
+        if self.whitelist is None:
+            output_str += f"WHITELIST: Not Specified.\n"
         else:
-            f"BLACKLIST: {self.blacklist}\n"
-            f"WHITELIST: {self.whitelist}")
+            output_str += f"WHITELIST: {self.whitelist}\n"
+        output_str += f"RECURSIVE: {self.recursive}\n"  
+        output_str += f"VERBOSE: {self.verbose}\n"
+        output_str += f"AGREEMENT: {self.agreement}\n"
+
 
     def new_browser(self, headless=True) -> webdriver.Chrome:
         """
