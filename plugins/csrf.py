@@ -7,7 +7,6 @@ import random
 COLOR = COLOR_MANAGER.rgb(255, 255, 0)
 CHECK_STRING = "check"
 current_referer = ""
-pages = list()  # List of pages
 
 
 def check(data: Data.Data):
@@ -17,7 +16,6 @@ def check(data: Data.Data):
     @return: None
     """
     csrf_results = Data.CheckResults("CSRF", COLOR)
-    global pages
     data.mutex.acquire()
     pages = list(data.pages)  # Achieving the pages
     agreement = data.agreement
@@ -32,7 +30,6 @@ def check(data: Data.Data):
                 # The user specified his agreement
                 for page, form in pages:
                     try:
-                        print(page.url)
                         result = csrf(page, form, data)
                         if result.problem:
                             # If there is a problem with the page
@@ -155,7 +152,6 @@ def csrf(page: Data.SessionPage, form: dict, data: Data.Data) -> Data.PageResult
                 break  # There is only one fitting form
     except Exception:
         pass
-    browser.close()
     if token:
         # Found a csrf token
         return page_result
@@ -164,22 +160,26 @@ def csrf(page: Data.SessionPage, form: dict, data: Data.Data) -> Data.PageResult
         # Dangerous by itself
         vulnerability[0] = True
     # Getting normal content
-    normal_content = get_response(form, page.url, data, set_browser(data, page))
-    print("1")
+    print(form.get("inputs"))
+    normal_content = get_response(form, page.url, data, browser)
     # Getting redirected content
-    referer_content = get_response(form, "https://google.com", data, set_browser(data, page))
-    print("2")
+    browser.get(page.url)
+    print(form.get("inputs"))
+    referer_content = get_response(form, "https://google.com", data, browser)
     if normal_content == referer_content:
         # Does not filter referer header
         vulnerability[1] = True
     else:
         # Getting local redirected content
-        referer_content = get_response(form, page.parent.url, data, set_browser(data, page))
-        print("3")
+        browser.get(page.url)
+        print(form.get("inputs"))
+        referer_content = get_response(form, page.parent.url, data, browser)
         if normal_content == referer_content:
             # Does not filter referer header
             vulnerability[2] = True
-    write_vulnerability(vulnerability, page_result)
+    if sum(vulnerability):
+        write_vulnerability(vulnerability, page_result)
+    browser.close()
     return page_result
 
 
@@ -194,9 +194,11 @@ def get_response(form: dict, referer: str, data: Data.Data, browser) -> str:
     """
     content = browser.page_source
     try:
+        inputs = list(form["inputs"])
         check_strings = list()
-        for input_tag in form["inputs"]:
+        for input_tag in inputs:
             # Using the specified value
+            input_tag = dict(input_tag)
             if "name" in input_tag.keys():
                 # Only if the input has a name
                 if not input_tag["value"]:
@@ -211,15 +213,16 @@ def get_response(form: dict, referer: str, data: Data.Data, browser) -> str:
         # Sending the request
         global current_referer
         current_referer = referer
-        browser.request_interceptor = interceptor
-        data.submit_form(form, browser)
+        print(inputs)
+        data.submit_form(inputs, browser)
         content = browser.page_source
+        print(check_strings)
         for string in check_strings:
             # In case that the random string is in the content
+            print(string in content)
             content = content.replace(string, "")
-    except Exception:
+    except Exception as e:
         pass
-    browser.close()
     return content
 
 
@@ -235,7 +238,8 @@ def set_browser(data: Data.Data, page: Data.SessionPage):
         # If the page is not first
         url = page.parent.url
     browser = data.new_browser(False)
-    browser.set_page_load_timeout(30)
+    browser.request_interceptor = interceptor
+    browser.set_page_load_timeout(60)
     browser.get(url)
     for cookie in page.cookies:
         browser.add_cookie(cookie)
@@ -250,9 +254,13 @@ def interceptor(request):
     @param request: The current request
     @return: None
     """
-    global current_referer
-    del request.headers['Referer']  # Remember to delete the header first
-    request.headers['Referer'] = current_referer  # Spoof the referer
+    # Block PNG, JPEG and GIF images
+    if request.path.endswith(('.png', '.jpg', '.gif')):
+        request.abort()
+    else:
+        global current_referer
+        del request.headers['Referer']  # Remember to delete the header first
+        request.headers['Referer'] = current_referer  # Spoof the referer
 
 
 def write_vulnerability(results: list, page_result: Data.PageResult):

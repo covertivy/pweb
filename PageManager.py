@@ -332,7 +332,7 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
             # The page doesn't have valid login form
             continue
         try:
-            response = data.submit_form(form_details, browser).response
+            response = data.submit_form(form_details["inputs"], browser).response
             if not response:
                 # Something went wrong in the form
                 continue
@@ -371,7 +371,7 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
                 data.pages = list(pages_backup)  # Restoring the pages list
                 browser.delete_all_cookies()
                 browser.get(page.url)
-                data.submit_form(form_details, browser)  # Updating the session
+                data.submit_form(form_details["inputs"], browser)  # Updating the session
                 # Doing the loop all over again, without the logout page
         # If the session has not encountered a logout page
         pages_backup = list(data.pages)

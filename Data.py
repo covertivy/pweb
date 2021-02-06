@@ -38,7 +38,7 @@ class Data:
             f"BLACKLIST: {self.blacklist}\n"
             f"WHITELIST: {self.whitelist}")
 
-    def new_browser(self, headless=True) -> [webdriver.Chrome]:
+    def new_browser(self, headless=True) -> webdriver.Chrome:
         """
         Function creates new browser instance for new session
         @param self: The data object of the program
@@ -55,10 +55,10 @@ class Data:
         return webdriver.Chrome(executable_path=self.driver, options=options)
 
     @staticmethod
-    def submit_form(form_details: dict, browser: webdriver.Chrome):
+    def submit_form(input_list: list, browser: webdriver.Chrome):
         """
         Function submits the login form
-        @param form_details: Dictionary of the form details
+        @param input_list: List of input tags
         @param browser: The session of the request
         @return: The login request
         """
@@ -67,7 +67,7 @@ class Data:
         requests_before = browser.requests
         url_before = browser.current_url
         before_submit = [browser.current_url, browser.page_source]
-        for input_tag in form_details["inputs"]:
+        for input_tag in input_list:
             # Using the specified value
             if "name" in input_tag.keys():
                 # Only if the input has a name
