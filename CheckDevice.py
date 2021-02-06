@@ -1,4 +1,3 @@
-import plugins.sqli as sqli
-import plugins.ci as ci
+import plugins.csrf as csrf
 
-ALL_FUNCS = [sqli.check, ci.check]
+ALL_FUNCS = [csrf.check]
