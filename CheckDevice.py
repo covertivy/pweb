@@ -1,3 +1,3 @@
-import plugins.csrf as csrf
+import plugins.storedxss as storedxss
 
-ALL_FUNCS = [csrf.check]
+ALL_FUNCS = [storedxss.check]
