@@ -261,7 +261,7 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
         sign = "+"
         if not valid_in_list(page):
             sign = "-"  # Sign of not checking
-        print(f"\t{len(data.pages)}[{color}{sign}{COLOR_MANAGER.ENDC}] {color}{page.url}{COLOR_MANAGER.ENDC}")
+        print(f"\t[{color}{sign}{COLOR_MANAGER.ENDC}] {color}{page.url}{COLOR_MANAGER.ENDC}")
         already_printed.append(page)
 
     # Checking if the page was already checked

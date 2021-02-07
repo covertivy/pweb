@@ -17,7 +17,7 @@ class Data:
         self.verbose = True
         self.blacklist = None
         self.whitelist = None
-        self.agreement = False
+        self.aggressive = False
         self.driver = None
         self.pages = list()  # Pages
         self.results = list()  # Vulnerabilities results
@@ -53,11 +53,18 @@ class Data:
             output_str += f"PASSWORD: Not Specified.\n"
         else:
             output_str += f"PASSWORD: {self.password}\n"
-        if self.blacklist is None:
-            f"BLACKLIST: Not Specified.\n"
+        if self.whitelist is None:
+            output_str += f"WHITELIST: Not Specified.\n"
         else:
-            f"BLACKLIST: {self.blacklist}\n"
-            f"WHITELIST: {self.whitelist}")
+            output_str += f"WHITELIST: {self.whitelist}\n"
+        if self.blacklist is None:
+            output_str += f"BLACKLIST: Not Specified.\n"
+        else:
+            output_str += f"BLACKLIST: {self.blacklist}\n"
+        output_str += f"RECURSIVE: {self.recursive}\n"
+        output_str += f"VERBOSE: {self.verbose}\n"
+        output_str += f"AGGRESSIVE: {self.aggressive}\n"
+        return output_str
 
     def new_browser(self, headless=True) -> webdriver.Chrome:
         """
