@@ -4,9 +4,10 @@ import Data
 from bs4 import BeautifulSoup
 import random
 
-COLOR = COLOR_MANAGER.rgb(255, 255, 0)
+COLOR = COLOR_MANAGER.rgb(0, 255, 200)
 CHECK_STRING = "check"
-current_referer = ""
+OUTSIDE_URL = "https://google.com"
+current_referer = None
 
 
 def check(data: Data.Data):
@@ -29,13 +30,15 @@ def check(data: Data.Data):
             if data.agreement:
                 # The user specified his agreement
                 for page, form in pages:
+                    browser = set_browser(data, page)
                     try:
-                        result = csrf(page, form, data)
+                        result = csrf(page, form, data, browser)
                         if result.problem:
                             # If there is a problem with the page
                             csrf_results.page_results.append(result)
                     except Exception:
-                        continue
+                        pass
+                    browser.close()
             else:
                 # The user did not specified his agreement
                 # and there is a vulnerable page
@@ -110,12 +113,13 @@ def filter_forms(pages: list, agreement: bool) -> list:
     return filtered_pages
 
 
-def csrf(page: Data.SessionPage, form: dict, data: Data.Data) -> Data.PageResult:
+def csrf(page: Data.SessionPage, form: dict, data: Data.Data, browser) -> Data.PageResult:
     """
     Function checks the page for csrf
     @param page: The current page
     @param form: The page's action form
     @param data: The data object of the program
+    @param browser: The Chrome browser object
     @return: Page result object
     """
     page_result = Data.PageResult(page, "", "")
@@ -129,7 +133,6 @@ def csrf(page: Data.SessionPage, form: dict, data: Data.Data) -> Data.PageResult
         # Found a SameSite or csrf token in response header
         return page_result
     # Setting new browser
-    browser = set_browser(data, page)
     token = False
     try:
         for new_form in get_forms(browser.page_source):
@@ -160,26 +163,26 @@ def csrf(page: Data.SessionPage, form: dict, data: Data.Data) -> Data.PageResult
         # Dangerous by itself
         vulnerability[0] = True
     # Getting normal content
-    print(form.get("inputs"))
-    normal_content = get_response(form, page.url, data, browser)
+    normal_content = get_response(form, page.url, data, browser)\
+        .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent.url, "")
     # Getting redirected content
     browser.get(page.url)
-    print(form.get("inputs"))
-    referer_content = get_response(form, "https://google.com", data, browser)
+    referer_content = get_response(form, OUTSIDE_URL, data, browser)\
+        .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent.url, "")
     if normal_content == referer_content:
         # Does not filter referer header
         vulnerability[1] = True
     else:
         # Getting local redirected content
         browser.get(page.url)
-        print(form.get("inputs"))
-        referer_content = get_response(form, page.parent.url, data, browser)
+        referer_content = get_response(form, page.parent.url, data, browser)\
+            .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent.url, "")
         if normal_content == referer_content:
             # Does not filter referer header
             vulnerability[2] = True
     if sum(vulnerability):
+        # If there is a vulnerability
         write_vulnerability(vulnerability, page_result)
-    browser.close()
     return page_result
 
 
@@ -192,16 +195,16 @@ def get_response(form: dict, referer: str, data: Data.Data, browser) -> str:
     @param browser: The browser object
     @return: The content of the resulted page
     """
-    content = browser.page_source
+    content = ""
     try:
-        inputs = list(form["inputs"])
+        inputs = list()
         check_strings = list()
-        for input_tag in inputs:
+        for input_tag in form["inputs"]:
             # Using the specified value
-            input_tag = dict(input_tag)
-            if "name" in input_tag.keys():
+            new_input_tag = dict(input_tag)
+            if "name" in new_input_tag.keys():
                 # Only if the input has a name
-                if not input_tag["value"]:
+                if not new_input_tag["value"]:
                     # There is no value to the input tag
                     while True:
                         # While the random string in the list
@@ -209,21 +212,21 @@ def get_response(form: dict, referer: str, data: Data.Data, browser) -> str:
                         if check_string not in check_strings:
                             break
                     check_strings.append(check_string)
-                    input_tag["value"] = check_string
+                    new_input_tag["value"] = check_string
+            inputs.append(new_input_tag)
         # Sending the request
         global current_referer
         current_referer = referer
-        print(inputs)
         data.submit_form(inputs, browser)
+        current_referer = None
         content = browser.page_source
-        print(check_strings)
         for string in check_strings:
             # In case that the random string is in the content
-            print(string in content)
             content = content.replace(string, "")
     except Exception as e:
         pass
-    return content
+    finally:
+        return content
 
 
 def set_browser(data: Data.Data, page: Data.SessionPage):
@@ -237,13 +240,13 @@ def set_browser(data: Data.Data, page: Data.SessionPage):
     if page.parent:
         # If the page is not first
         url = page.parent.url
-    browser = data.new_browser(False)
-    browser.request_interceptor = interceptor
-    browser.set_page_load_timeout(60)
-    browser.get(url)
-    for cookie in page.cookies:
+    browser = data.new_browser()  # Getting new browser
+    browser.request_interceptor = interceptor  # Setting request interceptor
+    browser.set_page_load_timeout(60)  # Setting long timeout
+    browser.get(url)  # Getting parent URL
+    for cookie in page.cookies:  # Adding cookies
         browser.add_cookie(cookie)
-    # Getting the page again
+    # Getting the page again, with the cookies
     browser.get(page.url)
     return browser
 
@@ -255,10 +258,12 @@ def interceptor(request):
     @return: None
     """
     # Block PNG, JPEG and GIF images
+    global current_referer
     if request.path.endswith(('.png', '.jpg', '.gif')):
+        # Save run time
         request.abort()
-    else:
-        global current_referer
+    elif current_referer:
+        # In case of referer specified
         del request.headers['Referer']  # Remember to delete the header first
         request.headers['Referer'] = current_referer  # Spoof the referer
 

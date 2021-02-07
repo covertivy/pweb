@@ -167,7 +167,7 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
                     same_url = True
                 if "html" in p.type and p.content == browser.page_source:
                     # Have the same content of another page
-                    if type(p) is SessionPage or same_url:
+                    if type(p) is SessionPage:
                         # Redirected to another session page
                         troublesome.append(curr_url)  # No need to check
                         return
@@ -175,7 +175,6 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
                 if same_url or same_content:
                     # Already found what we were looking for
                     break
-
             if "logout" in curr_url.lower() or same_content:
                 if not is_session_alive(data, browser):
                     # It redirected to a non-session page, and have the same content or logout in name
@@ -262,7 +261,7 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
         sign = "+"
         if not valid_in_list(page):
             sign = "-"  # Sign of not checking
-        print(f"\t[{color}{sign}{COLOR_MANAGER.ENDC}] {color}{page.url}{COLOR_MANAGER.ENDC}")
+        print(f"\t{len(data.pages)}[{color}{sign}{COLOR_MANAGER.ENDC}] {color}{page.url}{COLOR_MANAGER.ENDC}")
         already_printed.append(page)
 
     # Checking if the page was already checked
