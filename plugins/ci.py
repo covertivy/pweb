@@ -168,7 +168,6 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
                     submit_form(form, curr_text_input,
                                 f"{char} ping -c 5 127.0.0.1", data, browser)
                     injection_time = time.time() - start
-                    print(f"{char}   =  {injection_time - average_time}")
                     if injection_time - average_time > 7:
                         # Too much time
                         again = True
@@ -225,7 +224,7 @@ def submit_form(form: dict, curr_text_input: dict,
             # Only if the input has the current name
             input_tag["value"] = f"{text}"
     # Sending the request
-    data.submit_form(form, browser)
+    data.submit_form(form["inputs"], browser)
     content = browser.page_source
     return content
 
