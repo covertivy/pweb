@@ -24,15 +24,15 @@ def check(data: Data.Data):
 
     data.mutex.acquire()
     pages = data.pages  # Achieving the pages
-    agreement = data.agreement
+    aggressive = data.aggressive
     data.mutex.release()
     try:
         # Filtering the pages list
-        pages = filter_forms(pages, agreement)
+        pages = filter_forms(pages, aggressive)
         # [(page object, form dict),...]
         if len(pages):
             # There are pages with at least one text input
-            if agreement:
+            if aggressive:
                 # The user specified his agreement
                 for page, form in pages:
                     try:
@@ -46,7 +46,7 @@ def check(data: Data.Data):
                 # The user did not specified his agreement
                 # and there is a vulnerable page
                 sqli_results.page_results = "The plugin check routine requires injecting text boxes," \
-                                            " read about (-a) in our manual and try again."
+                                            " read about (-A) in our manual and try again."
     except Exception:
         sqli_results.page_results = "Something went wrong..."
     data.mutex.acquire()
@@ -54,10 +54,11 @@ def check(data: Data.Data):
     data.mutex.release()
 
 
-def filter_forms(pages: list, agreement: bool) -> list:
+def filter_forms(pages: list, aggressive: bool) -> list:
     """
     Function filters the pages that has an action form
     @param pages:List of pages
+    @param aggressive: If it's false the user did not specified his agreement
     @return: List of pages that has an action form
     """
     filtered_pages = list()
@@ -99,10 +100,10 @@ def filter_forms(pages: list, agreement: bool) -> list:
                 if len(get_text_inputs(form_details)) != 0:
                     # If there are no text inputs, it can't be sql injection
                     filtered_pages.append((page, form_details))
-                    if not agreement:
+                    if not aggressive:
                         # The user did not specified his agreement
                         return filtered_pages
-            except:
+            except Exception:
                 continue
     return filtered_pages
 

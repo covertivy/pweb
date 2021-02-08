@@ -20,14 +20,14 @@ def check(data: Data.Data):
     try:
         data.mutex.acquire()
         pages = data.pages  # Achieving the pages
-        agreement = data.agreement
+        aggressive = data.aggressive
         data.mutex.release()
         # Filtering the pages list
-        pages = filter_forms(pages, agreement)
+        pages = filter_forms(pages, aggressive)
         # [(page object, form dict),...]
         if len(pages):
             # There are pages with at least one text input
-            if data.agreement:
+            if data.aggressive:
                 # The user specified his agreement
                 for page, form in pages:
                     try:
@@ -50,11 +50,11 @@ def check(data: Data.Data):
     data.mutex.release()
 
 
-def filter_forms(pages: list, agreement: bool) -> list:
+def filter_forms(pages: list, aggressive: bool) -> list:
     """
     Function filters the pages that has an action form
     @param pages:List of pages
-    @param agreement: The specified user's agreement
+    @param aggressive: The specified user's agreement
     @return: List of pages that has an action form
     """
     filtered_pages = list()
@@ -96,7 +96,7 @@ def filter_forms(pages: list, agreement: bool) -> list:
                 if len(get_text_inputs(form_details)) != 0:
                     # If there are no text inputs, it can't be command injection
                     filtered_pages.append((page, form_details))
-                    if not agreement:
+                    if not aggressive:
                         # The user did not specified his agreement
                         return filtered_pages
             except:
