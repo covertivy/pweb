@@ -1,7 +1,7 @@
 # PWEB
 
 <p align="center">
-  <a href="https://github.com/ottomated/CrewLink">
+  <a href="https://gitlab.com/sparroweiss/Kineret-206-pweb">
     <img src="https://cdn.discordapp.com/attachments/742134324786102382/745359388608430221/hollow.png" alt="Logo" width="320" height="320">
   </a>
 </p>
@@ -10,7 +10,6 @@
 ## Table of Contents
 
 * [About](#about)
-* [Installation](#installation)
 * [Usage](#usage)
   * [Flags, Usage and Description](#flags-usage-and-description)
   * [Flag Aliases](#flag-aliases)
