@@ -1,5 +1,6 @@
 import Data
 from colors import COLOR_MANAGER
+import bs4
 from bs4 import BeautifulSoup
 import plugins.analyzeReqHeaders as headerAnalyzer
 
@@ -13,19 +14,25 @@ def check(data: Data.Data):
     data.mutex.release()
 
     for page in pages:
+        # Only check html pages.
+        if 'html' not in page.type:
+            continue
         csp_info: dict= headerAnalyzer.csp_check(page)
         if not csp_info['allow_scripts'] and not csp_info['allow_images']:
             # Page is protected by csp but should be checked for content security policy bypass vulnerability.
             pass
-        if not csp_info['allow_scripts']:
+        elif not csp_info['allow_scripts'] and csp_info['allow_images']:
             # Cannot run disallowed scripts on this page.
             pass
-        if not csp_info['allow_images']:
+        elif csp_info['allow_scripts'] and not csp_info['allow_images']:
             # Cannot add disallowed images on this page. 
+            pass
+        else:
+            # Both unauthorized scripts and images are allowed.
             pass
         
         # TODO: verify this check is working with new page manager.
-        vulnerable_inputs = brute_force_alert(data, page.url, page.content)
+        vulnerable_inputs: dict = brute_force_alert(data, page.url, page.content)
         
         # TODO: finish delivery of analysis.
 
@@ -34,7 +41,62 @@ def check(data: Data.Data):
     data.mutex.release()
 
 
-def brute_force_alert(data: Data.Data, page_url: str, source_html: str) -> dict:
+def open_browser(data: Data.Data, page: Data.Page):
+    url = page.url
+    if page.parent:
+        # If the page is not first.
+        url = page.parent.url
+    browser = data.new_browser()  # Getting new browser.
+    browser.set_page_load_timeout(60)  # Setting long timeout.
+    
+    if type(page) is Data.SessionPage:
+        browser.get(url)  # Getting parent URL.
+        for cookie in page.cookies:  # Adding cookies.
+            browser.add_cookie(cookie)
+    
+    # Getting the page again, with the cookies
+    browser.get(page.url)
+    return browser
+
+def get_forms(content: str):
+    form_list = list()
+    forms = BeautifulSoup(content, "html.parser").find_all("form")  # Getting page forms
+    for form in forms:
+        try:
+            # Get the form action (requested URL)
+            action = form.attrs.get("action").lower()
+            # Get the form method (POST, GET, DELETE, etc)
+            # If not specified, GET is the default in HTML
+            method = form.attrs.get("method", "get").lower()
+            # Get all form inputs
+            inputs = []
+            for input_tag in form.find_all("input"):
+                # Get type of input form control
+                input_type = input_tag.attrs.get("type", "text")
+                # Get name attribute
+                input_name = input_tag.attrs.get("name")
+                # Get the default value of that input tag
+                input_value = input_tag.attrs.get("value", "")
+                # Add everything to that list
+                input_dict = dict()
+                if input_type:
+                    input_dict["type"] = input_type
+                if input_name:
+                    input_dict["name"] = input_name
+                input_dict["value"] = input_value
+                inputs.append(input_dict)
+            # Setting the form dictionary
+            form_details = dict()
+            form_details['form'] = form
+            form_details["action"] = action
+            form_details["method"] = method
+            form_details["inputs"] = inputs
+            form_list.append(form_details)
+        except:
+            continue
+    return form_list
+
+def brute_force_alert(data: Data.Data, page: Data.Page, source_html: str):
     """
     This is a function to check every form input for possible stored xss vulnerability.
     A web browser checks for an alert and if it finds one it is vulnerable!
@@ -50,45 +112,56 @@ def brute_force_alert(data: Data.Data, page_url: str, source_html: str) -> dict:
     if not data.aggressive:
         return
 
-    # Create a chrome web driver.
-    browser = data.new_browser()
-
-    # Find forms in html.
-    soup = BeautifulSoup(source_html, "html.parser")
-    all_forms = soup.find_all("form")
-
     # A dictionary containing all the results from our check.
-    vulnerable_inputs = {}
+    vulnerable_forms = {}
     index = 0
 
-    for form in all_forms:
-        for input in list(set(form.find_all("input", type="text"))):
-            input_id = index
-            index += 1
-            # Check each known xss string against input (more can be added if needed).
+    payloads = list()
+    with open(PAYLOADS_PATH, 'r') as file:
+        file_read = file.read()
+        payloads = file_read.split('\n')
 
-            payloads = ""
-            with open(PAYLOADS_PATH, 'r') as file:
-                payloads = file.read().split('\n')
+    for form_details in get_forms(source_html):
+        form_id = index
+        index += 1
 
-            for xss in payloads:
-                if input_id in vulnerable_inputs.keys():
+        # Check each known xss payload against input from $PAYLOADS_PATH text file. (more can be added if needed).
+        for payload in payloads:
+            if form_id in vulnerable_forms.keys():
                     break
-                # Generate url with correct url parameters.
-                response = data.submit_form([input], browser)
-                
-                try:
-                    # Check for alert.
-                    alert = browser.switch_to.alert
-                    alert.accept()
+            inputs = list(form_details["inputs"])
+            for input_tag in inputs:
+                # Using the specified value
+                input_tag = dict(input_tag)
+                if "name" in input_tag.keys():
+                    # Only if the input has a name
+                    if not input_tag["value"]:
+                        # There is no value to the input tag
+                        input_tag["value"] = payload
+                elif (not input.has_attr('name')):
+                    continue
+            
+            # Create a chrome web browser for current page.
+            browser = open_browser(data, page)
+            # Submit the form that was injected with the payload.
+            data.submit_form(inputs, browser)
+            # Close the browser after injecting and sending the payload.
+            browser.close()
+            # Get reloaded page.
+            browser = open_browser(data, page) 
+            
+            try:
+                # Check for alert on reloaded page.
+                alert = browser.switch_to.alert
+                alert.accept()
+                # If did not catch an error then page has popped an alert.
+                # Add to vulnerable forms dictionary.
+                vulnerable_forms[form_id] = (form_details['form'], payload)
+            except:
+                pass  # No alert and therefor not vulnerable.
+            finally:
+                # Close opened browser to prepare for next iteration.
+                browser.close()
 
-                    # Add to vulnerable inputs list.
-                    if input_id not in vulnerable_inputs.keys():
-                        vulnerable_inputs[input_id] = input
-                    else:
-                        continue
-                except:
-                    pass  # No alert and therefor not vulnerable.
-    
-    browser.close()
-    return vulnerable_inputs
+    return vulnerable_forms
+
