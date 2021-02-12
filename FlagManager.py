@@ -109,7 +109,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "-A",
-        "--agressive",
+        "--aggressive",
         action="store_true",
         help="some of the default plugins will mess up with the website data base and source code, "
         "this flag is your signing that you agree to have minimal damage in case of vulnerability.",
