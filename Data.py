@@ -97,6 +97,8 @@ class Data:
         before_submit = [browser.current_url, browser.page_source]
         for input_tag in input_list:
             # Using the specified value
+            if "type" in input_tag.keys() and input_tag['type'] == "hidden":
+                continue
             if "name" in input_tag.keys():
                 # Only if the input has a name
                 element = browser.find_element_by_name(input_tag["name"])

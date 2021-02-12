@@ -43,14 +43,14 @@ def get_links(links: list, url: str) -> list:
     return valid_links
 
 
-def get_login_form(data: Data, page: Page) -> [dict]:
+def get_login_form(data: Data, content: str):
     """
     Function gets the login form of the page
     @param data: The data object of the program
-    @param page: The current page
+    @param content: The current page
     @return: Dictionary of the form details
     """
-    forms = BeautifulSoup(page.content, "html.parser").find_all("form")  # Getting page forms
+    forms = BeautifulSoup(content, "html.parser").find_all("form")  # Getting page forms
     for form in forms:
         try:
             # Get the form action (requested URL)
@@ -66,7 +66,7 @@ def get_login_form(data: Data, page: Page) -> [dict]:
                 input_type = input_tag.attrs.get("type", "text")
                 # Get name attribute
                 input_name = input_tag.attrs.get("name")
-                value = ""  # The default value of the input
+                value = ""  # The default value of the input 
                 if input_name:
                     # If there is an input name
                     if input_name.lower() == "username":
@@ -326,7 +326,7 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
             continue
         # Setting browser for current page
         browser.get(page.url)
-        form_details = get_login_form(data, page)
+        form_details = get_login_form(data, browser.page_source)
         if not form_details:
             # The page doesn't have valid login form
             continue
@@ -335,10 +335,11 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
             if not response:
                 # Something went wrong in the form
                 continue
-        except Exception:
+        except Exception as e:
             continue
         new_url = browser.current_url
         content = browser.page_source
+        
         if any(new_url == url for origin, url, form in login_pages):
             # The new url is already in the list
             continue
