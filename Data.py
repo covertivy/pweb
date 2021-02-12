@@ -63,7 +63,7 @@ class Data:
             output_str += f"BLACKLIST: {self.blacklist}\n"
         output_str += f"RECURSIVE: {self.recursive}\n"
         output_str += f"VERBOSE: {self.verbose}\n"
-        output_str += f"AGGRESSIVE: {self.aggressive}\n"
+        output_str += f"AGGRESSIVE: {self.aggressive}"
         return output_str
 
     def new_browser(self, headless=True) -> webdriver.Chrome:

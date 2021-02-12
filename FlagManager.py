@@ -113,7 +113,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="some of the default plugins will mess up with the website data base and source code, "
         "this flag is your signing that you agree to have minimal damage in case of vulnerability.",
-        dest="agreement",
+        dest="aggressive",
     )
     args = parser.parse_args()
     return args
@@ -238,6 +238,6 @@ def get_final_args(args) -> Data:
     output_obj.verbose = args.verbose
 
     # Set agreement flag
-    output_obj.agreement = args.agreement
+    output_obj.aggressive = args.aggressive
 
     return output_obj
