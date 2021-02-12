@@ -20,14 +20,14 @@ def check(data: Data.Data):
     try:
         data.mutex.acquire()
         pages = data.pages  # Achieving the pages
-        agreement = data.agreement
+        aggressive = data.aggressive
         data.mutex.release()
         # Filtering the pages list
-        pages = filter_forms(pages, agreement)
+        pages = filter_forms(pages, aggressive)
         # [(page object, form dict),...]
         if len(pages):
             # There are pages with at least one text input
-            if data.agreement:
+            if data.aggressive:
                 # The user specified his agreement
                 for page, form in pages:
                     try:
@@ -50,11 +50,11 @@ def check(data: Data.Data):
     data.mutex.release()
 
 
-def filter_forms(pages: list, agreement: bool) -> list:
+def filter_forms(pages: list, aggressive: bool) -> list:
     """
     Function filters the pages that has an action form
     @param pages:List of pages
-    @param agreement: The specified user's agreement
+    @param aggressive: The specified user's agreement
     @return: List of pages that has an action form
     """
     filtered_pages = list()
@@ -96,7 +96,7 @@ def filter_forms(pages: list, agreement: bool) -> list:
                 if len(get_text_inputs(form_details)) != 0:
                     # If there are no text inputs, it can't be command injection
                     filtered_pages.append((page, form_details))
-                    if not agreement:
+                    if not aggressive:
                         # The user did not specified his agreement
                         return filtered_pages
             except:
@@ -114,12 +114,7 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
     """
     page_result = Data.PageResult(page, "", "")
     chars_to_filter = ["&", "&&", "|", "||", ";"]
-    browser = data.new_browser()
-    browser.get(page.url)
-    if type(page) == Data.SessionPage:
-        for cookie in page.cookies:
-            browser.add_cookie(cookie)
-        browser.refresh()
+    browser = set_browser(data, page)
     text_inputs = get_text_inputs(form)  # Getting the text inputs
     results = dict()
     for text_input in text_inputs:
@@ -148,14 +143,9 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
                 check_for_blind = False
     average_time /= attempts  # Getting average response time
     if check_for_blind:
-        browser.close()
-        browser = data.new_browser()
-        browser.get(page.url)
-        if type(page) == Data.SessionPage:
-            for cookie in page.cookies:
-                browser.add_cookie(cookie)
-            browser.refresh()
         # Didn't find anything
+        browser.close()
+        browser = set_browser(data, page)
         found_vulnerability = False
         for curr_text_input in text_inputs:
             for char in chars_to_filter:  # In case of more than one text input
@@ -168,12 +158,11 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
                     submit_form(form, curr_text_input,
                                 f"{char} ping -c 5 127.0.0.1", data, browser)
                     injection_time = time.time() - start
-                    print(f"{char}   =  {injection_time - average_time}")
                     if injection_time - average_time > 7:
                         # Too much time
                         again = True
                         browser.close()
-                        browser = data.new_browser()
+                        browser = set_browser(data, page)
                     elif injection_time - average_time > 3:
                         # The injection slowed down the server response
                         results[curr_text_input["name"]].append(char)
@@ -189,6 +178,27 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
                             "allowed OS injection, it did not detected the character")
     browser.close()
     return page_result
+
+
+def set_browser(data: Data.Data, page: Data.SessionPage):
+    """
+    Function Sets up a new browser, sets its cookies and checks if the cookies are valid
+    @param data: The data object of the program
+    @param page: The current page
+    @return: The browser object
+    """
+    url = page.url
+    if page.parent:
+        # If the page is not first
+        url = page.parent.url
+    browser = data.new_browser()  # Getting new browser
+    browser.set_page_load_timeout(60)  # Setting long timeout
+    browser.get(url)  # Getting parent URL
+    for cookie in page.cookies:  # Adding cookies
+        browser.add_cookie(cookie)
+    # Getting the page again, with the cookies
+    browser.get(page.url)
+    return browser
 
 
 def get_text_inputs(form) -> list:
@@ -225,7 +235,7 @@ def submit_form(form: dict, curr_text_input: dict,
             # Only if the input has the current name
             input_tag["value"] = f"{text}"
     # Sending the request
-    data.submit_form(form, browser)
+    data.submit_form(form["inputs"], browser)
     content = browser.page_source
     return content
 
