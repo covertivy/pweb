@@ -6,9 +6,12 @@ import time
 import random
 
 COLOR = COLOR_MANAGER.rgb(255, 0, 128)
-comments = {"#": ["sleep(5)"],
-            "-- ": ["sleep(5)"],
-            "--": ["dbms_pipe.receive_message(('a'),5)", "WAITFOR DELAY '0:0:5'", "pg_sleep(5)"]}
+TIME = 10
+MINIMUM_ATTEMPTS = 3
+comments = {"#": [f"sleep({TIME})"],
+            "-- ": [f"sleep({TIME})"],
+            "--": [f"dbms_pipe.receive_message(('a'),{TIME})",
+                   f"WAITFOR DELAY '0:0:{TIME}'", f"pg_sleep({TIME})"]}
 CHECK_STRING = "check"
 
 
@@ -39,7 +42,6 @@ def check(data: Data.Data):
                             # If there is a problem with the page
                             sqli_results.page_results.append(result)
                     except Exception:
-                        print(page.url)
                         continue
             else:
                 # The user did not specified his agreement
@@ -48,6 +50,7 @@ def check(data: Data.Data):
                                             " read about (-A) in our manual and try again."
     except Exception:
         sqli_results.page_results = "Something went wrong..."
+
     data.mutex.acquire()
     data.results.append(sqli_results)  # Adding the results to the data object
     data.mutex.release()
@@ -117,73 +120,107 @@ def sql_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
     """
     page_result = Data.PageResult(page, "", "")
     global comments
-    browser = set_browser(data, page)
     text_inputs = get_text_inputs(form)  # Getting the text inputs
     results = dict()
     for text_input in text_inputs:
         # Setting keys for the results
         results[text_input["name"]] = False
     found_vulnerability = False
-    string = get_random_str(browser.page_source)
-    start = time.time()  # Getting time of normal input
-    submit_form([dict(input_tag) for input_tag in form["inputs"]],
-                text_inputs[0], string, data, browser)
-    normal_time = time.time() - start
-    for text_input in text_inputs:
-        browser.close()
-        browser = set_browser(data, page)
-        for comment in comments.keys():
-            # Checking every comment
-            for sleep in comments[comment]:
-                # Checking every sleep function
-                again = True
-                while again:
-                    again = False
-                    start = time.time()
-                    submit_form([dict(input_tag) for input_tag in form["inputs"]], text_input,
-                                f"{get_random_str(browser.page_source)}' OR NOT {sleep} LIMIT 1{comment}",
-                                data, browser)
-                    injection_time = time.time() - start  # Injected input run time
-                    if injection_time - normal_time > 7:
-                        # Too much time
-                        again = True
-                        browser.close()
-                        browser = set_browser(data, page)
-                    elif injection_time - normal_time > 3:
+    normal_time = 0
+    normal_attempts = 0
+
+    def inject(string=None) -> (str, float):
+        browser = None
+        try:
+            browser = set_browser(data, page)
+            if not string:
+                string = get_random_str(browser.page_source)
+            elif "X" in string:
+                string = string.replace("X", get_random_str(browser.page_source))
+            c, r = submit_form([dict(input_tag) for input_tag in form["inputs"]], text_inputs[0], string, data, browser)
+        except Exception:
+            if browser:
+                browser.close()
+            return inject(string)
+        else:
+            browser.close()
+            return c, r
+
+    for _ in range(MINIMUM_ATTEMPTS):
+        content, run_time = inject()
+        normal_time += run_time
+        normal_attempts += 1
+
+    for comment in comments.keys():
+        # Checking every comment
+        for sleep in comments[comment]:
+            # Checking every sleep function
+            content, run_time = inject(f"X' OR NOT {sleep} LIMIT 1{comment}")
+            injection_time = run_time  # Injected input run time
+            injection_attempts = 1
+            while True:
+                difference = injection_time/injection_attempts - normal_time/normal_attempts
+                if difference < TIME + 2:
+                    # It did not took too much time
+                    if difference > TIME - 2:
                         # The injection slowed down the server response
-                        results[text_input["name"]] = True
+                        results[text_inputs[0]["name"]] = True
                         comments = {comment: [sleep]}  # Found the data base's sleep function and comment
                         found_vulnerability = True
-                if found_vulnerability:
-                    # If a vulnerability is found, There is no reason to check another comment
-                    break
+                        break
+                    if difference < 2:
+                        break
+                # It took too much time to load the page
+                content, run_time = inject()
+                normal_time += run_time
+                normal_attempts += 1
+
+                content, run_time = inject(f"X' OR NOT {sleep} LIMIT 1{comment}")
+                injection_time += run_time  # Injected input run time
+                injection_attempts += 1
             if found_vulnerability:
                 # If a vulnerability is found, There is no reason to check another comment
                 break
-    browser.close()
+        if found_vulnerability:
+            # If a vulnerability is found, There is no reason to check another comment
+            break
     write_vulnerability(results, page_result)
     return page_result
 
 
-def set_browser(data: Data.Data, page: Data.SessionPage):
+def set_browser(data: Data.Data, page):
     """
     Function Sets up a new browser, sets its cookies and checks if the cookies are valid
     @param data: The data object of the program
     @param page: The current page
     @return: The browser object
     """
-    url = page.url
-    if page.parent:
-        # If the page is not first
-        url = page.parent.url
     browser = data.new_browser()  # Getting new browser
+    browser.request_interceptor = interceptor  # Setting request interceptor
     browser.set_page_load_timeout(60)  # Setting long timeout
-    browser.get(url)  # Getting parent URL
-    for cookie in page.cookies:  # Adding cookies
-        browser.add_cookie(cookie)
+    if type(page) is Data.SessionPage:
+        url = page.url
+        if page.parent:
+            # If the page is not first
+            url = page.parent.url
+        browser.get(url)  # Getting parent URL
+        for cookie in page.cookies:  # Adding cookies
+            browser.add_cookie(cookie)
     # Getting the page again, with the cookies
     browser.get(page.url)
     return browser
+
+
+def interceptor(request):
+    """
+    Function acts like proxy, it changes the requests header
+    @param request: The current request
+    @return: None
+    """
+    # Block PNG, JPEG and GIF images
+    if request.path.endswith(('.png', '.jpg', '.gif')):
+        # Save run time
+        request.abort()
 
 
 def get_text_inputs(form) -> list:
@@ -210,7 +247,7 @@ def get_random_str(content: str) -> str:
 
 
 def submit_form(inputs: list, curr_text_input: dict,
-                text: str, data: Data.Data, browser):
+                text: str, data: Data.Data, browser) -> (str, float):
     """
     Function submits a specified form
     @param inputs: A list of inputs of action form
@@ -230,9 +267,11 @@ def submit_form(inputs: list, curr_text_input: dict,
             else:
                 input_tag["value"] = get_random_str(browser.page_source)
     # Sending the request
+    start = time.time()  # Getting time of normal input
     data.submit_form(inputs, browser)
+    run_time = time.time() - start
     content = browser.page_source
-    return content
+    return content, run_time
 
 
 def write_vulnerability(results: dict, page_result: Data.PageResult):
