@@ -25,6 +25,7 @@ def print_results(results: CheckResults):
             if res.solution:
                 print(f"\t\t{COLOR_MANAGER.BOLD_GREEN}Solution:"
                       f" {COLOR_MANAGER.ENDC}{results.color}{res.solution}")
+            print("")
     elif type(results.page_results) == str:
         COLOR_MANAGER.print_error(results.page_results, "\t")
     else:
@@ -40,6 +41,8 @@ def save_results(data):
     root = ET.Element("root", name="root")  # Create a root for the element tree.
     for thread_results in data.results:
         # Go over each script's findings and summarize them.
+        if len(thread_results.page_results) == 0:
+            continue
         script_element = ET.SubElement(root, thread_results.headline.replace(" ", "_"))
         for page_res in thread_results.page_results:
             # Save each page's data in an xml tree format.
@@ -66,8 +69,7 @@ def logic(data: Data, all_threads_done_event: threading.Event):
     @return: None
     """
     index = 0
-    print(
-            f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
+    print(f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
     if data.output is None:
         # If there is no specified file path
         while True:
@@ -92,6 +94,6 @@ def logic(data: Data, all_threads_done_event: threading.Event):
     else:
         # If there is a specified file path
         all_threads_done_event.wait()  # Waiting for the plugins to finish their run
-        print(
-            f"\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Saving to Output File ({data.output})...{COLOR_MANAGER.ENDC}")
+        print(f"\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Saving to Output File"
+              f" ({data.output})...{COLOR_MANAGER.ENDC}")
         save_results(data)  # Saving the results

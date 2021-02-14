@@ -1,5 +1,6 @@
-requests==2.23.0
+requests==2.25.0
 selenium==3.141.0
 beautifulsoup4==4.9.3
 argparse==1.4.0
-configparser==5.0.0
+configparser==5.0.1
+selenium-wire==4.0.4

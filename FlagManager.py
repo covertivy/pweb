@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "-P",
-        "--ALL_PORTS",
+        "--all_ports",
         action="store_true",
         help="Specify this flag when port isn't known and you wish to scan all ports.",
         dest="all_ports",
@@ -82,7 +82,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "-R",
-        "--Recursive",
+        "--recursive",
         action="store_true",
         help="recursive page scraper, will check all the reachable pages in the website.",
         dest="recursive",
@@ -90,23 +90,48 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "-b",
-        "--black_list",
+        "--blacklist",
         type=str,
         default=None,
-        help="Specify a black list of words that may be found in a page's URL, "
+        help="Specify a blacklist of words that may be found in a page's URL, "
         " if the word is in the page url, the page is blocked. blacklist must be a `.txt` file.",
-        dest="block",
+        dest="blacklist",
+    )
+    parser.add_argument(
+        "-w",
+        "--whitelist",
+        type=str,
+        default=None,
+        help="Specify a whitelist of words that may be found in a page's URL, "
+        " if the word is in the page url, the page is will be saved, otherwise we ignore the page,"
+        " whitelist must be a `.txt` file.",
+        dest="whitelist",
     )
     parser.add_argument(
         "-A",
-        "--agressive",
+        "--aggressive",
         action="store_true",
         help="some of the default plugins will mess up with the website data base and source code, "
         "this flag is your signing that you agree to have minimal damage in case of vulnerability.",
-        dest="agreement",
+        dest="aggressive",
     )
     args = parser.parse_args()
     return args
+
+
+def get_port_from_url(url: str) -> int:
+    port = None
+    try:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+        port = parsed.port
+        if port is not None:
+            port = int(port)
+    except ImportError:
+        return None
+
+    return port
 
 
 def get_final_args(args) -> Data:
@@ -135,12 +160,38 @@ def get_final_args(args) -> Data:
     if args.all_ports:
         output_obj.port = "1-65535"
     else:  # Not all ports scan.
-        # Check if port is valid.
-        if args.port < 1 or args.port > 65535:
+        # Check if tjere was a port specified within the url.
+        if args.url is not None:
+            url_port = get_port_from_url(args.url)
+            if url_port is not None:  # url has port.
+                # Check if url port is in valid range.
+                if url_port > 0 or url_port < 65536:
+                    output_obj.port = url_port
+                # Check if user specified a port via flag.
+                elif args.port > 0 or args.port < 65536:
+                    output_obj.port = args.port
+                # No valid port was specified.
+                else:
+                    COLOR_MANAGER.print_error(
+                        "Invalid port number, using default port 80."
+                    )
+                    output_obj.port = 80
+
+            # No url port, check if port flag specified.
+            elif args.port > 0 or args.port < 65536:
+                output_obj.port = args.port
+            else:
+                # No valid port was specified.
+                COLOR_MANAGER.print_error("Invalid port number, using default port 80.")
+                output_obj.port = 80
+
+        # Check if flag port is in valid range.
+        elif args.port > 0 or args.port < 65536:
+            output_obj.port = args.port
+        else:
+            # No valid port was specified.
             COLOR_MANAGER.print_error("Invalid port number, using default port 80.")
             output_obj.port = 80
-        else:
-            output_obj.port = args.port
 
     # Set limit of pages.
     if args.number_of_pages and args.number_of_pages <= 0:
@@ -163,13 +214,22 @@ def get_final_args(args) -> Data:
         output_obj.output = args.output
 
     # Set blacklist file path
-    if args.block is not None:
-        if args.block.endswith(".txt"):
-            output_obj.blacklist = args.block
+    if args.blacklist is not None:
+        if args.blacklist.endswith(".txt"):
+            output_obj.blacklist = args.blacklist
         else:
-            output_obj.blacklist = args.block + ".txt"
+            output_obj.blacklist = args.blacklist + ".txt"
     else:
-        output_obj.blacklist = args.block
+        output_obj.blacklist = args.blacklist
+
+    # Set whitelist file path
+    if args.whitelist is not None:
+        if args.whitelist.endswith(".txt"):
+            output_obj.whitelist = args.whitelist
+        else:
+            output_obj.whitelist = args.whitelist + ".txt"
+    else:
+        output_obj.whitelist = args.whitelist
 
     # Set recursive flag
     output_obj.recursive = args.recursive
@@ -178,6 +238,6 @@ def get_final_args(args) -> Data:
     output_obj.verbose = args.verbose
 
     # Set agreement flag
-    output_obj.agreement = args.agreement
+    output_obj.aggressive = args.aggressive
 
     return output_obj
