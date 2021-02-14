@@ -84,6 +84,7 @@ def open_browser(data: Data.Data, page: Data.Page):
     browser.get(page.url)
     return browser
 
+
 def get_forms(content: str):
     form_list = list()
     forms = BeautifulSoup(content, "html.parser").find_all("form")  # Getting page forms
@@ -122,6 +123,7 @@ def get_forms(content: str):
             continue
     return form_list
 
+
 def select_payloads(allowed_sources: tuple):
     """
     This function receives a tuple that indicates which payloads are allowed by the CSP and returns a 
@@ -144,6 +146,7 @@ def select_payloads(allowed_sources: tuple):
                     payloads.remove(payload)
     
     return payloads
+
 
 def brute_force_alert(data: Data.Data, page: Data.Page, source_html: str, payloads: list):
     """
