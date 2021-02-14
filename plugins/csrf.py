@@ -19,15 +19,15 @@ def check(data: Data.Data):
     csrf_results = Data.CheckResults("CSRF", COLOR)
     data.mutex.acquire()
     pages = list(data.pages)  # Achieving the pages
-    agreement = data.agreement
+    aggressive = data.aggressive
     data.mutex.release()
     try:
         # Filtering the pages list
-        pages = filter_forms(pages, agreement)
+        pages = filter_forms(pages, aggressive)
         # [(page object, form dict),...]
         if len(pages):
             # There are pages with at least one text input
-            if data.agreement:
+            if data.aggressive:
                 # The user specified his agreement
                 for page, form in pages:
                     browser = set_browser(data, page)
@@ -84,16 +84,16 @@ def get_forms(content: str):
             form_details["method"] = method
             form_details["inputs"] = inputs
             form_dict.append(form_details)
-        except:
+        except Exception:
             continue
     return form_dict
 
 
-def filter_forms(pages: list, agreement: bool) -> list:
+def filter_forms(pages: list, aggressive: bool) -> list:
     """
     Function filters the pages that has an action form
     @param pages:List of pages
-    @param agreement: The specified user's agreement
+    @param aggressive: The specified user's agreement
     @return: List of pages that has an action form
     """
     filtered_pages = list()
@@ -107,7 +107,7 @@ def filter_forms(pages: list, agreement: bool) -> list:
         for form in get_forms(page.content):
             # Adding the page and it's form to the list
             filtered_pages.append((page, form))
-            if not agreement:
+            if not aggressive:
                 # The user did not specified his agreement
                 return filtered_pages
     return filtered_pages

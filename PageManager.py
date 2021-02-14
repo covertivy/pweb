@@ -43,14 +43,14 @@ def get_links(links: list, url: str) -> list:
     return valid_links
 
 
-def get_login_form(data: Data, page: Page) -> [dict]:
+def get_login_form(data: Data, content: str) -> [dict]:
     """
     Function gets the login form of the page
     @param data: The data object of the program
-    @param page: The current page
+    @param content: The current page content
     @return: Dictionary of the form details
     """
-    forms = BeautifulSoup(page.content, "html.parser").find_all("form")  # Getting page forms
+    forms = BeautifulSoup(content, "html.parser").find_all("form")  # Getting page forms
     for form in forms:
         try:
             # Get the form action (requested URL)
@@ -326,7 +326,7 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
             continue
         # Setting browser for current page
         browser.get(page.url)
-        form_details = get_login_form(data, page)
+        form_details = get_login_form(data, browser.page_source)
         if not form_details:
             # The page doesn't have valid login form
             continue
@@ -547,7 +547,7 @@ def print_result(data: Data, session_pages: int):
     if any(valid_in_list(page) and type(page) != SessionPage for page in data.pages):
         print(f"\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization:{COLOR_MANAGER.ENDC}")
         print_types(data, Page)
-    if session_pages != 0:
+    if any(valid_in_list(page) and type(page) == SessionPage for page in data.pages):
         # If there are session pages
         print(f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization:{COLOR_MANAGER.ENDC}")
         print_types(data, SessionPage)
