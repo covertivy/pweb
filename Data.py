@@ -95,6 +95,8 @@ class Data:
         del browser.requests
         url_before = browser.current_url
         for input_tag in input_list:
+            if "type" in input_tag.keys() and input_tag['type'] == "hidden":
+                continue
             # Using the specified value
             if "name" in input_tag.keys():
                 # Only if the input has a name
