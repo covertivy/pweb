@@ -245,3 +245,4 @@ dkms.conf
 My Stuff/
 pylama.ini
 *.txt
+CheckDevice.py

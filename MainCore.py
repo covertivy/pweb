@@ -91,7 +91,7 @@ def main():
         else:
             COLOR_MANAGER.print_error(str(e))
     finally:
-        # os.remove('CheckDevice.py')
+        os.remove('CheckDevice.py')
         exit(code=0)
 
 

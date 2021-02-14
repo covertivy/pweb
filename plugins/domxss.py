@@ -2,11 +2,11 @@
 from colors import COLOR_MANAGER
 import Data
 import bs4 as soup
-import re as regex  # Used `https://regex101.com/` a lot to verify regex string.
+import re as regex  #? Used `https://regex101.com/` a lot to verify regex string.
 from selenium import webdriver
 
 
-COLOR = COLOR_MANAGER.rgb(255, 0, 100)
+COLOR = COLOR_MANAGER.rgb(169, 69, 169)
 # The regex strings used to find all dom-xss sources.
 SOURCES_RE = """(location\s*[\[.])|([.\[]\s*["']?\s*(arguments|dialogArguments|innerHTML|write(ln)?|open(Dialog)?|showModalDialog|cookie|URL|documentURI|baseURI|referrer|name|opener|parent|top|content|self|frames)\W)|(localStorage|sessionStorage|Database)|\s*URLSearchParams[\(.]|\s*[.]*(getElementById|getElementByName|getElementByClassName)\("""
 # The regex string used to find all dom-xss sinks.
@@ -82,15 +82,12 @@ def check(data: Data.Data):
     data.mutex.release()
 
 
-def analyse_javascript(javascript_code:str) -> bool:
-    """[summary]
+def analyse_javascript(javascript_code:str):
+    """
     This function looks for sinks and sources within the javascript included code.
     If it finds both at least one source and at least one sink it will return true.
-    Args:
-        javascript_code (str): The source javascript page code.
-
-    Returns:
-        bool: is the javascript source code possibly vulnerable (yes/no).
+    @param javascript_code (str): The source javascript page code.
+    @returns bool: is the javascript source code possibly vulnerable (yes/no).
     """
     match_sources_in_code = regex.finditer(SOURCES_RE, javascript_code, regex.IGNORECASE)
     match_sinks_in_code = regex.finditer(SINKS_RE, javascript_code, regex.IGNORECASE)
@@ -114,21 +111,40 @@ def analyse_javascript(javascript_code:str) -> bool:
     return False
 
 
-def get_scripts(html: str, src: bool = False) -> list:
+def get_scripts(html: str, src: bool = False):
+    """
+    This function searches for all the script tags within the page html and
+    returns a list of of enumerated script tags.
+    @param html (str): The source html of the page.
+    @param src (bool, optional): Should we search for script tags with src attribute. Defaults to False.
+    @returns (list): enumerated list of script tags.
+    """
     soup_obj = soup.BeautifulSoup(html, "html.parser")
     source_scripts = soup_obj.find_all("script", src=src)
     return list(enumerate(source_scripts))
 
 
-def find_script_by_src(html: str, page_url:str) -> soup.Tag:
+def find_script_by_src(html: str, page_url:str):
+    """
+    This function finds a single script that has a src attribute and the source 
+    is the specified page url.
+    @param html: (str): The source html of the page in which we want to find the script tag.
+    @param page_url: (str): The url of the source javascript page that will be searched for in the element.
+    @returns (soup.element.Tag): The script tag that contained the page_url as a src attribute.
+    """
     soup_obj = soup.BeautifulSoup(html, "html.parser")
-    def script_filter(tag) -> bool:
+    def script_filter(tag: soup.element.Tag):
         return tag.name == "script" and tag.has_attr("src") and page_url.endswith(tag["src"])
     scripts = soup_obj.find_all(script_filter, limit=1)
     return scripts[0]
 
 
-def get_script_by_id(source_html:str, script_id:int) -> soup.Tag:
+def get_script_by_id(source_html:str, script_id:int):
+    """
+    @param source_html (str): The source html of the page in which we want to find the script tag.
+    @param script_id (int): The id of the script tag (it's index from the top).
+    @returns (soup.element.Tag): The script tag of the correct index or None if script was not found.
+    """
     soup_obj = soup.BeautifulSoup(source_html, "html.parser")
     all_scripts = soup_obj.find_all("script")
     if script_id > -1 and script_id < len(all_scripts):
@@ -137,17 +153,13 @@ def get_script_by_id(source_html:str, script_id:int) -> soup.Tag:
         return None
 
 
-def determine_possible_vulns(source_html: str) -> dict:
+def determine_possible_vulns(source_html: str):
     """
     A vulnerable script is a script which contains a sink which can be used to execute xss via a source.
     A script cannot be vulnerable without a sink so first we validate the existance of a sink with a regex containing all sinks.
-    Args:
-        source_html (str): The source html of the web page to analyze.
-
-    Returns:
-        dict: a dictionary containing the scripts that has a tuple of sink patterns and their amount as values and the script indexes as keys.
+    @param source_html (str): The source html of the web page to analyze.
+    @returns (dict): A dictionary containing the scripts that has a tuple of sink patterns and their amount as values and the script indexes as keys.
     """
-
     # Fetch all source script tags from page html.
     all_scripts = get_scripts(source_html)
     sinks = {}  # Initialize empty dictionary for sinks.
@@ -171,26 +183,18 @@ def determine_possible_vulns(source_html: str) -> dict:
     return sinks
 
 
-def find_input_fields(html: str) -> tuple:
+def find_input_fields(html: str):
     """
     Get all input fields and filter them to only useful input fields that can house text (can contain script tags).
-
-    Args:
-        html (str): The source html of the page to check.
-
-    Returns:
-        tuple: The tuple containing the results, explanation at the return line.
+    @param html (str): The source html of the page to check.
+    @returns (tuple): The tuple containing the results, explanation at the return line.
     """
 
-    def input_filter_function(tag: soup.element.Tag) -> bool:
+    def input_filter_function(tag: soup.element.Tag):
         """
         A filtering function for beautiful soup's `find_all` function to get all input tags that are of the types: `text`, `url` and `search`.
-
-        Args:
-            tag (soup.element.Tag): The current tag to filter
-
-        Returns:
-            bool: Is the tag appropriate according to our terms.
+        @param tag: (soup.element.Tag): The current tag to filter.
+        @returns (bool): Is the tag appropriate according to our terms.
         """
         # If tag is of `input` type and has a `type` attribute.
         if tag.name != "input" or not tag.has_attr("type"):
@@ -218,10 +222,10 @@ def find_input_fields(html: str) -> tuple:
         if inp.parent.name == "form":
             form_inputs.append(inp)
 
-    # (RETURN) a tuple which contains the following results:
-    # [0]: a boolean expression which states if there are any inputs to check.
-    # [1]: a list of inputs that belong to a form.
-    # [2]: a list all inputs in the web page.
+    #? (RETURN) a tuple which contains the following results:
+    #? [0]: a boolean expression which states if there are any inputs to check.
+    #? [1]: a list of inputs that belong to a form.
+    #? [2]: a list all inputs in the web page.
     return (
         len(all_inputs) > 0,
         all_inputs,
@@ -229,18 +233,14 @@ def find_input_fields(html: str) -> tuple:
     )
 
 
-def check_form_inputs(form_inputs: list, suspicious_scripts: dict) -> dict:
+def check_form_inputs(form_inputs: list, suspicious_scripts: dict):
     """
     Go over each script and check if form input is used within it, if so it is possibly vulnerable!
     Different function from `check_all_inputs` since form inputs can be accessed differently.
     Reference: `https://stackoverflow.com/questions/18606305/accessing-formdata-values`
-
-    Args:
-        form_inputs (list): All form inputs.
-        suspicious_scripts (dict): A dictionary containing all scripts that contain sources and/or sinks.
-
-    Returns:
-        dict: The dictionary of possibly very vulnerable scripts and their danger rating.
+    @param form_inputs (list): All form inputs.
+    @param suspicious_scripts (dict): A dictionary containing all scripts that contain sources and/or sinks.
+    @returns (dict): The dictionary of possibly very vulnerable scripts and their danger rating.
     """
     very_vulnerable = {}
     for script_index in suspicious_scripts.keys():
@@ -296,18 +296,14 @@ def check_form_inputs(form_inputs: list, suspicious_scripts: dict) -> dict:
     return very_vulnerable
 
 
-def check_all_inputs(all_inputs: list, suspicious_scripts: dict) -> dict:
+def check_all_inputs(all_inputs: list, suspicious_scripts: dict):
     """
     Go over each script and check if non form input is used within it, if so it is possibly vulnerable!
     Different function from `check_form_inputs` since form inputs can be accessed differently.
     Reference: `https://stackoverflow.com/questions/11563638/how-do-i-get-the-value-of-text-input-field-using-javascript`
-
-    Args:
-        all_inputs (list): All input tags.
-        suspicious_scripts (dict): A dictionary containing all scripts that contain sources and/or sinks.
-
-    Returns:
-        dict: The dictionary of possibly very vulnerable scripts and their danger rating.
+    @param all_inputs (list): All input tags.
+    @param suspicious_scripts (dict): A dictionary containing all scripts that contain sources and/or sinks.
+    @returns (dict): The dictionary of possibly very vulnerable scripts and their danger rating.
     """
     very_vulnerable = {}
     for script_index in suspicious_scripts.keys():
@@ -355,26 +351,21 @@ def check_all_inputs(all_inputs: list, suspicious_scripts: dict) -> dict:
     return very_vulnerable
 
 
-def further_analyse(suspicious_scripts: dict, input_sources: tuple) -> dict:
+def further_analyse(suspicious_scripts: dict, input_sources: tuple):
     """
     Further analyse each script that contained sinks,
     Check if any type of user input or a known source is used in any of the suspicious scripts,
     If so, they are way more likely to be vulnerable!
+    @param suspicious_scripts (dict): A dictionary containing all scripts that contain sinks.
+        ? { script_index :  (script_string, regex_sink_patterns), ... }
+    @param input_sources (tuple): The returned tuple from `find_input_fields` function, containing various input fields to check individually.
 
-    Args:
-        suspicious_scripts (dict): A dictionary containing all scripts that contain sinks.
-                { script_index :  (script_string, regex_sink_patterns), ... }
-        input_sources (tuple): The returned tuple from `find_input_fields` function,
-            containing various input fields to check individually.
-
-    Raises:
-        ValueError: `suspicious_scripts` parameter is empty list.
-        ValueError: `input_sources` parameter is not in valid format, size should be 3.
-        ValueError: The first value in `input_sources` parameter is false,
-            meaning there are no input sources in given page and therefor no possible vulnerabilities.
-
-    Returns:
-        dict: A dictionary containing the more vulnerable script indexes as keys and the scripts themselves and their final danger levels as values.
+    !Raises:
+    !    ValueError: `suspicious_scripts` parameter is empty list.
+    !    ValueError: `input_sources` parameter is not in valid format, size should be 3.
+    !    ValueError: The first value in `input_sources` parameter is false,
+    !        meaning there are no input sources in given page and therefor no possible vulnerabilities.
+    @returns (dict): A dictionary containing the more vulnerable script indexes as keys and the scripts themselves and their final danger levels as values.
     """
 
     if len(suspicious_scripts) == 0:
