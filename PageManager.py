@@ -534,6 +534,17 @@ def logic(data: Data):
             session_pages += 1
     print_result(data, session_pages)
     data.pages = [page for page in data.pages if valid_in_list(page)]
+
+    # ----------------------------------------------
+    # For DVWA checks
+    for page in data.pages:
+        if type(page) == SessionPage:
+            for cookie in page.cookies:
+                if cookie["name"] == "security":
+                    cookie["value"] = "low"
+        else:
+            continue
+    # ----------------------------------------------
     browser.close()
 
 

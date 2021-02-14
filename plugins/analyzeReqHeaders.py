@@ -1,7 +1,7 @@
 import Data
 
 def csp_check(page: Data.Page):
-    res_dict = {'allow_scripts': False, 'allow_images': False}
+    res_dict = {'allow_scripts': {}, 'allow_images': {}}
     headers: dict = page.request.response.headers
     print(headers)
     if headers.get('Content-Security-Policy', None) is not None:
@@ -18,11 +18,21 @@ def csp_check(page: Data.Page):
     return res_dict
 
 def analyzeScriptSrcParams(param_args: list):
-    if '*' in param_args[1:]:
-        return True
-    return False
+    res_dict = {'*': False, 'unsafe_eval': False, 'unsafe_inline': False, 'unsafe_hashes': False}
+    for arg in param_args[1:]:
+        if arg == '*':
+            res_dict['*'] = True
+        elif arg == 'unsafe_eval': 
+            res_dict['unsafe_eval'] = True
+        elif arg == 'unsafe_inline':
+            res_dict['unsafe_inline'] = True
+        elif arg == 'unsafe_hashes':
+            res_dict['unsafe_hashes'] = True
+    return res_dict
 
 def analyzeImageSrcParams(param_args: list):
-    if '*' in param_args[1:]:
-        return True
-    return False
+    res_dict = {'*': False}
+    for arg in param_args[1:]:
+        if arg == '*':
+            res_dict['*'] = True
+    return res_dict

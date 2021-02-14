@@ -9,6 +9,8 @@ PAYLOADS_PATH = "./plugins/xsspayloads.txt" # Assuming the payloads are in the s
 
 def check(data: Data.Data):
     stored_xss_results = Data.CheckResults("Stored XSS", COLOR)
+    problem_str = ""
+    result_str = ""
     data.mutex.acquire()
     pages = data.pages
     data.mutex.release()
@@ -17,23 +19,41 @@ def check(data: Data.Data):
         # Only check html pages.
         if 'html' not in page.type:
             continue
+
         csp_info: dict= headerAnalyzer.csp_check(page)
-        if not csp_info['allow_scripts'] and not csp_info['allow_images']:
-            # Page is protected by csp but should be checked for content security policy bypass vulnerability.
-            pass
-        elif not csp_info['allow_scripts'] and csp_info['allow_images']:
-            # Cannot run disallowed scripts on this page.
-            pass
-        elif csp_info['allow_scripts'] and not csp_info['allow_images']:
-            # Cannot add disallowed images on this page. 
-            pass
+
+        allowed_script_sources: dict = {}
+        for key, value in csp_info['allow_scripts']:
+            if value:
+                allowed_script_sources[key] = value
+        
+        allowed_image_sources: dict = {}
+        for key, value in csp_info['allow_images']:
+            if value:
+                allowed_image_sources[key] = value
+        
+        if '*' not in allowed_script_sources.keys() and not '*' in allowed_image_sources.keys():
+            problem_str += "Page is protected by 'Content-Security-Policy' Headers and therefor is protected from general xss vulnerabilities.\n" \
+                            "\t\t\tYou should still check for 'Content-Security-Policy' bypass vulnerabilities.\n"
+            if len(allowed_script_sources.keys()) > 0:
+                problem_str += "\t\t\tPlease also note that some interesting `script-src` CSP Headers were also found: {}\n".format(allowed_script_sources.keys())
+            if len(allowed_image_sources.keys()) > 0:
+                problem_str += "\t\t\tPlease also note that some interesting `img-src` CSP Headers were also found: {}\n".format(allowed_image_sources.keys())
+            res = Data.PageResult(page, problem_str, result_str)
+            stored_xss_results.page_results.append(res)
+            continue
         else:
-            # Both unauthorized scripts and images are allowed.
-            pass
-        
-        # TODO: verify this check is working with new page manager.
-        vulnerable_inputs: dict = brute_force_alert(data, page.url, page.content)
-        
+            # Do not perform this aggressive method if the aggressive flag is not checked.
+            if not data.aggressive:
+                stored_xss_results.page_results = "The Stored XSS plugin has only checked the 'Content-Security-Policy' Headers and quite possibly found a vulnerability.\n" \
+                                                    "\t\t\tThe 'Content-Security-Policy' Headers that were found were in `script-src` {} and in `img-src` {}\n".format(allowed_script_sources.keys(), allowed_image_sources.keys()) + "\t\t\tUnfortunately this plugin can no longer perform any aggressive checks since the -A flag was not checked, please use -h to learn more about this flag.\n"
+                return
+            else:
+                allowed_sources: tuple = tuple('*' in allowed_script_sources.keys(),'*' in allowed_image_sources.keys())
+                allowed_payloads = select_payloads(allowed_sources)
+                # TODO: verify this check is working with new page manager.
+                vulnerable_inputs: dict = brute_force_alert(data, page.url, page.content, allowed_payloads)
+            
         # TODO: finish delivery of analysis.
 
     data.mutex.acquire()
@@ -96,35 +116,46 @@ def get_forms(content: str):
             continue
     return form_list
 
-def brute_force_alert(data: Data.Data, page: Data.Page, source_html: str):
+def select_payloads(allowed_sources: tuple):
+    """
+    This function receives a tuple that indicates which payloads are allowed by the CSP and returns a 
+    filtered list of all possibly effective payloads.
+    @param allowed_sources (tuple): This is a tuple that contains specifications if we can use the <img> payloads or the <script> payloads. the order is (script, img) so for example (True, False) would mean that only scripts are allowed via the csp.
+    @returns (list): A list where each element is a payload that was selected from the payloads text file.
+    """
+    payloads = list()
+    with open(PAYLOADS_PATH, 'r', encoding='utf-16') as file:
+        file_read = file.read()
+        payloads = file_read.split('\n')
+    
+    if not all(allowed_sources):
+        for payload in payloads:
+            if not allowed_sources[1]: # Disallow images.
+                if 'img' in payload.lower():
+                    payloads.remove(payload)
+            else: # Disallow scripts.
+                if 'script' in payload.lower():
+                    payloads.remove(payload)
+    
+    return payloads
+
+def brute_force_alert(data: Data.Data, page: Data.Page, source_html: str, payloads: list):
     """
     This is a function to check every form input for possible stored xss vulnerability.
     A web browser checks for an alert and if it finds one it is vulnerable!
     !This method is extremely aggressive and should be used with caution!
-    Args:
-        @param page_url (str): The url of the page to be checked. format should be "http://pageto.check:<optional port>/<required dirctories>/"
-        @param source_html (str): The source html of the page to be checked.
-
-    Returns:
-        dict: A dictionary of all vulnerable inputs and their ids, id for key and `soup.element.Tag` as value.
+    @param page_url (str): The url of the page to be checked. format should be "http://pageto.check:<optional port>/<required dirctories>/"
+    @param source_html (str): The source html of the page to be checked.
+    @param allowed_payloads (list): A list where each element is a payload that was selected from the payloads text file.
+    @returns (dict): A dictionary of all vulnerable inputs and their ids, id for key and `soup.element.Tag` as value.
     """
-    # Do not perform this aggressive method if the aggressive flag is not checked.
-    if not data.aggressive:
-        return
-
     # A dictionary containing all the results from our check.
     vulnerable_forms = {}
     index = 0
 
-    payloads = list()
-    with open(PAYLOADS_PATH, 'r') as file:
-        file_read = file.read()
-        payloads = file_read.split('\n')
-
     for form_details in get_forms(source_html):
         form_id = index
         index += 1
-
         # Check each known xss payload against input from $PAYLOADS_PATH text file. (more can be added if needed).
         for payload in payloads:
             if form_id in vulnerable_forms.keys():
@@ -146,7 +177,7 @@ def brute_force_alert(data: Data.Data, page: Data.Page, source_html: str):
             # Submit the form that was injected with the payload.
             data.submit_form(inputs, browser)
             # Close the browser after injecting and sending the payload.
-            browser.close()
+            browser.quit()
             # Get reloaded page.
             browser = open_browser(data, page) 
             
@@ -161,7 +192,6 @@ def brute_force_alert(data: Data.Data, page: Data.Page, source_html: str):
                 pass  # No alert and therefor not vulnerable.
             finally:
                 # Close opened browser to prepare for next iteration.
-                browser.close()
+                browser.quit()
 
     return vulnerable_forms
-

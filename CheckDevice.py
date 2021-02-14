@@ -1,3 +1,3 @@
-import plugins.storedxss as storedxss
+import plugins.domxss as domxss
 
-ALL_FUNCS = [storedxss.check]
+ALL_FUNCS = [domxss.check]
