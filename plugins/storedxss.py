@@ -22,39 +22,45 @@ def check(data: Data.Data):
 
         csp_info: dict= headerAnalyzer.csp_check(page)
 
-        allowed_script_sources: dict = {}
-        for key, value in csp_info['allow_scripts']:
-            if value:
-                allowed_script_sources[key] = value
-        
-        allowed_image_sources: dict = {}
-        for key, value in csp_info['allow_images']:
-            if value:
-                allowed_image_sources[key] = value
-        
-        if '*' not in allowed_script_sources.keys() and not '*' in allowed_image_sources.keys():
-            problem_str += "Page is protected by 'Content-Security-Policy' Headers and therefor is protected from general xss vulnerabilities.\n" \
-                            "\t\t\tYou should still check for 'Content-Security-Policy' bypass vulnerabilities.\n"
-            if len(allowed_script_sources.keys()) > 0:
-                problem_str += "\t\t\tPlease also note that some interesting `script-src` CSP Headers were also found: {}\n".format(allowed_script_sources.keys())
-            if len(allowed_image_sources.keys()) > 0:
-                problem_str += "\t\t\tPlease also note that some interesting `img-src` CSP Headers were also found: {}\n".format(allowed_image_sources.keys())
-            res = Data.PageResult(page, problem_str, result_str)
-            stored_xss_results.page_results.append(res)
-            continue
-        else:
-            # Do not perform this aggressive method if the aggressive flag is not checked.
-            if not data.aggressive:
-                stored_xss_results.page_results = "The Stored XSS plugin has only checked the 'Content-Security-Policy' Headers and quite possibly found a vulnerability.\n" \
-                                                    "\t\t\tThe 'Content-Security-Policy' Headers that were found were in `script-src` {} and in `img-src` {}\n".format(allowed_script_sources.keys(), allowed_image_sources.keys()) + "\t\t\tUnfortunately this plugin can no longer perform any aggressive checks since the -A flag was not checked, please use -h to learn more about this flag.\n"
-                return
-            else:
-                allowed_sources: tuple = tuple('*' in allowed_script_sources.keys(),'*' in allowed_image_sources.keys())
-                allowed_payloads = select_payloads(allowed_sources)
-                # TODO: verify this check is working with new page manager.
-                vulnerable_inputs: dict = brute_force_alert(data, page.url, page.content, allowed_payloads)
+        if csp_info is not None:
+            allowed_script_sources: dict = {}
+            for key, value in csp_info['allow_scripts']:
+                if value:
+                    allowed_script_sources[key] = value
             
-        # TODO: finish delivery of analysis.
+            allowed_image_sources: dict = {}
+            for key, value in csp_info['allow_images']:
+                if value:
+                    allowed_image_sources[key] = value
+        
+            if '*' not in allowed_script_sources.keys() and not '*' in allowed_image_sources.keys():
+                problem_str += "Page is protected by 'Content-Security-Policy' Headers and therefor is protected from general xss vulnerabilities.\n" \
+                                "\t\t\tYou should still check for 'Content-Security-Policy' bypass vulnerabilities.\n"
+                if len(allowed_script_sources.keys()) > 0:
+                    problem_str += "\t\t\tPlease also note that some interesting `script-src` CSP Headers were also found: {}\n".format(allowed_script_sources.keys())
+                if len(allowed_image_sources.keys()) > 0:
+                    problem_str += "\t\t\tPlease also note that some interesting `img-src` CSP Headers were also found: {}\n".format(allowed_image_sources.keys())
+                res = Data.PageResult(page, problem_str, result_str)
+                stored_xss_results.page_results.append(res)
+                continue
+        
+        # Do not perform this aggressive method if the aggressive flag is not checked.
+        if not data.aggressive:
+            stored_xss_results.page_results = "The Stored XSS plugin has only checked the 'Content-Security-Policy' Headers.\n"
+            str_to_add = str("\t\t\tThe response headers did not contain any Content-Security-Policy Headers and therefor all XSS payloads might be effective!\n" if csp_info is None else "\t\t\tThe 'Content-Security-Policy' Headers that were found were in `script-src` {} and in `img-src` {}\n".format(allowed_script_sources.keys(), allowed_image_sources.keys()))
+            stored_xss_results.page_results += str_to_add + "\t\t\tUnfortunately this plugin can no longer perform any aggressive checks since the -A flag was not checked, please use -h to learn more about this flag.\n"
+            # Leave because if we found one result and we did not select the aggressive option then all page results will be the same.
+            # (The csp headers are defined in the apache settings and therefor they will be the same for all pages).
+            break
+        else:
+            allowed_sources: tuple= (True, True)
+            if csp_info is not None:
+                allowed_sources = tuple('*' in allowed_script_sources.keys(),'*' in allowed_image_sources.keys())
+                
+            allowed_payloads = select_payloads(allowed_sources)
+            # TODO: verify this check is working with new page manager.
+            vulnerable_inputs: dict = brute_force_alert(data, page.url, page.content, allowed_payloads)
+            # TODO: finish delivery of analysis.
 
     data.mutex.acquire()
     data.results.append(stored_xss_results)

@@ -15,7 +15,9 @@ def csp_check(page: Data.Page):
                 res_dict['allow_scripts'] = analyzeScriptSrcParams(param_args)
             elif param_args[0] == 'img_src':
                 res_dict['allow_images'] = analyzeImageSrcParams(param_args)
-    return res_dict
+        return res_dict
+    else: 
+        return None
 
 def analyzeScriptSrcParams(param_args: list):
     res_dict = {'*': False, 'unsafe_eval': False, 'unsafe_inline': False, 'unsafe_hashes': False}
