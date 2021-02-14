@@ -547,7 +547,7 @@ def print_result(data: Data, session_pages: int):
     if any(valid_in_list(page) and type(page) != SessionPage for page in data.pages):
         print(f"\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization:{COLOR_MANAGER.ENDC}")
         print_types(data, Page)
-    if session_pages != 0:
+    if any(valid_in_list(page) and type(page) == SessionPage for page in data.pages):
         # If there are session pages
         print(f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization:{COLOR_MANAGER.ENDC}")
         print_types(data, SessionPage)

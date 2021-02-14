@@ -92,9 +92,8 @@ class Data:
         """
         # The arguments body we want to submit
         elements = list()
-        requests_before = browser.requests
+        del browser.requests
         url_before = browser.current_url
-        before_submit = [browser.current_url, browser.page_source]
         for input_tag in input_list:
             # Using the specified value
             if "name" in input_tag.keys():
@@ -102,25 +101,20 @@ class Data:
                 element = browser.find_element_by_name(input_tag["name"])
                 element.send_keys(input_tag["value"])
                 elements.append({"element": element, "name": input_tag["name"], "type": input_tag["type"]})
-        if before_submit[0] == browser.current_url and \
-                browser.page_source == before_submit[1]:
+        if not len(browser.requests):
             # Did not do anything
-            # Sending the form
-            for element in elements:
-                if element["type"] != "text":
-                    element["element"].click()
-            if before_submit[0] == browser.current_url and \
-                    browser.page_source == before_submit[1]:
-                # Did not do anything
+            try:
                 for element in elements:
                     if element["type"] == "text":
                         element["element"].send_keys(Keys.ENTER)  # Sending the form
-                if before_submit[0] == browser.current_url and \
-                        browser.page_source == before_submit[1]:
+                if not len(browser.requests):
                     # Did not do anything
                     elements[0]["element"].submit()  # Sending the form
-        requests_after = [res for res in browser.requests[len(requests_before)::-1]]
-        for request in requests_after:
+            except Exception as e:
+                if not len(browser.requests):
+                    # Did not do anything
+                    raise e
+        for request in browser.requests:
             if request.url == browser.current_url or\
                     url_before == request.url:
                 return request

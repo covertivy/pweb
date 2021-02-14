@@ -124,29 +124,39 @@ def sql_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
     results = dict()
     for text_input in text_inputs:
         # Setting keys for the results
-        results[text_input["name"]] = False
+        results[text_input["name"]] = 0
     found_vulnerability = False
     normal_time = 0
     normal_attempts = 0
 
     def inject(string=None) -> (str, float):
+        """
+        Inner function inject a string into a text box and submit the form
+        @param string: The string we want to inject
+        @return: Set of (the content of the page, the time it took submit the form)
+        """
         browser = None
         try:
             browser = set_browser(data, page)
             if not string:
+                # If there is no string specified, generate a random string
                 string = get_random_str(browser.page_source)
             elif "X" in string:
+                # Replace X with a random string
                 string = string.replace("X", get_random_str(browser.page_source))
-            c, r = submit_form([dict(input_tag) for input_tag in form["inputs"]], text_inputs[0], string, data, browser)
+            c, r = submit_form([dict(input_tag) for input_tag in form["inputs"]],
+                               text_inputs[0], string, data, browser)
         except Exception:
+            # In case of failing, try again
             if browser:
-                browser.close()
+                browser.quit()
             return inject(string)
         else:
-            browser.close()
+            browser.quit()
             return c, r
 
     for _ in range(MINIMUM_ATTEMPTS):
+        # Injecting
         content, run_time = inject()
         normal_time += run_time
         normal_attempts += 1
@@ -164,7 +174,7 @@ def sql_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
                     # It did not took too much time
                     if difference > TIME - 2:
                         # The injection slowed down the server response
-                        results[text_inputs[0]["name"]] = True
+                        results[text_inputs[0]["name"]] = difference
                         comments = {comment: [sleep]}  # Found the data base's sleep function and comment
                         found_vulnerability = True
                         break
@@ -240,6 +250,11 @@ def get_text_inputs(form) -> list:
 
 
 def get_random_str(content: str) -> str:
+    """
+    Function generates a random string which is not in the current page
+    @param content: The content of the current page
+    @return: random string
+    """
     while True:
         string = CHECK_STRING + str(random.randint(0, 1000))
         if string not in content:
@@ -285,7 +300,8 @@ def write_vulnerability(results: dict, page_result: Data.PageResult):
         # For every text input
         if results[key]:
             # If the input is vulnerable
-            page_result.problem = f"The text parameter '{key}' allowed SQL injection"
+            page_result.problem = f"The text parameter '{key}' allowed blind SQL injection," \
+                                  " the server has slowed down by %3.1f seconds." % results[key]
             page_result.solution = f"You can validate the input from the " \
                                    f"'{key}' parameter, by checking for " \
                                    f"vulnerable characters or wrong input type"
