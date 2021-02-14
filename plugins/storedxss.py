@@ -1,33 +1,40 @@
 import Data
 from colors import COLOR_MANAGER
-import requests
 from bs4 import BeautifulSoup
-from selenium import webdriver
+import plugins.analyzeReqHeaders as headerAnalyzer
 
 COLOR = COLOR_MANAGER.TURQUOISE
-PAYLOADS_PATH = "./xsspayloads.txt" # Assuming the payloads are in the same directory as the StoredXSS script.
+PAYLOADS_PATH = "./plugins/xsspayloads.txt" # Assuming the payloads are in the same directory as the StoredXSS script.
 
-def logic(data: Data.Data):
+def check(data: Data.Data):
     stored_xss_results = Data.CheckResults("Stored XSS", COLOR)
     data.mutex.acquire()
     pages = data.pages
     data.mutex.release()
 
     for page in pages:
-        vulnerable_inputs = check_forms(page.url, page.content)
-        if len(vulnerable_inputs.keys()) > 0:
-            for vulnerable_input_id in vulnerable_inputs.keys():
-                problem_str = f"Found xss vulnerability in input [{vulnerable_input_id}].\nThe input is: {str(vulnerable_inputs[vulnerable_input_id])}"
-                result_str = "The primary rule that you must follow to prevent DOM XSS is: sanitize all untrusted data, even if it is only used in client-side scripts. If you have to use user input on your page, always use it in the text context, never as HTML tags or any other potential code.\nAvoid dangerous methods and instead use safer functions.\nCheck if sources are directly related to sinks and if so prevent them from accessing each other.\nFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html"
-                res = Data.PageResult(page, problem_str, result_str)
-                stored_xss_results.page_results.append(res)
+        csp_info: dict= headerAnalyzer.csp_check(page)
+        if not csp_info['allow_scripts'] and not csp_info['allow_images']:
+            # Page is protected by csp but should be checked for content security policy bypass vulnerability.
+            pass
+        if not csp_info['allow_scripts']:
+            # Cannot run disallowed scripts on this page.
+            pass
+        if not csp_info['allow_images']:
+            # Cannot add disallowed images on this page. 
+            pass
+        
+        # TODO: verify this check is working with new page manager.
+        vulnerable_inputs = brute_force_alert(data, page.url, page.content)
+        
+        # TODO: finish delivery of analysis.
 
     data.mutex.acquire()
     data.results.append(stored_xss_results)
     data.mutex.release()
 
 
-def brute_force_alert(page_url: str, source_html: str) -> dict:
+def brute_force_alert(data: Data.Data, page_url: str, source_html: str) -> dict:
     """
     This is a function to check every form input for possible stored xss vulnerability.
     A web browser checks for an alert and if it finds one it is vulnerable!
@@ -39,12 +46,12 @@ def brute_force_alert(page_url: str, source_html: str) -> dict:
     Returns:
         dict: A dictionary of all vulnerable inputs and their ids, id for key and `soup.element.Tag` as value.
     """
+    # Do not perform this aggressive method if the aggressive flag is not checked.
+    if not data.aggressive:
+        return
+
     # Create a chrome web driver.
-    options = webdriver.ChromeOptions()
-    options.add_argument("--log-level=3")
-    options.add_argument("headless")
-    options.add_experimental_option("excludeSwitches", ["enable-logging"])
-    browser = webdriver.Chrome(options=options)
+    browser = data.new_browser()
 
     # Find forms in html.
     soup = BeautifulSoup(source_html, "html.parser")
@@ -59,13 +66,17 @@ def brute_force_alert(page_url: str, source_html: str) -> dict:
             input_id = index
             index += 1
             # Check each known xss string against input (more can be added if needed).
-            for xss in XSS_STRINGS:
+
+            payloads = ""
+            with open(PAYLOADS_PATH, 'r') as file:
+                payloads = file.read().split('\n')
+
+            for xss in payloads:
                 if input_id in vulnerable_inputs.keys():
                     break
                 # Generate url with correct url parameters.
-                url = f"{page_url}{form.get('action')}?{input.get('id')}={xss}"
-                # Get page with infected url.
-                browser.get(url)
+                response = data.submit_form([input], browser)
+                
                 try:
                     # Check for alert.
                     alert = browser.switch_to.alert
@@ -78,4 +89,6 @@ def brute_force_alert(page_url: str, source_html: str) -> dict:
                         continue
                 except:
                     pass  # No alert and therefor not vulnerable.
+    
+    browser.close()
     return vulnerable_inputs

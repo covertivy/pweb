@@ -1,3 +1,3 @@
-import plugins.sqli as sqli
+import plugins.storedxss as storedxss
 
-ALL_FUNCS = [sqli.check]
+ALL_FUNCS = [storedxss.check]
