@@ -3,7 +3,7 @@ import Data
 def csp_check(page: Data.Page):
     res_dict = {'allow_scripts': {}, 'allow_images': {}}
     headers: dict = page.request.response.headers
-    print(headers)
+    # print(headers)
     if headers.get('Content-Security-Policy', None) is not None:
         csp_param_str = headers.get('Content-Security-Policy').lstrip().rstrip()
         print(csp_param_str)

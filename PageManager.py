@@ -457,31 +457,29 @@ def set_lists(data: Data):
     failed = False  # failed even once
     for dict_list in list_of_lists:
         if dict_list["file"]:
-            try:
-                file = open(dict_list["file"], "r")
-                current_list = file.read()
-                file.close()
-            except Exception:
+            if os.path.exists(dict_list["file"]):
+                with open(dict_list["file"], "r", encoding="utf-16") as f:
+                    current_list = f.read()
+            else:
                 COLOR_MANAGER.print_error(f"The file {dict_list['file']} was not found", "\t")
                 failed = True
-            else:
-                try:
-                    current_list = [word for word in
-                                    current_list.replace("\n", " ").replace(" ", "").split(",") if len(word)]
-                    if not len(current_list):
-                        # Empty list
-                        raise Exception("a")
-                    if dict_list["black"]:
-                        black_list = current_list
-                    else:
-                        white_list = current_list
-                except Exception:
-                    failed = True
-                    COLOR_MANAGER.print_error(f"The file {dict_list['file']} is not in the"
-                                              f" format of <word1>, <word2>.", "\t")
+                break
+            try:
+                current_list = [word for word in current_list.replace("\n", " ").replace(" ", "").split(",") if len(word)]
+                if not len(current_list):
+                    # Empty list
+                    raise Exception("a")
+                if dict_list["black"]:
+                    black_list = current_list
                 else:
-                    COLOR_MANAGER.print_success(f"The file {dict_list['file']} has been"
-                                                f" added to the filtering process.", "\t")
+                    white_list = current_list
+            except Exception:
+                failed = True
+                COLOR_MANAGER.print_error(f"The file {dict_list['file']} is not in the"
+                                            f" format of <word1>, <word2>.", "\t")
+            else:
+                COLOR_MANAGER.print_success(f"The file {dict_list['file']} has been"
+                                            f" added to the filtering process.", "\t")
     if failed:
         # At least one of the specified lists is invalid
         COLOR_MANAGER.print_warning("The process will continue "

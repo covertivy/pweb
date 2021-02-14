@@ -59,7 +59,7 @@ def check(data: Data.Data):
                 
             allowed_payloads = select_payloads(allowed_sources)
             # TODO: verify this check is working with new page manager.
-            vulnerable_inputs: dict = brute_force_alert(data, page.url, page.content, allowed_payloads)
+            vulnerable_inputs: dict = brute_force_alert(data, page, allowed_payloads)
             # TODO: finish delivery of analysis.
 
     data.mutex.acquire()
@@ -148,21 +148,21 @@ def select_payloads(allowed_sources: tuple):
     return payloads
 
 
-def brute_force_alert(data: Data.Data, page: Data.Page, source_html: str, payloads: list):
+def brute_force_alert(data: Data.Data, page: Data.Page, payloads: list):
     """
     This is a function to check every form input for possible stored xss vulnerability.
     A web browser checks for an alert and if it finds one it is vulnerable!
     !This method is extremely aggressive and should be used with caution!
-    @param page_url (str): The url of the page to be checked. format should be "http://pageto.check:<optional port>/<required dirctories>/"
-    @param source_html (str): The source html of the page to be checked.
-    @param allowed_payloads (list): A list where each element is a payload that was selected from the payloads text file.
+    @param data (Data.Data): The data object.
+    @param page (Data.Page): The page object of the current page.
+    @param payloads (list): A list where each element is a payload that was selected from the payloads text file.
     @returns (dict): A dictionary of all vulnerable inputs and their ids, id for key and `soup.element.Tag` as value.
     """
     # A dictionary containing all the results from our check.
     vulnerable_forms = {}
     index = 0
 
-    for form_details in get_forms(source_html):
+    for form_details in get_forms(page.content):
         form_id = index
         index += 1
         # Check each known xss payload against input from $PAYLOADS_PATH text file. (more can be added if needed).
@@ -176,9 +176,9 @@ def brute_force_alert(data: Data.Data, page: Data.Page, source_html: str, payloa
                 if "name" in input_tag.keys():
                     # Only if the input has a name
                     if not input_tag["value"]:
-                        # There is no value to the input tag
+                        # There is no given value to the input tag
                         input_tag["value"] = payload
-                elif (not input.has_attr('name')):
+                elif input_tag.get('name', None):
                     continue
             
             # Create a chrome web browser for current page.
