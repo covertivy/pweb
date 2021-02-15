@@ -180,24 +180,17 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
     return page_result
 
 
-def set_browser(data: Data.Data, page: Data.SessionPage):
+def set_browser(data: Data.Data, page):
     """
     Function Sets up a new browser, sets its cookies and checks if the cookies are valid
     @param data: The data object of the program
     @param page: The current page
     @return: The browser object
     """
-    url = page.url
-    if page.parent:
-        # If the page is not first
-        url = page.parent.url
-    browser = data.new_browser()  # Getting new browser
-    browser.set_page_load_timeout(60)  # Setting long timeout
-    browser.get(url)  # Getting parent URL
-    for cookie in page.cookies:  # Adding cookies
-        browser.add_cookie(cookie)
-    # Getting the page again, with the cookies
-    browser.get(page.url)
+    if type(page) is not Data.SessionPage:
+        # If the current page is not a session page
+        page = None
+    browser = Data.new_browser(data, session_page=page)  # Getting new browser
     return browser
 
 

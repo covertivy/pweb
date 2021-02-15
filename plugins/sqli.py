@@ -205,19 +205,10 @@ def set_browser(data: Data.Data, page):
     @param page: The current page
     @return: The browser object
     """
-    browser = data.new_browser()  # Getting new browser
-    browser.request_interceptor = interceptor  # Setting request interceptor
-    browser.set_page_load_timeout(60)  # Setting long timeout
-    if type(page) is Data.SessionPage:
-        url = page.url
-        if page.parent:
-            # If the page is not first
-            url = page.parent.url
-        browser.get(url)  # Getting parent URL
-        for cookie in page.cookies:  # Adding cookies
-            browser.add_cookie(cookie)
-    # Getting the page again, with the cookies
-    browser.get(page.url)
+    if type(page) is not Data.SessionPage:
+        # If the current page is not a session page
+        page = None
+    browser = Data.new_browser(data, interceptor=interceptor, session_page=page)  # Getting new browser
     return browser
 
 

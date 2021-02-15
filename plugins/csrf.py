@@ -164,19 +164,19 @@ def csrf(page: Data.SessionPage, form: dict, data: Data.Data, browser) -> Data.P
         vulnerability[0] = True
     # Getting normal content
     normal_content = get_response(form, page.url, data, browser)\
-        .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent.url, "")
+        .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent, "")
     # Getting redirected content
     browser.get(page.url)
     referer_content = get_response(form, OUTSIDE_URL, data, browser)\
-        .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent.url, "")
+        .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent, "")
     if normal_content == referer_content:
         # Does not filter referer header
         vulnerability[1] = True
     else:
         # Getting local redirected content
         browser.get(page.url)
-        referer_content = get_response(form, page.parent.url, data, browser)\
-            .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent.url, "")
+        referer_content = get_response(form, page.parent, data, browser)\
+            .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent, "")
         if normal_content == referer_content:
             # Does not filter referer header
             vulnerability[2] = True
@@ -236,18 +236,7 @@ def set_browser(data: Data.Data, page: Data.SessionPage):
     @param page: The current page
     @return: The browser object
     """
-    url = page.url
-    if page.parent:
-        # If the page is not first
-        url = page.parent.url
-    browser = data.new_browser()  # Getting new browser
-    browser.request_interceptor = interceptor  # Setting request interceptor
-    browser.set_page_load_timeout(60)  # Setting long timeout
-    browser.get(url)  # Getting parent URL
-    for cookie in page.cookies:  # Adding cookies
-        browser.add_cookie(cookie)
-    # Getting the page again, with the cookies
-    browser.get(page.url)
+    browser = Data.new_browser(data, interceptor=interceptor, session_page=page)  # Getting new browser
     return browser
 
 

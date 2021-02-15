@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from colors import COLOR_MANAGER
-from Data import Data, SessionPage, Page
+from Data import *
 import requests
 from seleniumwire import webdriver
 import sys
@@ -111,16 +111,16 @@ def valid_in_list(page: Page) -> bool:
                 (black_list and any(word in page.url for word in black_list)))
 
 
-def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=True,
-              non_session_browser: webdriver.Chrome = None, previous: Page = None):
+def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, previous: str,
+              recursive=True, non_session_browser: webdriver.Chrome = None):
     """
     Function gets the list of pages to the data object
     @param data: The data object of the program
     @param curr_url: The current URL the function checks
     @param browser: The web driver that gets the rendered content
+    @param previous: The previous page
     @param recursive: True- check all website pages, False- only the first reachable one
     @param non_session_browser: In case of session, we need another browser to tell us if it is indeed a session
-    @param previous: The previous page
     @return: None
     """
     if len(data.pages) == data.max_pages:
@@ -303,7 +303,8 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, recursive=Tr
             if (not any(link == checked_page.url for checked_page in already_checked)
                     and link not in troublesome):
                 # Page was not checked, it is not troublesome or in the black list
-                get_pages(data, link, browser, data.recursive, non_session_browser, page)
+                get_pages(data, link, browser, page.url,
+                          recursive=data.recursive, non_session_browser=non_session_browser)
 
 
 def get_session_pages(data: Data, browser: webdriver.Chrome):
@@ -317,7 +318,7 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
         # If there are no username or password
         return
     non_session_pages = list(data.pages)
-    non_session_browser = data.new_browser()  # New session for non-session page
+    non_session_browser = new_browser(data)  # New session for non-session page
     pages_backup = list(data.pages)
     login_pages = list()
     global logged_out
@@ -363,7 +364,7 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
             # Until it won't encounter a logout page
             logged_out = False
             # Attempting to achieve data from page
-            get_pages(data, new_url, browser, non_session_browser=non_session_browser)
+            get_pages(data, new_url, browser, page.url, non_session_browser=non_session_browser)
             if logged_out:
                 # If the session has encountered a logout page
                 already_checked.clear()  # The function needs to go through all the session pages
@@ -438,7 +439,7 @@ def set_chromedriver(data: Data) -> webdriver.Chrome:
     try:
         print(f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
               f"Setting up the Chromedriver...{COLOR_MANAGER.ENDC}")
-        return data.new_browser()
+        return new_browser(data)
     except Exception:
         raise Exception("Setting up the web driver failed, please try again.")
 
@@ -513,7 +514,7 @@ def logic(data: Data):
     except Exception as e:
         raise Exception(e, "\t")
     try:
-        get_pages(data, data.url, browser)
+        get_pages(data, data.url, browser, "")
         global already_checked
         # We need to clear them in case of session pages
         already_checked.clear()
@@ -524,21 +525,17 @@ def logic(data: Data):
         raise Exception("Your website doesn't have any valid web pages", "\t")
     # Getting session pages
     get_session_pages(data, browser)
-    # Counting the session pages
-    session_pages = 0
-    for page in data.pages:
-        if type(page) is SessionPage:
-            session_pages += 1
-    print_result(data, session_pages)
+    # Printing the results
+    print_result(data)
+    # Transferring only the valid pages
     data.pages = [page for page in data.pages if valid_in_list(page)]
-    browser.close()
+    browser.quit()
 
 
-def print_result(data: Data, session_pages: int):
+def print_result(data: Data):
     """
     Function prints the result of the web scraper
     @param data: The data object of the program
-    @param session_pages: The number of session pages
     @return: None
     """
     print("")

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from threading import Lock
-from seleniumwire import webdriver
 from selenium.webdriver.common.keys import Keys
+from Methods import *
 
 
 class Data:
@@ -66,22 +66,6 @@ class Data:
         output_str += f"AGGRESSIVE: {self.aggressive}"
         return output_str
 
-    def new_browser(self, headless=True) -> webdriver.Chrome:
-        """
-        Function creates new browser instance for new session
-        @param self: The data object of the program
-        @param headless: In case of debugging, False will make the chromium appear
-        @return: Chrome driver object
-        """
-        if not self.driver:
-            # There is no driver file path
-            raise Exception("There is no driver file path", "\t")
-        options = webdriver.ChromeOptions()
-        if headless:
-            options.add_argument("headless")
-        options.add_experimental_option("excludeSwitches", ["enable-logging"])
-        return webdriver.Chrome(executable_path=self.driver, options=options)
-
     @staticmethod
     def submit_form(input_list: list, browser: webdriver.Chrome):
         """
@@ -126,7 +110,7 @@ class Data:
 
 class Page:
     def __init__(self, url: str, status: int, mime_type: str,
-                 content: str, request, parent):
+                 content: str, request: selenium_request, parent: str):
         self.url = url
         self.status = status
         self.type = mime_type
@@ -140,12 +124,12 @@ class Page:
             f"STATUS: {self.status}\n"
             f"CONTENT-TYPE: {self.type}\n"
             f"CONTENT: {self.content}\n"
-            f"PARENT URL: {self.parent.url}\n")
+            f"PARENT URL: {self.parent}\n")
 
 
 class SessionPage(Page):
     def __init__(self, url: str, status: int, mime_type: str,
-                 content: str, cookies: list, login: set, request, parent):
+                 content: str, cookies: list, login: set, request: selenium_request, parent: str):
         super(SessionPage, self).__init__(url, status, mime_type, content, request, parent)
         self.cookies = cookies  # List of dictionaries that webdriver can use
         self.login = login  # Set(The page which the session started from, It's Login form)

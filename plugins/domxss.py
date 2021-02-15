@@ -3,7 +3,6 @@ from colors import COLOR_MANAGER
 import Data
 import bs4 as soup
 import re as regex  #? Used `https://regex101.com/` a lot to verify regex string.
-from selenium import webdriver
 
 
 COLOR = COLOR_MANAGER.rgb(169, 69, 169)
