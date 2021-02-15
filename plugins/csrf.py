@@ -5,7 +5,6 @@ from bs4 import BeautifulSoup
 import random
 
 COLOR = COLOR_MANAGER.rgb(0, 255, 200)
-CHECK_STRING = "check"
 OUTSIDE_URL = "https://google.com"
 current_referer = None
 
@@ -38,7 +37,7 @@ def check(data: Data.Data):
                             csrf_results.page_results.append(result)
                     except Exception:
                         pass
-                    browser.close()
+                    browser.quit()
             else:
                 # The user did not specified his agreement
                 # and there is a vulnerable page
@@ -206,11 +205,7 @@ def get_response(form: dict, referer: str, data: Data.Data, browser) -> str:
                 # Only if the input has a name
                 if not new_input_tag["value"]:
                     # There is no value to the input tag
-                    while True:
-                        # While the random string in the list
-                        check_string = CHECK_STRING + str(random.randint(1, 200))
-                        if check_string not in check_strings:
-                            break
+                    check_string = Data.get_random_str(browser.page_source)
                     check_strings.append(check_string)
                     new_input_tag["value"] = check_string
             inputs.append(new_input_tag)

@@ -1,5 +1,9 @@
 import Data
 from seleniumwire import webdriver, request as selenium_request
+import random
+
+
+CHECK_STRING = "check"
 
 
 def new_browser(data: Data, session_page=None,
@@ -51,3 +55,15 @@ def new_browser(data: Data, session_page=None,
         # Getting the page again, with the cookies
         browser.get(session_page.url)
     return browser
+
+
+def get_random_str(content: str) -> str:
+    """
+    Function generates a random string which is not in the current page
+    @param content: The content of the current page
+    @return: random string
+    """
+    while True:
+        string = CHECK_STRING + str(random.randint(0, 1000))
+        if string not in content:
+            return string

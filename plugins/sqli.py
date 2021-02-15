@@ -3,7 +3,6 @@ from colors import COLOR_MANAGER
 import Data
 from bs4 import BeautifulSoup
 import time
-import random
 
 COLOR = COLOR_MANAGER.rgb(255, 0, 128)
 TIME = 10
@@ -12,7 +11,6 @@ comments = {"#": [f"sleep({TIME})"],
             "-- ": [f"sleep({TIME})"],
             "--": [f"dbms_pipe.receive_message(('a'),{TIME})",
                    f"WAITFOR DELAY '0:0:{TIME}'", f"pg_sleep({TIME})"]}
-CHECK_STRING = "check"
 
 
 def check(data: Data.Data):
@@ -140,10 +138,10 @@ def sql_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
             browser = set_browser(data, page)
             if not string:
                 # If there is no string specified, generate a random string
-                string = get_random_str(browser.page_source)
+                string = Data.get_random_str(browser.page_source)
             elif "X" in string:
                 # Replace X with a random string
-                string = string.replace("X", get_random_str(browser.page_source))
+                string = string.replace("X", Data.get_random_str(browser.page_source))
             c, r = submit_form([dict(input_tag) for input_tag in form["inputs"]],
                                text_inputs[0], string, data, browser)
         except Exception:
@@ -205,23 +203,12 @@ def set_browser(data: Data.Data, page):
     @param page: The current page
     @return: The browser object
     """
-    if type(page) is not Data.SessionPage:
+    if type(page) is Data.SessionPage:
         # If the current page is not a session page
-        page = None
-    browser = Data.new_browser(data, interceptor=interceptor, session_page=page)  # Getting new browser
+        return Data.new_browser(data, session_page=page)  # Getting new browser
+    browser = Data.new_browser(data)  # Getting new browser
+    browser.get(page.url)
     return browser
-
-
-def interceptor(request):
-    """
-    Function acts like proxy, it changes the requests header
-    @param request: The current request
-    @return: None
-    """
-    # Block PNG, JPEG and GIF images
-    if request.path.endswith(('.png', '.jpg', '.gif')):
-        # Save run time
-        request.abort()
 
 
 def get_text_inputs(form) -> list:
@@ -238,18 +225,6 @@ def get_text_inputs(form) -> list:
             if input_tag["type"] and input_tag["type"] == "text":
                 text_inputs.append(input_tag)
     return text_inputs
-
-
-def get_random_str(content: str) -> str:
-    """
-    Function generates a random string which is not in the current page
-    @param content: The content of the current page
-    @return: random string
-    """
-    while True:
-        string = CHECK_STRING + str(random.randint(0, 1000))
-        if string not in content:
-            return string
 
 
 def submit_form(inputs: list, curr_text_input: dict,
@@ -271,7 +246,7 @@ def submit_form(inputs: list, curr_text_input: dict,
                 # Only if the input has the current name
                 input_tag["value"] = text
             else:
-                input_tag["value"] = get_random_str(browser.page_source)
+                input_tag["value"] = Data.get_random_str(browser.page_source)
     # Sending the request
     start = time.time()  # Getting time of normal input
     data.submit_form(inputs, browser)

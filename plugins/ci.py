@@ -3,11 +3,11 @@ from colors import COLOR_MANAGER
 import Data
 from bs4 import BeautifulSoup
 import time
-import random
 
 # Consts:
 COLOR = COLOR_MANAGER.rgb(255, 255, 0)
-NON_BLIND_STRING = "checkcheck"
+curr_text_input = dict()
+curr_char = ""
 
 
 def check(data: Data.Data):
@@ -113,7 +113,7 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
     @return: Page result object
     """
     page_result = Data.PageResult(page, "", "")
-    chars_to_filter = ["&", "&&", "|", "||", ";"]
+    chars_to_filter = ["&", "&&", "|", "||", ";", "\n"]
     browser = set_browser(data, page)
     text_inputs = get_text_inputs(form)  # Getting the text inputs
     results = dict()
@@ -123,28 +123,26 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
     check_for_blind = True
     average_time = 0
     attempts = 0
-    for char in chars_to_filter:
+    global curr_text_input
+    global curr_char
+    for curr_char in chars_to_filter:
         for curr_text_input in text_inputs:  # In case of more than one text input
             # Getting content of non-blind injection
             browser.get(page.url)
-            while True:
-                string = NON_BLIND_STRING + str(random.randint(0, 1000))
-                if string not in browser.page_source:
-                    break
+            string = Data.get_random_str(browser.page_source)
             start = time.time()  # Getting time of normal input
-            content = submit_form(form, curr_text_input,
-                                  f"{char}echo {string}", data, browser)
+            content = submit_form(form, f"echo {string}", data, browser)
             normal_time = time.time() - start
             average_time += normal_time
             attempts += 1
             if content.count(string) > content.count(f"echo {string}"):
                 # The web page printed the echo message
-                results[curr_text_input["name"]].append(char)
+                results[curr_text_input["name"]].append(curr_char)
                 check_for_blind = False
     average_time /= attempts  # Getting average response time
     if check_for_blind:
         # Didn't find anything
-        browser.close()
+        browser.quit()
         browser = set_browser(data, page)
         found_vulnerability = False
         for curr_text_input in text_inputs:
@@ -155,13 +153,12 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
                     again = False
                     browser.get(page.url)
                     start = time.time()
-                    submit_form(form, curr_text_input,
-                                f"{char} ping -c 5 127.0.0.1", data, browser)
+                    submit_form(form, f" ping -c 5 127.0.0.1", data, browser)
                     injection_time = time.time() - start
                     if injection_time - average_time > 7:
                         # Too much time
                         again = True
-                        browser.close()
+                        browser.quit()
                         browser = set_browser(data, page)
                     elif injection_time - average_time > 3:
                         # The injection slowed down the server response
@@ -176,7 +173,7 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
         # In case of non-blind OS injection
         write_vulnerability(results, page_result,
                             "allowed OS injection, it did not detected the character")
-    browser.close()
+    browser.quit()
     return page_result
 
 
@@ -187,11 +184,30 @@ def set_browser(data: Data.Data, page):
     @param page: The current page
     @return: The browser object
     """
-    if type(page) is not Data.SessionPage:
+    if type(page) is Data.SessionPage:
         # If the current page is not a session page
-        page = None
-    browser = Data.new_browser(data, session_page=page)  # Getting new browser
+        return Data.new_browser(data, session_page=page, interceptor=interceptor)  # Getting new browser
+    browser = Data.new_browser(data, interceptor=interceptor)  # Getting new browser
+    browser.get(page.url)
     return browser
+
+
+def interceptor(request):
+    """
+    Function acts like proxy, it changes the requests header
+    @param request: The current request
+    @return: None
+    """
+    # Block PNG, JPEG and GIF images
+    global curr_text_input
+    if request.path.endswith(('.png', '.jpg', '.gif')):
+        # Save run time
+        request.abort()
+    elif curr_text_input and request.params:
+        # In case of params
+        params = dict(request.params)
+        params[curr_text_input["name"]] = curr_char + params[curr_text_input["name"]]
+        request.params = params
 
 
 def get_text_inputs(form) -> list:
@@ -210,12 +226,10 @@ def get_text_inputs(form) -> list:
     return text_inputs
 
 
-def submit_form(form: dict, curr_text_input: dict,
-                text: str, data: Data.Data, browser):
+def submit_form(form: dict, text: str, data: Data.Data, browser):
     """
     Function submits a specified form
     @param form: A dictionary of inputs of action form
-    @param curr_text_input: The current text input we are checking
     @param text: The we want to implicate into the current text input
     @param data: The data object of the program
     @param browser: The webdriver object
@@ -249,11 +263,10 @@ def write_vulnerability(results: dict, page_result: Data.PageResult, problem: st
             page_result.solution += f"Validate the input of the text parameter '{key}' from "
             if len(results[key]) == 1:
                 page_result.problem += ": "
-                page_result.solution += "this character, "
+                page_result.solution += "this character."
             else:
                 page_result.problem += "s: "
-                page_result.solution += "those characters, "
-            page_result.solution += "and maybe some more that the program did not try."
+                page_result.solution += "those characters."
             # Adding the vulnerable chars
             for char in results[key]:
                 if char == "\n":

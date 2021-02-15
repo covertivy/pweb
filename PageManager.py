@@ -458,7 +458,7 @@ def set_lists(data: Data):
     for dict_list in list_of_lists:
         if dict_list["file"]:
             if os.path.exists(dict_list["file"]):
-                with open(dict_list["file"], "r", encoding="utf-16") as f:
+                with open(dict_list["file"], "r") as f:
                     current_list = f.read()
             else:
                 COLOR_MANAGER.print_error(f"The file {dict_list['file']} was not found", "\t")
