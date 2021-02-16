@@ -2,7 +2,6 @@
 from colors import COLOR_MANAGER
 import Data
 from bs4 import BeautifulSoup
-import time
 
 COLOR = COLOR_MANAGER.rgb(255, 0, 128)
 TIME = 10
@@ -97,7 +96,7 @@ def filter_forms(pages: list, aggressive: bool) -> list:
                 form_details["method"] = method
                 form_details["inputs"] = inputs
                 # Adding the page and it's form to the list
-                if len(get_text_inputs(form_details)) != 0:
+                if len(Data.get_text_inputs(form_details)) != 0:
                     # If there are no text inputs, it can't be sql injection
                     filtered_pages.append((page, form_details))
                     if not aggressive:
@@ -118,7 +117,7 @@ def sql_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
     """
     page_result = Data.PageResult(page, "", "")
     global comments
-    text_inputs = get_text_inputs(form)  # Getting the text inputs
+    text_inputs = Data.get_text_inputs(form)  # Getting the text inputs
     results = dict()
     for text_input in text_inputs:
         # Setting keys for the results
@@ -142,8 +141,7 @@ def sql_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
             elif "X" in string:
                 # Replace X with a random string
                 string = string.replace("X", Data.get_random_str(browser.page_source))
-            c, r = submit_form([dict(input_tag) for input_tag in form["inputs"]],
-                               text_inputs[0], string, data, browser)
+            c, r, s = Data.submit_form(form["inputs"], text_inputs[0], string, data, browser)
         except Exception:
             # In case of failing, try again
             if browser:
@@ -209,50 +207,6 @@ def set_browser(data: Data.Data, page):
     browser = Data.new_browser(data)  # Getting new browser
     browser.get(page.url)
     return browser
-
-
-def get_text_inputs(form) -> list:
-    """
-    Function gets the text input names from a form
-    @param form: a dictionary of inputs of action form
-    @return: list of text inputs
-    """
-    text_inputs = list()
-    for input_tag in form["inputs"]:
-        # Using the specified value
-        if "name" in input_tag.keys():
-            # Only if the input has a name
-            if input_tag["type"] and input_tag["type"] == "text":
-                text_inputs.append(input_tag)
-    return text_inputs
-
-
-def submit_form(inputs: list, curr_text_input: dict,
-                text: str, data: Data.Data, browser) -> (str, float):
-    """
-    Function submits a specified form
-    @param inputs: A list of inputs of action form
-    @param curr_text_input: The current text input we are checking
-    @param text: The we want to implicate into the current text input
-    @param data: The data object of the program
-    @param browser: The webdriver object
-    @return: The content of the resulted page
-    """
-    # The arguments body we want to submit
-    for input_tag in inputs:
-        # Using the specified value
-        if not input_tag["value"]:
-            if "name" in input_tag.keys() and input_tag["name"] == curr_text_input["name"]:
-                # Only if the input has the current name
-                input_tag["value"] = text
-            else:
-                input_tag["value"] = Data.get_random_str(browser.page_source)
-    # Sending the request
-    start = time.time()  # Getting time of normal input
-    data.submit_form(inputs, browser)
-    run_time = time.time() - start
-    content = browser.page_source
-    return content, run_time
 
 
 def write_vulnerability(results: dict, page_result: Data.PageResult):

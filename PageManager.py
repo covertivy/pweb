@@ -463,41 +463,39 @@ def set_lists(data: Data):
     @param data: The data object of the program
     @return: None
     """
+    def set_list(file: str, black: bool):
+        global white_list  # Required pages
+        global black_list  # Block pages
+        if not file:
+            # No file was specified
+            return
+        if os.path.exists(file):
+            # If the file exists
+            with open(file, "r") as f:
+                current_list = f.read()
+        else:
+            # The file does not exists
+            COLOR_MANAGER.print_error(f"The file {file} was not found", "\t")
+            return
+        current_list = current_list.replace("\n", "").replace(" ", "")  # Removing "\n"s and spaces
+        current_list = [word for word in current_list.split(",") if len(word)]  # List of words
+        if current_list:
+            # Everything is fine
+            COLOR_MANAGER.print_success(f"The file {file} has been"
+                                        f" added to the filtering process.", "\t")
+            if black:
+                black_list = current_list
+            else:
+                white_list = current_list
+        else:
+            # Empty file
+            COLOR_MANAGER.print_error(f"The file {file} is not in the"
+                                      f" format of <word1>, <word2>.", "\t")
+    set_list(data.blacklist, True)  # Setting black list
+    set_list(data.whitelist, False)  # Setting white list
     global white_list  # Required pages
     global black_list  # Block pages
-    list_of_lists = [{"file": data.blacklist, "black": True},
-                     {"file": data.whitelist, "black": False}]
-    failed = False  # failed even once
-    for dict_list in list_of_lists:
-        if dict_list["file"]:
-            if os.path.exists(dict_list["file"]):
-                with open(dict_list["file"], "r") as f:
-                    current_list = f.read()
-            else:
-                COLOR_MANAGER.print_error(f"The file {dict_list['file']} was not found", "\t")
-                failed = True
-                break
-            try:
-                current_list = [word for word in current_list.replace("\n", " ").replace(" ", "").split(",") if len(word)]
-                if not len(current_list):
-                    # Empty list
-                    raise Exception("a")
-                if dict_list["black"]:
-                    black_list = current_list
-                else:
-                    white_list = current_list
-            except Exception:
-                failed = True
-                COLOR_MANAGER.print_error(f"The file {dict_list['file']} is not in the"
-                                            f" format of <word1>, <word2>.", "\t")
-            else:
-                COLOR_MANAGER.print_success(f"The file {dict_list['file']} has been"
-                                            f" added to the filtering process.", "\t")
-    if failed:
-        # At least one of the specified lists is invalid
-        COLOR_MANAGER.print_warning("The process will continue "
-                                    "without the problematic list.", "\t")
-    elif white_list and black_list:
+    if white_list and black_list:
         # The user specified valid data for both
         COLOR_MANAGER.print_warning("The process will filter"
                                     " the pages only by the white list.", "\t")

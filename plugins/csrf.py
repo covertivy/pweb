@@ -162,20 +162,17 @@ def csrf(page: Data.SessionPage, form: dict, data: Data.Data, browser) -> Data.P
         # Dangerous by itself
         vulnerability[0] = True
     # Getting normal content
-    normal_content = get_response(form, page.url, data, browser)\
-        .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent, "")
+    normal_content = get_response(form["inputs"], page.url, data, browser, page)
     # Getting redirected content
     browser.get(page.url)
-    referer_content = get_response(form, OUTSIDE_URL, data, browser)\
-        .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent, "")
+    referer_content = get_response(form["inputs"], OUTSIDE_URL, data, browser, page)
     if normal_content == referer_content:
         # Does not filter referer header
         vulnerability[1] = True
     else:
         # Getting local redirected content
         browser.get(page.url)
-        referer_content = get_response(form, page.parent, data, browser)\
-            .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent, "")
+        referer_content = get_response(form["inputs"], page.parent, data, browser, page)
         if normal_content == referer_content:
             # Does not filter referer header
             vulnerability[2] = True
@@ -185,39 +182,29 @@ def csrf(page: Data.SessionPage, form: dict, data: Data.Data, browser) -> Data.P
     return page_result
 
 
-def get_response(form: dict, referer: str, data: Data.Data, browser) -> str:
+def get_response(inputs: list, referer: str, data: Data.Data, browser, page) -> str:
     """
     Function submits a specified form and gets the result content
-    @param form: A dictionary of inputs of action form
+    @param inputs: A list of inputs of action form
     @param referer: A specified referer address
     @param data: The data object of the program
     @param browser: The browser object
+    @param page: The current page
     @return: The content of the resulted page
     """
     content = ""
     try:
-        inputs = list()
-        check_strings = list()
-        for input_tag in form["inputs"]:
-            # Using the specified value
-            new_input_tag = dict(input_tag)
-            if "name" in new_input_tag.keys():
-                # Only if the input has a name
-                if not new_input_tag["value"]:
-                    # There is no value to the input tag
-                    check_string = Data.get_random_str(browser.page_source)
-                    check_strings.append(check_string)
-                    new_input_tag["value"] = check_string
-            inputs.append(new_input_tag)
         # Sending the request
         global current_referer
         current_referer = referer
-        data.submit_form(inputs, browser)
+        content, run_time, strings = Data.submit_form(inputs, dict(), "", data, browser)
         current_referer = None
         content = browser.page_source
-        for string in check_strings:
+        for string in strings:
             # In case that the random string is in the content
             content = content.replace(string, "")
+        # In case of referrers in content
+        content = content.replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent, "")
     except Exception as e:
         pass
     finally:

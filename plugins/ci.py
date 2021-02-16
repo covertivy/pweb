@@ -2,10 +2,12 @@
 from colors import COLOR_MANAGER
 import Data
 from bs4 import BeautifulSoup
-import time
 
 # Consts:
+TIME = 10
 COLOR = COLOR_MANAGER.rgb(255, 255, 0)
+
+# Global variables
 curr_text_input = dict()
 curr_char = ""
 
@@ -93,7 +95,7 @@ def filter_forms(pages: list, aggressive: bool) -> list:
                 form_details["method"] = method
                 form_details["inputs"] = inputs
                 # Adding the page and it's form to the list
-                if len(get_text_inputs(form_details)) != 0:
+                if len(Data.get_text_inputs(form_details)) != 0:
                     # If there are no text inputs, it can't be command injection
                     filtered_pages.append((page, form_details))
                     if not aggressive:
@@ -114,58 +116,75 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
     """
     page_result = Data.PageResult(page, "", "")
     chars_to_filter = ["&", "&&", "|", "||", ";", "\n"]
-    browser = set_browser(data, page)
-    text_inputs = get_text_inputs(form)  # Getting the text inputs
+    text_inputs = Data.get_text_inputs(form)  # Getting the text inputs
     results = dict()
     for text_input in text_inputs:
         # Setting keys for the results
         results[text_input["name"]] = list()
+
+    def inject(string=None) -> (str, float, str):
+        """
+        Inner function inject a string into a text box and submit the form
+        @param string: The string we want to inject
+        @return: Set of (the content of the page, the time it took submit the form)
+        """
+        browser = None
+        try:
+            browser = set_browser(data, page)
+            check_string = Data.get_random_str(browser.page_source)
+            if not string:
+                # If there is no string specified, generate a random string
+                string = check_string
+            elif "X" in string:
+                # Replace X with a random string
+                string = string.replace("X", check_string)
+            c, r, s = Data.submit_form(form["inputs"], curr_text_input, string, data, browser)
+        except Exception:
+            # In case of failing, try again
+            if browser:
+                browser.quit()
+            return inject(string)
+        else:
+            browser.quit()
+            return c, r, check_string
+
     check_for_blind = True
-    average_time = 0
-    attempts = 0
+    normal_time = 0
+    normal_attempts = 0
     global curr_text_input
     global curr_char
     for curr_char in chars_to_filter:
         for curr_text_input in text_inputs:  # In case of more than one text input
             # Getting content of non-blind injection
-            browser.get(page.url)
-            string = Data.get_random_str(browser.page_source)
-            start = time.time()  # Getting time of normal input
-            content = submit_form([dict(input_tag) for input_tag in form["inputs"]],
-                                  f"echo {string}", data, browser)
-            normal_time = time.time() - start
-            average_time += normal_time
-            attempts += 1
-            if content.count(string) > content.count(f"echo {string}"):
+            content, run_time, s = inject("echo X")
+            normal_time += run_time
+            normal_attempts += 1
+            if content.count(s) > content.count(f"echo {s}"):
                 # The web page printed the echo message
                 results[curr_text_input["name"]].append(curr_char)
                 check_for_blind = False
-    average_time /= attempts  # Getting average response time
     if check_for_blind:
         # Didn't find anything
-        browser.quit()
-        browser = set_browser(data, page)
         found_vulnerability = False
         for curr_text_input in text_inputs:
             for char in chars_to_filter:  # In case of more than one text input
                 # Getting time of blind injection
-                again = True
-                while again:
-                    again = False
-                    browser.get(page.url)
-                    start = time.time()
-                    submit_form([dict(input_tag) for input_tag in form["inputs"]],
-                                f" ping -c 5 127.0.0.1", data, browser)
-                    injection_time = time.time() - start
-                    if injection_time - average_time > 7:
-                        # Too much time
-                        again = True
-                        browser.quit()
-                        browser = set_browser(data, page)
-                    elif injection_time - average_time > 3:
-                        # The injection slowed down the server response
-                        results[curr_text_input["name"]].append(char)
-                        found_vulnerability = True
+                injection_time = 0
+                injection_attempts = 0
+                while True:
+                    content, run_time, s = inject(f" ping -c {TIME} 127.0.0.1")
+                    injection_time += run_time
+                    injection_attempts += 1
+                    difference = injection_time/injection_attempts - normal_time/normal_attempts
+                    if difference < TIME + 2:
+                        # It did not took too much time
+                        if difference > TIME - 2:
+                            # The injection slowed down the server response
+                            results[curr_text_input["name"]].append(char)
+                            found_vulnerability = True
+                            break
+                        if difference < 2:
+                            break
 
         if found_vulnerability:
             # In case of blind OS injection
@@ -175,7 +194,6 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
         # In case of non-blind OS injection
         write_vulnerability(results, page_result,
                             "allowed OS injection, it did not detected the character")
-    browser.quit()
     return page_result
 
 
@@ -210,46 +228,6 @@ def interceptor(request):
         params = dict(request.params)
         params[curr_text_input["name"]] = curr_char + params[curr_text_input["name"]]
         request.params = params
-
-
-def get_text_inputs(form) -> list:
-    """
-    Function gets the text input names from a form
-    @param form: a dictionary of inputs of action form
-    @return: list of text inputs
-    """
-    text_inputs = list()
-    for input_tag in form["inputs"]:
-        # Using the specified value
-        if "name" in input_tag.keys():
-            # Only if the input has a name
-            if input_tag["type"] and input_tag["type"] == "text":
-                text_inputs.append(input_tag)
-    return text_inputs
-
-
-def submit_form(inputs: list, text: str, data: Data.Data, browser):
-    """
-    Function submits a specified form
-    @param inputs: A list of inputs of action form
-    @param text: The we want to implicate into the current text input
-    @param data: The data object of the program
-    @param browser: The webdriver object
-    @return: The content of the resulted page
-    """
-    # The arguments body we want to submit
-    for input_tag in inputs:
-        # Using the specified value
-        if "name" in input_tag.keys():
-            if input_tag["name"] == curr_text_input["name"]:
-                # Only if the input has the current name
-                input_tag["value"] = text
-            elif not input_tag["value"]:
-                input_tag["value"] = Data.get_random_str(browser.page_source)
-    # Sending the request
-    data.submit_form(inputs, browser)
-    content = browser.page_source
-    return content
 
 
 def write_vulnerability(results: dict, page_result: Data.PageResult, problem: str):
