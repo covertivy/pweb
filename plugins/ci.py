@@ -131,7 +131,8 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
             browser.get(page.url)
             string = Data.get_random_str(browser.page_source)
             start = time.time()  # Getting time of normal input
-            content = submit_form(form, f"echo {string}", data, browser)
+            content = submit_form([dict(input_tag) for input_tag in form["inputs"]],
+                                  f"echo {string}", data, browser)
             normal_time = time.time() - start
             average_time += normal_time
             attempts += 1
@@ -153,7 +154,8 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
                     again = False
                     browser.get(page.url)
                     start = time.time()
-                    submit_form(form, f" ping -c 5 127.0.0.1", data, browser)
+                    submit_form([dict(input_tag) for input_tag in form["inputs"]],
+                                f" ping -c 5 127.0.0.1", data, browser)
                     injection_time = time.time() - start
                     if injection_time - average_time > 7:
                         # Too much time
@@ -203,7 +205,7 @@ def interceptor(request):
     if request.path.endswith(('.png', '.jpg', '.gif')):
         # Save run time
         request.abort()
-    elif curr_text_input and request.params:
+    elif curr_text_input and request.params and curr_text_input["name"] in request.params.keys():
         # In case of params
         params = dict(request.params)
         params[curr_text_input["name"]] = curr_char + params[curr_text_input["name"]]
@@ -226,23 +228,26 @@ def get_text_inputs(form) -> list:
     return text_inputs
 
 
-def submit_form(form: dict, text: str, data: Data.Data, browser):
+def submit_form(inputs: list, text: str, data: Data.Data, browser):
     """
     Function submits a specified form
-    @param form: A dictionary of inputs of action form
+    @param inputs: A list of inputs of action form
     @param text: The we want to implicate into the current text input
     @param data: The data object of the program
     @param browser: The webdriver object
     @return: The content of the resulted page
     """
     # The arguments body we want to submit
-    for input_tag in form["inputs"]:
+    for input_tag in inputs:
         # Using the specified value
-        if "name" in input_tag.keys() and input_tag["name"] == curr_text_input["name"]:
-            # Only if the input has the current name
-            input_tag["value"] = f"{text}"
+        if "name" in input_tag.keys():
+            if input_tag["name"] == curr_text_input["name"]:
+                # Only if the input has the current name
+                input_tag["value"] = text
+            elif not input_tag["value"]:
+                input_tag["value"] = Data.get_random_str(browser.page_source)
     # Sending the request
-    data.submit_form(form["inputs"], browser)
+    data.submit_form(inputs, browser)
     content = browser.page_source
     return content
 

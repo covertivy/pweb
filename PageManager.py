@@ -137,7 +137,7 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, previous: st
         browser.get(curr_url)
         request = None
         for req in browser.requests[::-1]:
-            if req.url == browser.current_url:
+            if req.url == curr_url or req.url == browser.current_url:
                 # If we found the right URL
                 request = req
                 if req.response.headers.get("Content-Type"):
@@ -288,6 +288,15 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, previous: st
     # Getting every css style in the page.
     links.extend(get_links([script.get("href") for script in soup.find_all(type="text/css")], page.url))
 
+    for link in links:
+        # Checking only scripts and style file
+        if link in [req.url for req in browser.requests]:
+            # Were already requested with the current page
+            get_pages(data, link, browser, page.url,
+                      recursive=data.recursive, non_session_browser=non_session_browser)
+
+    del browser.requests  # We do not need the previous requests anymore
+
     if recursive:
         # If the function is recursive.
         # Getting every link in the page.
@@ -368,6 +377,10 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
             if logged_out:
                 # If the session has encountered a logout page
                 already_checked.clear()  # The function needs to go through all the session pages
+                for checked_page in data.pages:
+                    if "html" not in checked_page.type and checked_page not in pages_backup:
+                        pages_backup.append(checked_page)
+                        already_checked.append(checked_page)
                 data.pages = list(pages_backup)  # Restoring the pages list
                 browser.delete_all_cookies()
                 browser.get(page.url)
@@ -538,35 +551,11 @@ def print_result(data: Data):
     @param data: The data object of the program
     @return: None
     """
-    print("")
-    if any(valid_in_list(page) and type(page) != SessionPage for page in data.pages):
-        print(f"\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization:{COLOR_MANAGER.ENDC}")
-        print_types(data, Page)
-    if any(valid_in_list(page) and type(page) == SessionPage for page in data.pages):
-        # If there are session pages
-        print(f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization:{COLOR_MANAGER.ENDC}")
-        print_types(data, SessionPage)
-    if any(not valid_in_list(page) for page in data.pages):
-        print(f"\t{COLOR_MANAGER.RED}Pages that are blocked from being checked:{COLOR_MANAGER.ENDC}")
-        print_types(data)
-    print(COLOR_MANAGER.ENDC)
-
-
-def print_types(data: Data, page_type=None):
-    """
-    Function counts the different mime-types of pages
-    @param data: The data object of the program
-    @param page_type: Page or Session page, decides which page class to count
-    @return: None
-    """
-    global type_colors
-    type_count = dict()
-    for key in type_colors.keys():
-        type_count[key] = 0
-
-    for page in data.pages:
-        if (not page_type and not valid_in_list(page)) or \
-                (type(page) == page_type and valid_in_list(page)):
+    def print_type(pages: list, sign: str):
+        type_count = dict()
+        for key in type_colors.keys():
+            type_count[key] = 0  # Initiating the dictionary {"mime type": count}
+        for page in pages:
             found = False
             for key in type_count.keys():
                 if str(key).lower() in page.type:
@@ -574,29 +563,27 @@ def print_types(data: Data, page_type=None):
                     found = True
             if not found:
                 type_count["Other"] += 1
+        for key in type_count:
+            if type_count[key]:
+                padding = " " * (PADDING - len(str(type_count[key])))
+                print(f"\t\t[{type_colors[key]}{sign}{COLOR_MANAGER.ENDC}]"
+                      f"{type_colors[key]} {type_count[key]}{padding}{key} pages{COLOR_MANAGER.ENDC}")
 
-    if page_type == SessionPage:
-        # Session page
-        type_colors["HTML"] = COLOR_MANAGER.ORANGE
-    else:
+    global type_colors
+    print("")
+    non_session_pages = [page for page in data.pages if valid_in_list(page) and type(page) != SessionPage]
+    if non_session_pages:
+        print(f"\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization:{COLOR_MANAGER.ENDC}")
         type_colors["HTML"] = COLOR_MANAGER.BLUE
-    for key in type_count.keys():
-        if type_count[key] != 0:
-            sign = "+"
-            if not page_type:
-                sign = "-"
-            print_type(type_count[key], key, type_colors[key], sign)
-
-
-def print_type(mime_type: int, name: str, color: str, sign: str):
-    """
-    Function print the page mime-type
-    @param mime_type: The number of page of the mime-type
-    @param name: The name of the mime-type
-    @param color: The color of the print
-    @param sign: The sign of the print
-    @return: None
-    """
-    padding = " " * (PADDING - len(str(mime_type)))
-    print(f"\t\t[{color}{sign}{COLOR_MANAGER.ENDC}]"
-          f"{color} {mime_type}{padding}{name} pages{COLOR_MANAGER.ENDC}")
+        print_type(non_session_pages, "+")
+    session_pages = [page for page in data.pages if valid_in_list(page) and type(page) == SessionPage]
+    if session_pages:
+        # If there are session pages
+        print(f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization:{COLOR_MANAGER.ENDC}")
+        type_colors["HTML"] = COLOR_MANAGER.ORANGE
+        print_type(session_pages, "+")
+    not_included = [page for page in data.pages if not valid_in_list(page)]
+    if not_included:
+        print(f"\t{COLOR_MANAGER.RED}Pages that are blocked from being checked:{COLOR_MANAGER.ENDC}")
+        print_type(not_included, "-")
+    print(COLOR_MANAGER.ENDC)
