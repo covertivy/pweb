@@ -141,7 +141,7 @@ def sql_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
             elif "X" in string:
                 # Replace X with a random string
                 string = string.replace("X", Data.get_random_str(browser.page_source))
-            c, r, s = Data.submit_form(form["inputs"], text_inputs[0], string, data, browser)
+            c, r, s = Data.submit_form(form["inputs"], text_inputs[0], string, browser)
         except Exception:
             # In case of failing, try again
             if browser:

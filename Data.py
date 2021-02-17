@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 from threading import Lock
-from selenium.webdriver.common.keys import Keys
 from Methods import *
 
 
@@ -65,47 +64,6 @@ class Data:
         output_str += f"VERBOSE: {self.verbose}\n"
         output_str += f"AGGRESSIVE: {self.aggressive}"
         return output_str
-
-    @staticmethod
-    def submit_form(input_list: list, browser: webdriver.Chrome):
-        """
-        Function submits the login form
-        @param input_list: List of input tags
-        @param browser: The session of the request
-        @return: The login request
-        """
-        # The arguments body we want to submit
-        elements = list()
-        del browser.requests
-        url_before = browser.current_url
-        for input_tag in input_list:
-            if "type" in input_tag.keys() and input_tag['type'] == "hidden":
-                continue
-            # Using the specified value
-            if "name" in input_tag.keys():
-                # Only if the input has a name
-                element = browser.find_element_by_name(input_tag["name"])
-                element.send_keys(input_tag["value"])
-                elements.append({"element": element, "name": input_tag["name"], "type": input_tag["type"]})
-        if not len(browser.requests):
-            # Did not do anything
-            try:
-                for element in elements:
-                    if element["type"] == "text":
-                        element["element"].send_keys(Keys.ENTER)  # Sending the form
-                if not len(browser.requests):
-                    # Did not do anything
-                    elements[0]["element"].submit()  # Sending the form
-            except Exception as e:
-                if not len(browser.requests):
-                    # Did not do anything
-                    raise e
-        for request in browser.requests:
-            if request.url == browser.current_url or\
-                    url_before == request.url:
-                return request
-        return [res for res in browser.requests[::-1] if res.response.headers.get("Content-Type") and
-                "html" in res.response.headers.get("Content-Type").split(";")[0].lower()][0]
 
 
 class Page:

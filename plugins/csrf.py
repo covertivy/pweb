@@ -197,7 +197,7 @@ def get_response(inputs: list, referer: str, data: Data.Data, browser, page) -> 
         # Sending the request
         global current_referer
         current_referer = referer
-        content, run_time, strings = Data.submit_form(inputs, dict(), "", data, browser)
+        content, run_time, strings = Data.submit_form(inputs, dict(), "", browser)
         current_referer = None
         content = browser.page_source
         for string in strings:

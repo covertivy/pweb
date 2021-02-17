@@ -34,9 +34,10 @@ def get_links(links: list, url: str) -> list:
     """
     valid_links = list()
     for link in [urljoin(url, link) for link in links]:
-        if str(link).replace("http://", "").replace("https://", "").startswith(
-                f"{str(url).replace('http://', '').replace('https://', '').split(':')[0].split('/')[0]}"):
-            # Only URLs that belongs to the website
+        clean_link = link.replace("http://", "").replace("https://", "")
+        clean_url = url.replace('http://', '').replace('https://', '')
+        if clean_link.startswith(clean_url.split(':')[0].split('/')[0]) and clean_link != clean_url:
+            # Only URLs that belongs to the website and not equal to the parent URL
             valid_links.append(link)
     valid_links = list(set(valid_links))
     valid_links.sort()  # Links list sorted in alphabetic order
@@ -157,9 +158,8 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, previous: st
             same_content = False
             same_url = False
             for p in data.pages:
-                if p.url.replace("https://", "http://") == \
-                        browser.current_url.replace("https://", "http://"):
-                    # Have the same URL (without the http://)
+                if not get_links([p.url], browser.current_url):
+                    # Have the same URL
                     if type(p) is SessionPage:
                         # Redirected to another session page
                         troublesome.append(curr_url)  # No need to check
@@ -244,7 +244,7 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, previous: st
     # Checking if the page was already printed
     in_list = False
     for printed_page in already_printed:
-        if printed_page.url.replace("https://", "http://") == page.url.replace("https://", "http://") and\
+        if not get_links([printed_page.url], page.url) and\
                 (printed_page.content == page.content or type(printed_page) == type(page)):
             # Same URL (without the http://) and content or both are session
             in_list = True
@@ -266,9 +266,9 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, previous: st
 
     # Checking if the page was already checked
     in_list = False
-    for pages in data.pages:
-        if pages.url.replace("https://", "http://") == page.url.replace("https://", "http://") and\
-                (pages.content == page.content or type(pages) == type(page)):
+    for a_page in data.pages:
+        if not get_links([a_page.url], page.url) and\
+                (a_page.content == page.content or type(a_page) == type(page)):
             # Same URL (without the http://) and (content or both are session)
             in_list = True
     if not in_list:
@@ -341,10 +341,7 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
             # The page doesn't have valid login form
             continue
         try:
-            response = data.submit_form(form_details["inputs"], browser).response
-            if not response:
-                # Something went wrong in the form
-                continue
+            submit_form(form_details["inputs"], dict(), "", browser)
         except Exception:
             continue
         new_url = browser.current_url
@@ -384,7 +381,7 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
                 data.pages = list(pages_backup)  # Restoring the pages list
                 browser.delete_all_cookies()
                 browser.get(page.url)
-                data.submit_form(form_details["inputs"], browser)  # Updating the session
+                submit_form(form_details["inputs"], dict(), "", browser)  # Updating the session
                 # Doing the loop all over again, without the logout page
         # If the session has not encountered a logout page
         pages_backup = list(data.pages)

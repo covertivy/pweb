@@ -138,7 +138,7 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
             elif "X" in string:
                 # Replace X with a random string
                 string = string.replace("X", check_string)
-            c, r, s = Data.submit_form(form["inputs"], curr_text_input, string, data, browser)
+            c, r, s = Data.submit_form(form["inputs"], curr_text_input, string, browser)
         except Exception:
             # In case of failing, try again
             if browser:
