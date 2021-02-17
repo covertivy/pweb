@@ -2,10 +2,12 @@
 from colors import COLOR_MANAGER
 import Classes
 import Methods
-from bs4 import BeautifulSoup
 
+# Consts:
 COLOR = COLOR_MANAGER.rgb(0, 255, 200)
 OUTSIDE_URL = "https://google.com"
+
+# Global variables:
 current_referer = None
 
 
@@ -16,100 +18,50 @@ def check(data: Classes.Data):
     @return: None
     """
     csrf_results = Classes.CheckResults("CSRF", COLOR)
-    data.mutex.acquire()
-    pages = list(data.pages)  # Achieving the pages
-    aggressive = data.aggressive
-    data.mutex.release()
     try:
-        # Filtering the pages list
-        pages = filter_forms(pages, aggressive)
-        # [(page object, form dict),...]
-        if len(pages):
-            # There are pages with at least one text input
-            if data.aggressive:
-                # The user specified his agreement
-                for page, form in pages:
-                    browser = set_browser(data, page)
-                    try:
-                        result = csrf(page, form, data, browser)
-                        if result.problem:
-                            # If there is a problem with the page
-                            csrf_results.page_results.append(result)
-                    except Exception:
-                        pass
-                    browser.quit()
-            else:
+        data.mutex.acquire()
+        pages = data.pages  # Achieving the pages
+        aggressive = data.aggressive
+        data.mutex.release()
+        for page in pages:
+            # Getting the forms of each page
+            forms = filter_forms(page)
+            if forms and not aggressive:
                 # The user did not specified his agreement
                 # and there is a vulnerable page
-                csrf_results.page_results = "The plugin check routine requires submitting web forms," \
+                csrf_results.page_results = "The plugin check routine requires injecting text boxes," \
                                             " read about (-A) in our manual and try again."
-    except Exception:
+                break
+            for form in forms:
+                try:
+                    browser = set_browser(data, page)
+                    result = csrf(page, form, data, browser)
+                    if result.problem:
+                        # If there is a problem with the page
+                        csrf_results.page_results.append(result)
+                except Exception:
+                    continue
+    except Exception as e:
         csrf_results.page_results = "Something went wrong..."
+
     data.mutex.acquire()
     data.results.append(csrf_results)  # Adding the results to the data object
     data.mutex.release()
 
 
-def get_forms(content: str):
-    form_dict = list()
-    forms = BeautifulSoup(content, "html.parser").find_all("form")  # Getting page forms
-    for form in forms:
-        try:
-            # Get the form action (requested URL)
-            action = form.attrs.get("action").lower()
-            # Get the form method (POST, GET, DELETE, etc)
-            # If not specified, GET is the default in HTML
-            method = form.attrs.get("method", "get").lower()
-            # Get all form inputs
-            inputs = []
-            for input_tag in form.find_all("input"):
-                # Get type of input form control
-                input_type = input_tag.attrs.get("type", "text")
-                # Get name attribute
-                input_name = input_tag.attrs.get("name")
-                # Get the default value of that input tag
-                input_value = input_tag.attrs.get("value", "")
-                # Add everything to that list
-                input_dict = dict()
-                if input_type:
-                    input_dict["type"] = input_type
-                if input_name:
-                    input_dict["name"] = input_name
-                input_dict["value"] = input_value
-                inputs.append(input_dict)
-            # Setting the form dictionary
-            form_details = dict()
-            form_details["action"] = action
-            form_details["method"] = method
-            form_details["inputs"] = inputs
-            form_dict.append(form_details)
-        except Exception:
-            continue
-    return form_dict
-
-
-def filter_forms(pages: list, aggressive: bool) -> list:
+def filter_forms(page: Classes.Page) -> list:
     """
     Function filters the pages that has an action form
-    @param pages:List of pages
-    @param aggressive: The specified user's agreement
-    @return: List of pages that has an action form
+    @param page: The current page
+    @return: List of forms
     """
-    filtered_pages = list()
-    for page in pages:
-        if "html" not in page.type.lower():
-            # If it is a non-html page we can not check for command injection
-            continue
-        if type(page) is not Classes.SessionPage:
-            # If the page is not a session page
-            continue
-        for form in get_forms(page.content):
+    filtered_forms = list()
+    if "html" in page.type.lower() and type(page) is Classes.SessionPage:
+        # The only thing we need is a HTML session page with a form
+        for form in Methods.get_forms(page.content):
             # Adding the page and it's form to the list
-            filtered_pages.append((page, form))
-            if not aggressive:
-                # The user did not specified his agreement
-                return filtered_pages
-    return filtered_pages
+            filtered_forms.append(form)
+    return filtered_forms
 
 
 def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data, browser) -> Classes.PageResult:
@@ -134,7 +86,7 @@ def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data, browser) -> 
     # Setting new browser
     token = False
     try:
-        for new_form in get_forms(browser.page_source):
+        for new_form in Methods.get_forms(browser.page_source):
             if new_form["action"] == form["action"]:
                 # Same form
                 for input_tag in form["inputs"]:
@@ -197,7 +149,7 @@ def get_response(inputs: list, referer: str, data: Classes.Data, browser, page) 
         # Sending the request
         global current_referer
         current_referer = referer
-        content, run_time, strings = Methods.submit_form(inputs, dict(), "", browser)
+        content, run_time, strings = Methods.submit_form(inputs, dict(), "", browser, data)
         current_referer = None
         content = browser.page_source
         for string in strings:

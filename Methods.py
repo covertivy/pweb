@@ -1,16 +1,17 @@
-from seleniumwire import webdriver, request as selenium_request
 import random
 import time
+import Classes
+from seleniumwire import webdriver, request as selenium_request
 from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 
-# --------------------- Consts --------------------
+# ------------------------------ Consts ------------------------------
 CHECK_STRING = "check"
 
-# ------------------------- Browser methods --------------------------------
+# ------------------------- Browser methods -------------------------
 
 
-def new_browser(data, session_page=None,
+def new_browser(data: Classes.Data, session_page: Classes.SessionPage = None,
                 debug: bool = False, interceptor=None) -> webdriver.Chrome:
     """
     Function creates a new browser instance for new session
@@ -62,13 +63,14 @@ def new_browser(data, session_page=None,
 
 
 def submit_form(inputs: list, curr_text_input: dict,
-                text: str, browser) -> (str, float, list):
+                text: str, browser: webdriver.Chrome, data: Classes.Data) -> (str, float, list):
     """
     Function submits a specified form
     @param inputs: A list of inputs of action form
     @param curr_text_input: The current text input we are checking
     @param text: The we want to implicate into the current text input
     @param browser: The webdriver object
+    @param data: The data object of the program
     @return: The content of the resulted page, the time the action took, the random strings
     """
     # The arguments body we want to submit
@@ -85,38 +87,39 @@ def submit_form(inputs: list, curr_text_input: dict,
                 string = get_random_str(browser.page_source)
                 input_tag["value"] = string
                 check_strings.append(string)
-    start = time.time()  # Getting time of normal input
+    # In case of multi-threading, we need to make sure that no one is interrupting anyone
+    data.mutex.acquire()
     # Sending the request
+    start = time.time()  # Getting time of normal input
     # The elements we want to submit
     elements = list()
     del browser.requests
-    for input_tag in inputs:
-        if "type" in input_tag.keys() and input_tag['type'] == "hidden":
-            continue
-        # Using the specified value
-        if "name" in input_tag.keys():
-            # Only if the input has a name
-            element = browser.find_element_by_name(input_tag["name"])
-            element.send_keys(input_tag["value"])
-            elements.append({"element": element, "name": input_tag["name"], "type": input_tag["type"]})
-    if not len(browser.requests):
-        # Did not do anything
-        try:
-            for element in elements:
-                if element["type"] == "text":
-                    element["element"].send_keys(Keys.ENTER)  # Sending the form
-            if not len(browser.requests):
-                # Did not do anything
-                elements[0]["element"].submit()  # Sending the form
-        except Exception as e:
-            if not len(browser.requests):
-                # Did not do anything
-                raise e
+    try:
+        for input_tag in inputs:
+            if "type" in input_tag.keys() and input_tag['type'] == "hidden":
+                continue
+            # Using the specified value
+            if "name" in input_tag.keys():
+                # Only if the input has a name
+                element = browser.find_element_by_name(input_tag["name"])
+                element.send_keys(input_tag["value"])
+                elements.append({"element": element, "name": input_tag["name"], "type": input_tag["type"]})
+        for element in elements:
+            if element["type"] == "text":
+                element["element"].send_keys(Keys.ENTER)  # Sending the form
+        if not len(browser.requests):
+            # Did not do anything
+            elements[0]["element"].submit()  # Sending the form
+    except Exception as e:
+        if not len(browser.requests):
+            # Did not do anything
+            raise e
     run_time = time.time() - start
+    data.mutex.release()
     content = browser.page_source
     return content, run_time, check_strings
 
-# ------------------------------ Helper methods ----------------------------
+# ------------------------------ Helper methods ------------------------------
 
 
 def get_random_str(content: str) -> str:
@@ -147,9 +150,14 @@ def get_text_inputs(form: dict) -> list:
     return text_inputs
 
 
-def get_forms(page) -> dict:
-    forms = BeautifulSoup(page.content, "html.parser").find_all("form")  # Getting page forms
-    for form in forms:
+def get_forms(content: str) -> list:
+    """
+    Function gets the forms of a page
+    @param content: The page content
+    @return: List of the forms
+    """
+    forms = list()
+    for form in BeautifulSoup(content, "html.parser").find_all("form"):
         try:
             # Get the form action (requested URL)
             action = form.attrs.get("action").lower()
@@ -159,32 +167,22 @@ def get_forms(page) -> dict:
             # Get all form inputs
             inputs = []
             for input_tag in form.find_all("input"):
+                input_dict = dict()
                 # Get type of input form control
-                input_type = input_tag.attrs.get("type", "text")
+                input_type = input_tag.attrs.get("type")
                 # Get name attribute
                 input_name = input_tag.attrs.get("name")
                 # Get the default value of that input tag
-                input_value = input_tag.attrs.get("value", "")
+                input_dict["value"] = input_tag.attrs.get("value", "")
                 # Add everything to that list
-                input_dict = dict()
                 if input_type:
                     input_dict["type"] = input_type
                 if input_name:
                     input_dict["name"] = input_name
-                input_dict["value"] = input_value
                 inputs.append(input_dict)
-            # Setting the form dictionary
-            form_details = dict()
-            form_details["action"] = action
-            form_details["method"] = method
-            form_details["inputs"] = inputs
-            # Adding the page and it's form to the list
-            if len(get_text_inputs(form_details)) != 0:
-                # If there are no text inputs, it can't be command injection
-                filtered_pages.append((page, form_details))
-                if not aggressive:
-                    # The user did not specified his agreement
-                    return filtered_pages
-        except:
+            # Adding the form to the list
+            forms.append({"action": action, "method": method,
+                          "inputs": inputs, "form": form})
+        except Exception:
             continue
-    return filtered_pages
+    return forms

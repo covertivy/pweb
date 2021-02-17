@@ -45,60 +45,35 @@ def get_links(links: list, url: str) -> list:
     return valid_links
 
 
-def get_login_form(data: Classes.Data, content: str) -> [dict]:
+def get_login_form(data: Classes.Data, forms: list) -> dict:
     """
     Function gets the login form of the page
     @param data: The data object of the program
-    @param content: The current page content
+    @param forms: The list of the forms of the page
     @return: Dictionary of the form details
     """
-    forms = BeautifulSoup(content, "html.parser").find_all("form")  # Getting page forms
     for form in forms:
-        try:
-            # Get the form action (requested URL)
-            action = form.attrs.get("action").lower()
-            # Get the form method (POST, GET, DELETE, etc)
-            # If not specified, GET is the default in HTML
-            method = form.attrs.get("method", "get").lower()
-            # Get all form inputs
-            inputs = []
-            login_input = [False, False]  # Check if the form is login form
-            for input_tag in form.find_all("input"):
-                # Get type of input form control
-                input_type = input_tag.attrs.get("type", "text")
-                # Get name attribute
-                input_name = input_tag.attrs.get("name")
-                value = ""  # The default value of the input
-                if input_name:
-                    # If there is an input name
-                    if input_name.lower() == "username":
-                        # Username input
-                        value = data.username
-                        login_input[0] = True
-                    elif input_name.lower() == "password":
-                        # Password input
-                        value = data.password
-                        login_input[1] = True
-                # Get the default value of that input tag
-                input_value = input_tag.attrs.get("value", value)
-                # Add everything to that list
-                input_dict = dict()
-                if input_type:
-                    input_dict["type"] = input_type
-                if input_name:
-                    input_dict["name"] = input_name
-                input_dict["value"] = input_value
-                inputs.append(input_dict)
-            if login_input[0] and login_input[1]:
-                # There both username and password in the form
-                form_details = dict()
-                form_details["action"] = action
-                form_details["method"] = method
-                form_details["inputs"] = inputs
-                return form_details
-        except Exception:
-            continue
-    return None
+        inputs = form["inputs"]
+        login_input = [False, False]  # Check if the form is login form
+        for input_tag in inputs:
+            if "name" in input_tag.keys():
+                # If there is an input name
+                if input_tag["name"].lower() == "username":
+                    # Username input
+                    value = data.username
+                    login_input[0] = True
+                elif input_tag["name"].lower() == "password":
+                    # Password input
+                    value = data.password
+                    login_input[1] = True
+                else:
+                    # At least one of the 2 text input is not valid
+                    break
+                input_tag["value"] = value
+        if login_input[0] and login_input[1]:
+            # There both username and password in the form
+            return form
+    return dict()
 
 
 def valid_in_list(page: Classes.Page) -> bool:
@@ -107,7 +82,7 @@ def valid_in_list(page: Classes.Page) -> bool:
     @param page: A page object
     @return: True - valid page, False - otherwise
     """
-    # If there is a whitelist and the URL does not have any of the words
+    # If there is a white list and the URL does not have any of the words
     # Or there is a black list and the URL have one of the words
     return not ((white_list and all(word not in page.url for word in white_list)) or
                 (black_list and any(word in page.url for word in black_list)))
@@ -153,6 +128,15 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome, prev
         troublesome.append(curr_url)
         return
 
+    page = Classes.Page(
+        browser.current_url,
+        request.response.status_code,
+        request.response.headers.get("Content-Type").split(";")[0],
+        browser.page_source,
+        request,
+        previous)
+    color = COLOR_MANAGER.BLUE
+
     if non_session_browser:
         # Session page
         try:
@@ -187,19 +171,10 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome, prev
                 else:
                     browser.get(request.url)
             non_session_browser.get(browser.current_url)
-            if non_session_browser.current_url == browser.current_url and \
-                    non_session_browser.page_source == browser.page_source:
+            if non_session_browser.current_url != browser.current_url or \
+                    non_session_browser.page_source != browser.page_source:
                 # If the URL can be reachable from non-session point the session has logged out
-                # Non-Session page
-                page = Classes.Page(
-                    browser.current_url,
-                    request.response.status_code,
-                    request.response.headers.get("Content-Type").split(";")[0],
-                    browser.page_source,
-                    request,
-                    previous)
-                color = COLOR_MANAGER.BLUE
-            else:
+                # Session page
                 page = Classes.SessionPage(
                     browser.current_url,
                     request.response.status_code,
@@ -213,16 +188,6 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome, prev
         except Exception:
             troublesome.append(curr_url)
             return
-    else:
-        # Non-Session page
-        page = Classes.Page(
-            browser.current_url,
-            request.response.status_code,
-            request.response.headers.get("Content-Type").split(";")[0],
-            browser.page_source,
-            request,
-            previous)
-        color = COLOR_MANAGER.BLUE
 
     soup = None
     if "html" in page.type:
@@ -337,12 +302,12 @@ def get_session_pages(data: Classes.Data, browser: webdriver.Chrome):
             continue
         # Setting browser for current page
         browser.get(page.url)
-        form_details = get_login_form(data, browser.page_source)
+        form_details = get_login_form(data, Methods.get_forms(browser.page_source))
         if not form_details:
             # The page doesn't have valid login form
             continue
         try:
-            Methods.submit_form(form_details["inputs"], dict(), "", browser)
+            Methods.submit_form(form_details["inputs"], dict(), "", browser, data)
         except Exception:
             continue
         new_url = browser.current_url
@@ -383,7 +348,7 @@ def get_session_pages(data: Classes.Data, browser: webdriver.Chrome):
                 # Updating the session
                 browser.delete_all_cookies()
                 browser.get(page.url)
-                Methods.submit_form(form_details["inputs"], dict(), "", browser)
+                Methods.submit_form(form_details["inputs"], dict(), "", browser, data)
                 # Doing the loop all over again, without the logout page
         # If the session has not encountered a logout page
         pages_backup = list(data.pages)

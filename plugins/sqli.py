@@ -2,11 +2,13 @@
 from colors import COLOR_MANAGER
 import Classes
 import Methods
-from bs4 import BeautifulSoup
 
+# Consts:
 COLOR = COLOR_MANAGER.rgb(255, 0, 128)
 TIME = 10
 MINIMUM_ATTEMPTS = 3
+
+# Global variables:
 comments = {"#": [f"sleep({TIME})"],
             "-- ": [f"sleep({TIME})"],
             "--": [f"dbms_pipe.receive_message(('a'),{TIME})",
@@ -21,32 +23,29 @@ def check(data: Classes.Data):
     """
     sqli_results = Classes.CheckResults("SQL Injection", COLOR)
 
-    data.mutex.acquire()
-    pages = data.pages  # Achieving the pages
-    aggressive = data.aggressive
-    data.mutex.release()
     try:
-        # Filtering the pages list
-        pages = filter_forms(pages, aggressive)
-        # [(page object, form dict),...]
-        if len(pages):
-            # There are pages with at least one text input
-            if aggressive:
-                # The user specified his agreement
-                for page, form in pages:
-                    try:
-                        result = sql_injection(page, form, data)
-                        if result.problem:
-                            # If there is a problem with the page
-                            sqli_results.page_results.append(result)
-                    except Exception:
-                        continue
-            else:
+        data.mutex.acquire()
+        pages = data.pages  # Achieving the pages
+        aggressive = data.aggressive
+        data.mutex.release()
+        for page in pages:
+            # Getting the forms of each page
+            forms = filter_forms(page)
+            if forms and not aggressive:
                 # The user did not specified his agreement
                 # and there is a vulnerable page
                 sqli_results.page_results = "The plugin check routine requires injecting text boxes," \
                                             " read about (-A) in our manual and try again."
-    except Exception:
+                break
+            for form in forms:
+                try:
+                    result = sql_injection(page, form, data)
+                    if result.problem:
+                        # If there is a problem with the page
+                        sqli_results.page_results.append(result)
+                except Exception:
+                    continue
+    except Exception as e:
         sqli_results.page_results = "Something went wrong..."
 
     data.mutex.acquire()
@@ -54,58 +53,21 @@ def check(data: Classes.Data):
     data.mutex.release()
 
 
-def filter_forms(pages: list, aggressive: bool) -> list:
+def filter_forms(page: Classes.Page) -> list:
     """
     Function filters the pages that has an action form
-    @param pages:List of pages
-    @param aggressive: If it's false the user did not specified his agreement
-    @return: List of pages that has an action form
+    @param page: The current page
+    @return: List of forms
     """
-    filtered_pages = list()
-    for page in pages:
-        if "html" not in page.type.lower():
-            # If it is a non-html page we can not check for sql injection
-            continue
-        forms = BeautifulSoup(page.content, "html.parser").find_all("form")  # Getting page forms
+    filtered_forms = list()
+    if "html" in page.type.lower():
+        # We can check only html files
+        forms = Methods.get_forms(page.content)  # Getting page forms
         for form in forms:
-            try:
-                # Get the form action (requested URL)
-                action = form.attrs.get("action").lower()
-                # Get the form method (POST, GET, DELETE, etc)
-                # If not specified, GET is the default in HTML
-                method = form.attrs.get("method", "get").lower()
-                # Get all form inputs
-                inputs = []
-                for input_tag in form.find_all("input"):
-                    # Get type of input form control
-                    input_type = input_tag.attrs.get("type", "text")
-                    # Get name attribute
-                    input_name = input_tag.attrs.get("name")
-                    # Get the default value of that input tag
-                    input_value = input_tag.attrs.get("value", "")
-                    # Add everything to that list
-                    input_dict = dict()
-                    if input_type:
-                        input_dict["type"] = input_type
-                    if input_name:
-                        input_dict["name"] = input_name
-                    input_dict["value"] = input_value
-                    inputs.append(input_dict)
-                # Setting the form dictionary
-                form_details = dict()
-                form_details["action"] = action
-                form_details["method"] = method
-                form_details["inputs"] = inputs
-                # Adding the page and it's form to the list
-                if len(Methods.get_text_inputs(form_details)) != 0:
-                    # If there are no text inputs, it can't be sql injection
-                    filtered_pages.append((page, form_details))
-                    if not aggressive:
-                        # The user did not specified his agreement
-                        return filtered_pages
-            except Exception:
-                continue
-    return filtered_pages
+            if len(Methods.get_text_inputs(form)) != 0:
+                # If there are no text inputs, it can't be command injection
+                filtered_forms.append(form)
+    return filtered_forms
 
 
 def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
@@ -142,7 +104,15 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
             elif "X" in string:
                 # Replace X with a random string
                 string = string.replace("X", Methods.get_random_str(browser.page_source))
-            c, r, s = Methods.submit_form(form["inputs"], text_inputs[0], string, browser)
+            # Getting the updated form, in case of CSRF tokens
+            forms = Methods.get_forms(content=browser.page_source)
+            curr_form = dict()
+            for curr_form in forms:
+                if curr_form["action"] == form["action"] and curr_form["method"] == form["method"]:
+                    # Have the same action and method
+                    break
+            # Submitting the new form
+            c, r, s = Methods.submit_form(curr_form["inputs"], text_inputs[0], string, browser, data)
         except Exception:
             # In case of failing, try again
             if browser:
