@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 from colors import COLOR_MANAGER
-import Data
+import Classes
+import Methods
 from bs4 import BeautifulSoup
 
 COLOR = COLOR_MANAGER.rgb(255, 0, 128)
@@ -12,13 +13,13 @@ comments = {"#": [f"sleep({TIME})"],
                    f"WAITFOR DELAY '0:0:{TIME}'", f"pg_sleep({TIME})"]}
 
 
-def check(data: Data.Data):
+def check(data: Classes.Data):
     """
     Function checks the website for SQL injection
     @param data: The data object of the program
     @return: None
     """
-    sqli_results = Data.CheckResults("SQL Injection", COLOR)
+    sqli_results = Classes.CheckResults("SQL Injection", COLOR)
 
     data.mutex.acquire()
     pages = data.pages  # Achieving the pages
@@ -96,7 +97,7 @@ def filter_forms(pages: list, aggressive: bool) -> list:
                 form_details["method"] = method
                 form_details["inputs"] = inputs
                 # Adding the page and it's form to the list
-                if len(Data.get_text_inputs(form_details)) != 0:
+                if len(Methods.get_text_inputs(form_details)) != 0:
                     # If there are no text inputs, it can't be sql injection
                     filtered_pages.append((page, form_details))
                     if not aggressive:
@@ -107,7 +108,7 @@ def filter_forms(pages: list, aggressive: bool) -> list:
     return filtered_pages
 
 
-def sql_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
+def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
     """
     Function checks the page for SQL injection
     @param page: The current page
@@ -115,9 +116,9 @@ def sql_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
     @param data: The data object of the program
     @return: Page result object
     """
-    page_result = Data.PageResult(page, "", "")
+    page_result = Classes.PageResult(page, "", "")
     global comments
-    text_inputs = Data.get_text_inputs(form)  # Getting the text inputs
+    text_inputs = Methods.get_text_inputs(form)  # Getting the text inputs
     results = dict()
     for text_input in text_inputs:
         # Setting keys for the results
@@ -137,11 +138,11 @@ def sql_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
             browser = set_browser(data, page)
             if not string:
                 # If there is no string specified, generate a random string
-                string = Data.get_random_str(browser.page_source)
+                string = Methods.get_random_str(browser.page_source)
             elif "X" in string:
                 # Replace X with a random string
-                string = string.replace("X", Data.get_random_str(browser.page_source))
-            c, r, s = Data.submit_form(form["inputs"], text_inputs[0], string, browser)
+                string = string.replace("X", Methods.get_random_str(browser.page_source))
+            c, r, s = Methods.submit_form(form["inputs"], text_inputs[0], string, browser)
         except Exception:
             # In case of failing, try again
             if browser:
@@ -194,22 +195,22 @@ def sql_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
     return page_result
 
 
-def set_browser(data: Data.Data, page):
+def set_browser(data: Classes.Data, page):
     """
     Function Sets up a new browser, sets its cookies and checks if the cookies are valid
     @param data: The data object of the program
     @param page: The current page
     @return: The browser object
     """
-    if type(page) is Data.SessionPage:
+    if type(page) is Classes.SessionPage:
         # If the current page is not a session page
-        return Data.new_browser(data, session_page=page)  # Getting new browser
-    browser = Data.new_browser(data)  # Getting new browser
+        return Methods.new_browser(data, session_page=page)  # Getting new browser
+    browser = Methods.new_browser(data)  # Getting new browser
     browser.get(page.url)
     return browser
 
 
-def write_vulnerability(results: dict, page_result: Data.PageResult):
+def write_vulnerability(results: dict, page_result: Classes.PageResult):
     """
     Function writes the problem and the solution of every problem that is found for a page
     @param results: a dictionary of text input and list of chars it didn't filter

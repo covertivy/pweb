@@ -1,7 +1,8 @@
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from colors import COLOR_MANAGER
-from Data import *
+import Classes
+import Methods
 import requests
 from seleniumwire import webdriver
 import sys
@@ -44,7 +45,7 @@ def get_links(links: list, url: str) -> list:
     return valid_links
 
 
-def get_login_form(data: Data, content: str) -> [dict]:
+def get_login_form(data: Classes.Data, content: str) -> [dict]:
     """
     Function gets the login form of the page
     @param data: The data object of the program
@@ -100,7 +101,7 @@ def get_login_form(data: Data, content: str) -> [dict]:
     return None
 
 
-def valid_in_list(page: Page) -> bool:
+def valid_in_list(page: Classes.Page) -> bool:
     """
     Function checks if a page is valid by the black and white lists
     @param page: A page object
@@ -112,7 +113,7 @@ def valid_in_list(page: Page) -> bool:
                 (black_list and any(word in page.url for word in black_list)))
 
 
-def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, previous: str,
+def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome, previous: str,
               recursive=True, non_session_browser: webdriver.Chrome = None):
     """
     Function gets the list of pages to the data object
@@ -160,14 +161,14 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, previous: st
             for p in data.pages:
                 if not get_links([p.url], browser.current_url):
                     # Have the same URL
-                    if type(p) is SessionPage:
+                    if type(p) is Classes.SessionPage:
                         # Redirected to another session page
                         troublesome.append(curr_url)  # No need to check
                         return
                     same_url = True
                 if "html" in p.type and p.content == browser.page_source:
                     # Have the same content of another page
-                    if type(p) is SessionPage:
+                    if type(p) is Classes.SessionPage:
                         # Redirected to another session page
                         troublesome.append(curr_url)  # No need to check
                         return
@@ -190,7 +191,7 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, previous: st
                     non_session_browser.page_source == browser.page_source:
                 # If the URL can be reachable from non-session point the session has logged out
                 # Non-Session page
-                page = Page(
+                page = Classes.Page(
                     browser.current_url,
                     request.response.status_code,
                     request.response.headers.get("Content-Type").split(";")[0],
@@ -199,7 +200,7 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, previous: st
                     previous)
                 color = COLOR_MANAGER.BLUE
             else:
-                page = SessionPage(
+                page = Classes.SessionPage(
                     browser.current_url,
                     request.response.status_code,
                     request.response.headers.get("Content-Type").split(";")[0],
@@ -214,7 +215,7 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, previous: st
             return
     else:
         # Non-Session page
-        page = Page(
+        page = Classes.Page(
             browser.current_url,
             request.response.status_code,
             request.response.headers.get("Content-Type").split(";")[0],
@@ -316,7 +317,7 @@ def get_pages(data: Data, curr_url: str, browser: webdriver.Chrome, previous: st
                           recursive=data.recursive, non_session_browser=non_session_browser)
 
 
-def get_session_pages(data: Data, browser: webdriver.Chrome):
+def get_session_pages(data: Classes.Data, browser: webdriver.Chrome):
     """
     Function looking for login forms and scraping session pages through them
     @param data: The data object of the program
@@ -327,7 +328,7 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
         # If there are no username or password
         return
     non_session_pages = list(data.pages)
-    non_session_browser = new_browser(data)  # New session for non-session page
+    non_session_browser = Methods.new_browser(data)  # New session for non-session page
     pages_backup = list(data.pages)
     login_pages = list()
     global logged_out
@@ -341,7 +342,7 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
             # The page doesn't have valid login form
             continue
         try:
-            submit_form(form_details["inputs"], dict(), "", browser)
+            Methods.submit_form(form_details["inputs"], dict(), "", browser)
         except Exception:
             continue
         new_url = browser.current_url
@@ -379,16 +380,17 @@ def get_session_pages(data: Data, browser: webdriver.Chrome):
                         pages_backup.append(checked_page)
                         already_checked.append(checked_page)
                 data.pages = list(pages_backup)  # Restoring the pages list
+                # Updating the session
                 browser.delete_all_cookies()
                 browser.get(page.url)
-                submit_form(form_details["inputs"], dict(), "", browser)  # Updating the session
+                Methods.submit_form(form_details["inputs"], dict(), "", browser)
                 # Doing the loop all over again, without the logout page
         # If the session has not encountered a logout page
         pages_backup = list(data.pages)
     non_session_browser.close()  # Closing the webdriver
 
 
-def is_session_alive(data: Data, browser: webdriver.Chrome) -> bool:
+def is_session_alive(data: Classes.Data, browser: webdriver.Chrome) -> bool:
     """
     Function checks if the session of the browser is still alive
     @param data: The data object of the program
@@ -398,7 +400,7 @@ def is_session_alive(data: Data, browser: webdriver.Chrome) -> bool:
     same_content = 0
     different_content = 0
     for page in data.pages:
-        if type(page) is SessionPage:
+        if type(page) is Classes.SessionPage:
             browser.get(page.url)
             browser.refresh()
             if browser.page_source != page.content:
@@ -411,7 +413,7 @@ def is_session_alive(data: Data, browser: webdriver.Chrome) -> bool:
     return different_content <= same_content
 
 
-def set_chromedriver(data: Data) -> webdriver.Chrome:
+def set_chromedriver(data: Classes.Data) -> webdriver.Chrome:
     """
     Function sets a browser web driver object
     @param data: The data object of the program
@@ -449,12 +451,12 @@ def set_chromedriver(data: Data) -> webdriver.Chrome:
     try:
         print(f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
               f"Setting up the Chromedriver...{COLOR_MANAGER.ENDC}")
-        return new_browser(data)
+        return Methods.new_browser(data)
     except Exception:
         raise Exception("Setting up the web driver failed, please try again.")
 
 
-def set_lists(data: Data):
+def set_lists(data: Classes.Data):
     """
     Function sets the black and white lists
     @param data: The data object of the program
@@ -500,7 +502,7 @@ def set_lists(data: Data):
     print(COLOR_MANAGER.ENDC)
 
 
-def logic(data: Data):
+def logic(data: Classes.Data):
     """
     Function gets the page list
     @param data: The data object of the program
@@ -540,7 +542,7 @@ def logic(data: Data):
     browser.quit()
 
 
-def print_result(data: Data):
+def print_result(data: Classes.Data):
     """
     Function prints the result of the web scraper
     @param data: The data object of the program
@@ -566,12 +568,14 @@ def print_result(data: Data):
 
     global type_colors
     print("")
-    non_session_pages = [page for page in data.pages if valid_in_list(page) and type(page) != SessionPage]
+    non_session_pages = [page for page in data.pages
+                         if valid_in_list(page) and type(page) != Classes.SessionPage]
     if non_session_pages:
         print(f"\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization:{COLOR_MANAGER.ENDC}")
         type_colors["HTML"] = COLOR_MANAGER.BLUE
         print_type(non_session_pages, "+")
-    session_pages = [page for page in data.pages if valid_in_list(page) and type(page) == SessionPage]
+    session_pages = [page for page in data.pages
+                     if valid_in_list(page) and type(page) == Classes.SessionPage]
     if session_pages:
         # If there are session pages
         print(f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization:{COLOR_MANAGER.ENDC}")

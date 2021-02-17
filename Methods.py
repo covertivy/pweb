@@ -2,7 +2,9 @@ from seleniumwire import webdriver, request as selenium_request
 import random
 import time
 from selenium.webdriver.common.keys import Keys
+from bs4 import BeautifulSoup
 
+# --------------------- Consts --------------------
 CHECK_STRING = "check"
 
 # ------------------------- Browser methods --------------------------------

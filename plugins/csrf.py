@@ -1,21 +1,21 @@
 #!/usr/bin/python3
 from colors import COLOR_MANAGER
-import Data
+import Classes
+import Methods
 from bs4 import BeautifulSoup
-import random
 
 COLOR = COLOR_MANAGER.rgb(0, 255, 200)
 OUTSIDE_URL = "https://google.com"
 current_referer = None
 
 
-def check(data: Data.Data):
+def check(data: Classes.Data):
     """
     Function checks the website for CSRF
     @param data: The data object of the program
     @return: None
     """
-    csrf_results = Data.CheckResults("CSRF", COLOR)
+    csrf_results = Classes.CheckResults("CSRF", COLOR)
     data.mutex.acquire()
     pages = list(data.pages)  # Achieving the pages
     aggressive = data.aggressive
@@ -100,7 +100,7 @@ def filter_forms(pages: list, aggressive: bool) -> list:
         if "html" not in page.type.lower():
             # If it is a non-html page we can not check for command injection
             continue
-        if type(page) is not Data.SessionPage:
+        if type(page) is not Classes.SessionPage:
             # If the page is not a session page
             continue
         for form in get_forms(page.content):
@@ -112,7 +112,7 @@ def filter_forms(pages: list, aggressive: bool) -> list:
     return filtered_pages
 
 
-def csrf(page: Data.SessionPage, form: dict, data: Data.Data, browser) -> Data.PageResult:
+def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data, browser) -> Classes.PageResult:
     """
     Function checks the page for csrf
     @param page: The current page
@@ -121,7 +121,7 @@ def csrf(page: Data.SessionPage, form: dict, data: Data.Data, browser) -> Data.P
     @param browser: The Chrome browser object
     @return: Page result object
     """
-    page_result = Data.PageResult(page, "", "")
+    page_result = Classes.PageResult(page, "", "")
     vulnerability = [False, False, False]
     # Checking for csrf tokens
     request_headers = page.request.headers
@@ -182,7 +182,7 @@ def csrf(page: Data.SessionPage, form: dict, data: Data.Data, browser) -> Data.P
     return page_result
 
 
-def get_response(inputs: list, referer: str, data: Data.Data, browser, page) -> str:
+def get_response(inputs: list, referer: str, data: Classes.Data, browser, page) -> str:
     """
     Function submits a specified form and gets the result content
     @param inputs: A list of inputs of action form
@@ -197,7 +197,7 @@ def get_response(inputs: list, referer: str, data: Data.Data, browser, page) -> 
         # Sending the request
         global current_referer
         current_referer = referer
-        content, run_time, strings = Data.submit_form(inputs, dict(), "", browser)
+        content, run_time, strings = Methods.submit_form(inputs, dict(), "", browser)
         current_referer = None
         content = browser.page_source
         for string in strings:
@@ -211,15 +211,14 @@ def get_response(inputs: list, referer: str, data: Data.Data, browser, page) -> 
         return content
 
 
-def set_browser(data: Data.Data, page: Data.SessionPage):
+def set_browser(data: Classes.Data, page: Classes.SessionPage):
     """
     Function Sets up a new browser, sets its cookies and checks if the cookies are valid
     @param data: The data object of the program
     @param page: The current page
     @return: The browser object
     """
-    browser = Data.new_browser(data, interceptor=interceptor, session_page=page)  # Getting new browser
-    return browser
+    return Methods.new_browser(data, interceptor=interceptor, session_page=page)
 
 
 def interceptor(request):
@@ -239,7 +238,7 @@ def interceptor(request):
         request.headers['Referer'] = current_referer  # Spoof the referer
 
 
-def write_vulnerability(results: list, page_result: Data.PageResult):
+def write_vulnerability(results: list, page_result: Classes.PageResult):
     """
     Function writes the problem and the solution of every problem that is found for a page
     @param results: a dictionary of text input and list of chars it didn't filter

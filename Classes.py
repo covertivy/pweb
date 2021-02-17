@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 from threading import Lock
-from Methods import *
+from seleniumwire import request as selenium_request
 
 
 class Data:

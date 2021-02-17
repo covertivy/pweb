@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 from colors import COLOR_MANAGER
-import Data
+import Classes
+import Methods
 from bs4 import BeautifulSoup
 
 # Consts:
@@ -12,13 +13,13 @@ curr_text_input = dict()
 curr_char = ""
 
 
-def check(data: Data.Data):
+def check(data: Classes.Data):
     """
     Function checks the website for blind/non-blind OS injection
     @param data: The data object of the program
     @return: None
     """
-    ci_results = Data.CheckResults("Command Injection", COLOR)
+    ci_results = Classes.CheckResults("Command Injection", COLOR)
     try:
         data.mutex.acquire()
         pages = data.pages  # Achieving the pages
@@ -95,7 +96,7 @@ def filter_forms(pages: list, aggressive: bool) -> list:
                 form_details["method"] = method
                 form_details["inputs"] = inputs
                 # Adding the page and it's form to the list
-                if len(Data.get_text_inputs(form_details)) != 0:
+                if len(Methods.get_text_inputs(form_details)) != 0:
                     # If there are no text inputs, it can't be command injection
                     filtered_pages.append((page, form_details))
                     if not aggressive:
@@ -106,7 +107,7 @@ def filter_forms(pages: list, aggressive: bool) -> list:
     return filtered_pages
 
 
-def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
+def command_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
     """
     Function checks the page for blind/non-blind OS injection
     @param page: The current page
@@ -114,9 +115,9 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
     @param data: The data object of the program
     @return: Page result object
     """
-    page_result = Data.PageResult(page, "", "")
+    page_result = Classes.PageResult(page, "", "")
     chars_to_filter = ["&", "&&", "|", "||", ";", "\n"]
-    text_inputs = Data.get_text_inputs(form)  # Getting the text inputs
+    text_inputs = Methods.get_text_inputs(form)  # Getting the text inputs
     results = dict()
     for text_input in text_inputs:
         # Setting keys for the results
@@ -131,14 +132,14 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
         browser = None
         try:
             browser = set_browser(data, page)
-            check_string = Data.get_random_str(browser.page_source)
+            check_string = Methods.get_random_str(browser.page_source)
             if not string:
                 # If there is no string specified, generate a random string
                 string = check_string
             elif "X" in string:
                 # Replace X with a random string
                 string = string.replace("X", check_string)
-            c, r, s = Data.submit_form(form["inputs"], curr_text_input, string, browser)
+            c, r, s = Methods.submit_form(form["inputs"], curr_text_input, string, browser)
         except Exception:
             # In case of failing, try again
             if browser:
@@ -197,17 +198,17 @@ def command_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
     return page_result
 
 
-def set_browser(data: Data.Data, page):
+def set_browser(data: Classes.Data, page):
     """
     Function Sets up a new browser, sets its cookies and checks if the cookies are valid
     @param data: The data object of the program
     @param page: The current page
     @return: The browser object
     """
-    if type(page) is Data.SessionPage:
+    if type(page) is Classes.SessionPage:
         # If the current page is not a session page
-        return Data.new_browser(data, session_page=page, interceptor=interceptor)  # Getting new browser
-    browser = Data.new_browser(data, interceptor=interceptor)  # Getting new browser
+        return Methods.new_browser(data, session_page=page, interceptor=interceptor)  # Getting new browser
+    browser = Methods.new_browser(data, interceptor=interceptor)  # Getting new browser
     browser.get(page.url)
     return browser
 
@@ -230,7 +231,7 @@ def interceptor(request):
         request.params = params
 
 
-def write_vulnerability(results: dict, page_result: Data.PageResult, problem: str):
+def write_vulnerability(results: dict, page_result: Classes.PageResult, problem: str):
     """
     Function writes the problem and the solution of every problem that is found for a page
     @param results: a dictionary of text input and list of chars it didn't filter
