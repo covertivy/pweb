@@ -4,7 +4,6 @@ import Classes
 import Methods
 
 # Consts:
-TIME = 10
 COLOR = COLOR_MANAGER.rgb(255, 255, 0)
 
 # Global variables
@@ -81,41 +80,6 @@ def command_injection(page, form: dict, data: Classes.Data) -> Classes.PageResul
     for text_input in text_inputs:
         # Setting keys for the results
         results[text_input["name"]] = list()
-
-    def inject(string=None) -> (str, float, str):
-        """
-        Inner function inject a string into a text box and submit the form
-        @param string: The string we want to inject
-        @return: Set of (the content of the page, the time it took submit the form)
-        """
-        browser = None
-        try:
-            browser = set_browser(data, page)
-            check_string = Methods.get_random_str(browser.page_source)
-            if not string:
-                # If there is no string specified, generate a random string
-                string = check_string
-            elif "X" in string:
-                # Replace X with a random string
-                string = string.replace("X", check_string)
-            # Getting the updated form, in case of CSRF tokens
-            forms = Methods.get_forms(content=browser.page_source)
-            curr_form = dict()
-            for curr_form in forms:
-                if curr_form["action"] == form["action"] and curr_form["method"] == form["method"]:
-                    # Have the same action and method
-                    break
-            # Submitting the new form
-            c, r, s = Methods.submit_form(curr_form["inputs"], curr_text_input, string, browser, data)
-        except Exception:
-            # In case of failing, try again
-            if browser:
-                browser.quit()
-            return inject(string)
-        else:
-            browser.quit()
-            return c, r, check_string
-
     check_for_blind = True
     normal_time = 0
     normal_attempts = 0
@@ -124,10 +88,12 @@ def command_injection(page, form: dict, data: Classes.Data) -> Classes.PageResul
     for curr_char in chars_to_filter:
         for curr_text_input in text_inputs:  # In case of more than one text input
             # Getting content of non-blind injection
-            content, run_time, s = inject("echo X")
+            content, run_time, check_string = Methods.inject(data, page, form,
+                                                             curr_text_input, set_browser,
+                                                             "echo " + Methods.CHANGING_SIGN)
             normal_time += run_time
             normal_attempts += 1
-            if content.count(s) > content.count(f"echo {s}"):
+            if content.count(check_string) > content.count(f"echo {check_string}"):
                 # The web page printed the echo message
                 results[curr_text_input["name"]].append(curr_char)
                 check_for_blind = False
@@ -140,13 +106,15 @@ def command_injection(page, form: dict, data: Classes.Data) -> Classes.PageResul
                 injection_time = 0
                 injection_attempts = 0
                 while True:
-                    content, run_time, s = inject(f" ping -c {TIME} 127.0.0.1")
+                    content, run_time, s = Methods.inject(data, page, form,
+                                                          curr_text_input, set_browser,
+                                                          f" ping -c {Methods.WAITING_TIME} 127.0.0.1")
                     injection_time += run_time
                     injection_attempts += 1
                     difference = injection_time/injection_attempts - normal_time/normal_attempts
-                    if difference < TIME + 2:
+                    if difference < Methods.WAITING_TIME + 2:
                         # It did not took too much time
-                        if difference > TIME - 2:
+                        if difference > Methods.WAITING_TIME - 2:
                             # The injection slowed down the server response
                             results[curr_text_input["name"]].append(char)
                             found_vulnerability = True

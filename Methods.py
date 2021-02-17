@@ -6,7 +6,9 @@ from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 
 # ------------------------------ Consts ------------------------------
-CHECK_STRING = "check"
+CHECK_STRING = "Check"
+CHANGING_SIGN = "X1Y"
+WAITING_TIME = 10
 
 # ------------------------- Browser methods -------------------------
 
@@ -137,7 +139,7 @@ def get_random_str(content: str) -> str:
 def get_text_inputs(form: dict) -> list:
     """
     Function gets the text input names from a form
-    @param form: a dictionary of inputs of action form
+    @param form: A dictionary of inputs of action form
     @return: list of text inputs
     """
     text_inputs = list()
@@ -186,3 +188,45 @@ def get_forms(content: str) -> list:
         except Exception:
             continue
     return forms
+
+
+def inject(data: Classes.Data, page: Classes.Page, form: dict,
+           curr_text_input: dict, setting_browser, string=None) -> (str, float, str):
+    """
+    Function inject a string into a text box and submit the form
+    @param data: The data object of the program
+    @param page: The current page
+    @param curr_text_input: The current text input we are checking
+    @param form: A dictionary of inputs of action form
+    @param setting_browser: A pointer to a function that take (data, page) and returns browser
+    @param string: The string we want to inject
+    @return: Set of (the content of the page, the time it took submit the form, the random string that was used)
+    """
+    browser = None
+    try:
+        browser = setting_browser(data, page)
+        check_string = get_random_str(browser.page_source)
+        if not string:
+            # If there is no string specified, generate a random string
+            string = check_string
+        elif CHANGING_SIGN in string:
+            # Replace X with a random string
+            string = string.replace(CHANGING_SIGN, check_string)
+        # Getting the updated form, in case of CSRF tokens
+        forms = get_forms(content=browser.page_source)
+        curr_form = dict()
+        for curr_form in forms:
+            if curr_form["action"] == form["action"] and curr_form["method"] == form["method"]:
+                # Have the same action and method
+                break
+        # Submitting the new form
+        content, run_time, strings = submit_form(curr_form["inputs"], curr_text_input, string, browser, data)
+    except Exception:
+        # In case of failing, try again
+        if browser:
+            browser.quit()
+        return inject(data, page, form, curr_text_input, string)
+    else:
+        # Success in submitting the form
+        browser.quit()
+        return content, run_time, check_string

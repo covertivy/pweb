@@ -87,22 +87,23 @@ def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data, browser) -> 
     token = False
     try:
         for new_form in Methods.get_forms(browser.page_source):
-            if new_form["action"] == form["action"]:
-                # Same form
-                for input_tag in form["inputs"]:
-                    # Using the specified value
-                    if "name" in input_tag.keys() and input_tag["value"]:
-                        # Only if the input has a name and a value
-                        for new_input_tag in new_form["inputs"]:
-                            if "name" in new_input_tag.keys() and new_input_tag["name"] == input_tag["name"]:
-                                # If the input tags have the same name
-                                if new_input_tag["value"] != input_tag["value"]:
-                                    # If the input tags have different values
-                                    token = True
-                                    break
-                        if token:
-                            # No need to look for another input tag
-                            break
+            if new_form["action"] != form["action"]:
+                # Not the same form
+                continue
+            for input_tag in form["inputs"]:
+                # Using the specified value
+                if "name" in input_tag.keys() and input_tag["value"]:
+                    # Only if the input has a name and a value
+                    for new_input_tag in new_form["inputs"]:
+                        if "name" in new_input_tag.keys() and new_input_tag["name"] == input_tag["name"]:
+                            # If the input tags have the same name
+                            if new_input_tag["value"] != input_tag["value"]:
+                                # If the input tags have different values
+                                token = True
+                                break
+                    if token:
+                        # No need to look for another input tag
+                        break
                 break  # There is only one fitting form
     except Exception:
         pass

@@ -5,14 +5,13 @@ import Methods
 
 # Consts:
 COLOR = COLOR_MANAGER.rgb(255, 0, 128)
-TIME = 10
 MINIMUM_ATTEMPTS = 3
 
 # Global variables:
-comments = {"#": [f"sleep({TIME})"],
-            "-- ": [f"sleep({TIME})"],
-            "--": [f"dbms_pipe.receive_message(('a'),{TIME})",
-                   f"WAITFOR DELAY '0:0:{TIME}'", f"pg_sleep({TIME})"]}
+comments = {"#": [f"sleep({Methods.WAITING_TIME})"],
+            "-- ": [f"sleep({Methods.WAITING_TIME})"],
+            "--": [f"dbms_pipe.receive_message(('a'),{Methods.WAITING_TIME})",
+                   f"WAITFOR DELAY '0:0:{Methods.WAITING_TIME}'", f"pg_sleep({Methods.WAITING_TIME})"]}
 
 
 def check(data: Classes.Data):
@@ -88,43 +87,9 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
     found_vulnerability = False
     normal_time = 0
     normal_attempts = 0
-
-    def inject(string=None) -> (str, float):
-        """
-        Inner function inject a string into a text box and submit the form
-        @param string: The string we want to inject
-        @return: Set of (the content of the page, the time it took submit the form)
-        """
-        browser = None
-        try:
-            browser = set_browser(data, page)
-            if not string:
-                # If there is no string specified, generate a random string
-                string = Methods.get_random_str(browser.page_source)
-            elif "X" in string:
-                # Replace X with a random string
-                string = string.replace("X", Methods.get_random_str(browser.page_source))
-            # Getting the updated form, in case of CSRF tokens
-            forms = Methods.get_forms(content=browser.page_source)
-            curr_form = dict()
-            for curr_form in forms:
-                if curr_form["action"] == form["action"] and curr_form["method"] == form["method"]:
-                    # Have the same action and method
-                    break
-            # Submitting the new form
-            c, r, s = Methods.submit_form(curr_form["inputs"], text_inputs[0], string, browser, data)
-        except Exception:
-            # In case of failing, try again
-            if browser:
-                browser.quit()
-            return inject(string)
-        else:
-            browser.quit()
-            return c, r
-
     for _ in range(MINIMUM_ATTEMPTS):
         # Injecting
-        content, run_time = inject()
+        content, run_time, s = Methods.inject(data, page, form, text_inputs[0], set_browser)
         normal_time += run_time
         normal_attempts += 1
 
@@ -132,14 +97,16 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
         # Checking every comment
         for sleep in comments[comment]:
             # Checking every sleep function
-            content, run_time = inject(f"X' OR NOT {sleep} LIMIT 1{comment}")
+            content, run_time, s = Methods.inject(data, page, form, text_inputs[0],
+                                                  set_browser, f"{Methods.CHANGING_SIGN}' "
+                                                               f"OR NOT {sleep} LIMIT 1{comment}")
             injection_time = run_time  # Injected input run time
             injection_attempts = 1
             while True:
                 difference = injection_time/injection_attempts - normal_time/normal_attempts
-                if difference < TIME + 2:
+                if difference < Methods.WAITING_TIME + 2:
                     # It did not took too much time
-                    if difference > TIME - 2:
+                    if difference > Methods.WAITING_TIME - 2:
                         # The injection slowed down the server response
                         results[text_inputs[0]["name"]] = difference
                         comments = {comment: [sleep]}  # Found the data base's sleep function and comment
@@ -148,11 +115,12 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
                     if difference < 2:
                         break
                 # It took too much time to load the page
-                content, run_time = inject()
+                content, run_time, s = Methods.inject(data, page, form, text_inputs[0], set_browser)
                 normal_time += run_time
                 normal_attempts += 1
-
-                content, run_time = inject(f"X' OR NOT {sleep} LIMIT 1{comment}")
+                content, run_time, s = Methods.inject(data, page, form, text_inputs[0],
+                                                      set_browser, f"{Methods.CHANGING_SIGN}'"
+                                                                   f" OR NOT {sleep} LIMIT 1{comment}")
                 injection_time += run_time  # Injected input run time
                 injection_attempts += 1
             if found_vulnerability:
