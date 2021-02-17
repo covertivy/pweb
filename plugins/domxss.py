@@ -136,6 +136,8 @@ def find_script_by_src(html: str, page_url:str):
     def script_filter(tag: soup.element.Tag):
         return tag.name == "script" and tag.has_attr("src") and page_url.endswith(tag["src"])
     scripts = soup_obj.find_all(script_filter, limit=1)
+    if len(scripts) == 0:
+        return None
     return scripts[0]
 
 
