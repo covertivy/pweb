@@ -59,7 +59,7 @@ def filter_forms(page: Classes.Page) -> list:
         # We can check only html files
         forms = Methods.get_forms(page.content)  # Getting page forms
         for form in forms:
-            if len(Methods.get_text_inputs(form)) != 0:
+            if len(Methods.get_text_inputs(form["inputs"])) != 0:
                 # If there are no text inputs, it can't be command injection
                 filtered_forms.append(form)
     return filtered_forms
@@ -75,7 +75,7 @@ def command_injection(page, form: dict, data: Classes.Data) -> Classes.PageResul
     """
     page_result = Classes.PageResult(page, "", "")
     chars_to_filter = ["&", "&&", "|", "||", ";", "\n"]
-    text_inputs = Methods.get_text_inputs(form)  # Getting the text inputs
+    text_inputs = Methods.get_text_inputs(form["inputs"])  # Getting the text inputs
     results = dict()
     for text_input in text_inputs:
         # Setting keys for the results
@@ -87,10 +87,9 @@ def command_injection(page, form: dict, data: Classes.Data) -> Classes.PageResul
     global curr_char
     for curr_char in chars_to_filter:
         for curr_text_input in text_inputs:  # In case of more than one text input
+            temp_form = Methods.filling_form(form, curr_text_input, "echo " + Methods.CHANGING_SIGN)
             # Getting content of non-blind injection
-            content, run_time, check_string = Methods.inject(data, page, form,
-                                                             curr_text_input, set_browser,
-                                                             "echo " + Methods.CHANGING_SIGN)
+            content, run_time, check_string = Methods.inject(data, page, temp_form, interceptor)
             normal_time += run_time
             normal_attempts += 1
             if content.count(check_string) > content.count(f"echo {check_string}"):
@@ -106,9 +105,9 @@ def command_injection(page, form: dict, data: Classes.Data) -> Classes.PageResul
                 injection_time = 0
                 injection_attempts = 0
                 while True:
-                    content, run_time, s = Methods.inject(data, page, form,
-                                                          curr_text_input, set_browser,
-                                                          f" ping -c {Methods.WAITING_TIME} 127.0.0.1")
+                    temp_form = Methods.filling_form(form, curr_text_input,
+                                                     f" ping -c {Methods.WAITING_TIME} 127.0.0.1")
+                    content, run_time, s = Methods.inject(data, page, temp_form, interceptor)
                     injection_time += run_time
                     injection_attempts += 1
                     difference = injection_time/injection_attempts - normal_time/normal_attempts
@@ -133,21 +132,6 @@ def command_injection(page, form: dict, data: Classes.Data) -> Classes.PageResul
     return page_result
 
 
-def set_browser(data: Classes.Data, page):
-    """
-    Function Sets up a new browser, sets its cookies and checks if the cookies are valid
-    @param data: The data object of the program
-    @param page: The current page
-    @return: The browser object
-    """
-    if type(page) is Classes.SessionPage:
-        # If the current page is not a session page
-        return Methods.new_browser(data, session_page=page, interceptor=interceptor)  # Getting new browser
-    browser = Methods.new_browser(data, interceptor=interceptor)  # Getting new browser
-    browser.get(page.url)
-    return browser
-
-
 def interceptor(request):
     """
     Function acts like proxy, it changes the requests header
@@ -159,7 +143,8 @@ def interceptor(request):
     if request.path.endswith(('.png', '.jpg', '.gif')):
         # Save run time
         request.abort()
-    elif curr_text_input and request.params and curr_text_input["name"] in request.params.keys():
+    elif curr_text_input and request.params \
+            and curr_text_input["name"] in request.params.keys():
         # In case of params
         params = dict(request.params)
         params[curr_text_input["name"]] = curr_char + params[curr_text_input["name"]]

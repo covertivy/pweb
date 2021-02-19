@@ -63,7 +63,7 @@ def filter_forms(page: Classes.Page) -> list:
         # We can check only html files
         forms = Methods.get_forms(page.content)  # Getting page forms
         for form in forms:
-            if len(Methods.get_text_inputs(form)) != 0:
+            if len(Methods.get_text_inputs(form["inputs"])) != 0:
                 # If there are no text inputs, it can't be command injection
                 filtered_forms.append(form)
     return filtered_forms
@@ -79,7 +79,7 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
     """
     page_result = Classes.PageResult(page, "", "")
     global comments
-    text_inputs = Methods.get_text_inputs(form)  # Getting the text inputs
+    text_inputs = Methods.get_text_inputs(form["inputs"])  # Getting the text inputs
     results = dict()
     for text_input in text_inputs:
         # Setting keys for the results
@@ -89,7 +89,8 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
     normal_attempts = 0
     for _ in range(MINIMUM_ATTEMPTS):
         # Injecting
-        content, run_time, s = Methods.inject(data, page, form, text_inputs[0], set_browser)
+        temp_form = Methods.filling_form(form, dict(), "")
+        content, run_time, s = Methods.inject(data, page, temp_form)
         normal_time += run_time
         normal_attempts += 1
 
@@ -97,9 +98,9 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
         # Checking every comment
         for sleep in comments[comment]:
             # Checking every sleep function
-            content, run_time, s = Methods.inject(data, page, form, text_inputs[0],
-                                                  set_browser, f"{Methods.CHANGING_SIGN}' "
-                                                               f"OR NOT {sleep} LIMIT 1{comment}")
+            temp_form = Methods.filling_form(form, text_inputs[0], f"{Methods.CHANGING_SIGN}'"
+                                                                   f" OR NOT {sleep} LIMIT 1{comment}")
+            content, run_time, s = Methods.inject(data, page, temp_form)
             injection_time = run_time  # Injected input run time
             injection_attempts = 1
             while True:
@@ -115,12 +116,12 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
                     if difference < 2:
                         break
                 # It took too much time to load the page
-                content, run_time, s = Methods.inject(data, page, form, text_inputs[0], set_browser)
+                content, run_time, s = Methods.inject(data, page, Methods.filling_form(form, dict(), ""))
                 normal_time += run_time
                 normal_attempts += 1
-                content, run_time, s = Methods.inject(data, page, form, text_inputs[0],
-                                                      set_browser, f"{Methods.CHANGING_SIGN}'"
-                                                                   f" OR NOT {sleep} LIMIT 1{comment}")
+                temp_form = Methods.filling_form(form, text_inputs[0], f"{Methods.CHANGING_SIGN}'"
+                                                                       f" OR NOT {sleep} LIMIT 1{comment}")
+                content, run_time, s = Methods.inject(data, page, temp_form)
                 injection_time += run_time  # Injected input run time
                 injection_attempts += 1
             if found_vulnerability:
@@ -131,21 +132,6 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
             break
     write_vulnerability(results, page_result)
     return page_result
-
-
-def set_browser(data: Classes.Data, page):
-    """
-    Function Sets up a new browser, sets its cookies and checks if the cookies are valid
-    @param data: The data object of the program
-    @param page: The current page
-    @return: The browser object
-    """
-    if type(page) is Classes.SessionPage:
-        # If the current page is not a session page
-        return Methods.new_browser(data, session_page=page)  # Getting new browser
-    browser = Methods.new_browser(data)  # Getting new browser
-    browser.get(page.url)
-    return browser
 
 
 def write_vulnerability(results: dict, page_result: Classes.PageResult):

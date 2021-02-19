@@ -34,8 +34,7 @@ def check(data: Classes.Data):
                 break
             for form in forms:
                 try:
-                    browser = set_browser(data, page)
-                    result = csrf(page, form, data, browser)
+                    result = csrf(page, form, data)
                     if result.problem:
                         # If there is a problem with the page
                         csrf_results.page_results.append(result)
@@ -64,13 +63,12 @@ def filter_forms(page: Classes.Page) -> list:
     return filtered_forms
 
 
-def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data, browser) -> Classes.PageResult:
+def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data) -> Classes.PageResult:
     """
     Function checks the page for csrf
     @param page: The current page
     @param form: The page's action form
     @param data: The data object of the program
-    @param browser: The Chrome browser object
     @return: Page result object
     """
     page_result = Classes.PageResult(page, "", "")
@@ -84,6 +82,7 @@ def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data, browser) -> 
         # Found a SameSite or csrf token in response header
         return page_result
     # Setting new browser
+    browser = Methods.new_browser(data, page, interceptor=interceptor)
     token = False
     try:
         for new_form in Methods.get_forms(browser.page_source):
@@ -107,6 +106,7 @@ def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data, browser) -> 
                 break  # There is only one fitting form
     except Exception:
         pass
+    browser.quit()
     if token:
         # Found a csrf token
         return page_result
@@ -115,33 +115,30 @@ def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data, browser) -> 
         # Dangerous by itself
         vulnerability[0] = True
     # Getting normal content
-    normal_content = get_response(form["inputs"], page.url, data, browser, page)
+    normal_content = get_response(form["inputs"], page.url, data, page)
     # Getting redirected content
-    browser.get(page.url)
-    referer_content = get_response(form["inputs"], OUTSIDE_URL, data, browser, page)
+    referer_content = get_response(form["inputs"], OUTSIDE_URL, data, page)
     if normal_content == referer_content:
         # Does not filter referer header
         vulnerability[1] = True
     else:
         # Getting local redirected content
-        browser.get(page.url)
-        referer_content = get_response(form["inputs"], page.parent, data, browser, page)
+        referer_content = get_response(form["inputs"], page.parent, data, page)
         if normal_content == referer_content:
             # Does not filter referer header
             vulnerability[2] = True
     if sum(vulnerability):
         # If there is a vulnerability
-        write_vulnerability(vulnerability, page_result)
+        write_vulnerability(form, vulnerability, page_result)
     return page_result
 
 
-def get_response(inputs: list, referer: str, data: Classes.Data, browser, page) -> str:
+def get_response(inputs: list, referer: str, data: Classes.Data, page) -> str:
     """
     Function submits a specified form and gets the result content
     @param inputs: A list of inputs of action form
     @param referer: A specified referer address
     @param data: The data object of the program
-    @param browser: The browser object
     @param page: The current page
     @return: The content of the resulted page
     """
@@ -150,10 +147,23 @@ def get_response(inputs: list, referer: str, data: Classes.Data, browser, page) 
         # Sending the request
         global current_referer
         current_referer = referer
-        content, run_time, strings = Methods.submit_form(inputs, dict(), "", browser, data)
+        browser = Methods.new_browser(data, page, interceptor=interceptor)
+        check_strings = list()
+        inputs = [dict(input_tag) for input_tag in inputs]
+        for input_tag in inputs:
+            # Using the specified value
+            if input_tag in Methods.get_text_inputs(inputs):
+                # Only if the input has a name
+                if not input_tag["value"]:
+                    # There is no value to the input tag
+                    check_string = Methods.get_random_str(browser.page_source)
+                    check_strings.append(check_string)
+                    input_tag["value"] = check_string
+        content, run_time = Methods.submit_form(inputs, browser, data)
         current_referer = None
         content = browser.page_source
-        for string in strings:
+        browser.quit()
+        for string in check_strings:
             # In case that the random string is in the content
             content = content.replace(string, "")
         # In case of referrers in content
@@ -162,16 +172,6 @@ def get_response(inputs: list, referer: str, data: Classes.Data, browser, page) 
         pass
     finally:
         return content
-
-
-def set_browser(data: Classes.Data, page: Classes.SessionPage):
-    """
-    Function Sets up a new browser, sets its cookies and checks if the cookies are valid
-    @param data: The data object of the program
-    @param page: The current page
-    @return: The browser object
-    """
-    return Methods.new_browser(data, interceptor=interceptor, session_page=page)
 
 
 def interceptor(request):
@@ -191,11 +191,12 @@ def interceptor(request):
         request.headers['Referer'] = current_referer  # Spoof the referer
 
 
-def write_vulnerability(results: list, page_result: Classes.PageResult):
+def write_vulnerability(form: dict, results: list, page_result: Classes.PageResult):
     """
     Function writes the problem and the solution of every problem that is found for a page
-    @param results: a dictionary of text input and list of chars it didn't filter
-    @param page_result: page result object of the current page
+    @param form: The vulnerable form
+    @param results: A list of booleans that shows which vulnerability it has
+    @param page_result: Aage result object of the current page
     @return: None
     """
     lines = sum(results)
@@ -213,10 +214,11 @@ def write_vulnerability(results: list, page_result: Classes.PageResult):
                                 f" so it will perform only actions from the current page.\n{padding} "
         if results[1]:
             # Referer to outside of the domain
-            page_result.problem += "The page did not detect the 'Referer' header, which was outside of your domain."
+            page_result.problem += f"The form '{form['action']}' did not detect the 'Referer' header," \
+                                   f" which was outside of your domain."
         else:
             # Referer to inside of the domain
-            page_result.problem += "The page did not detect the 'Referer' header," \
-                                   f" which was not the same page that has the vulnerable form."
+            page_result.problem += f"The form '{form['action']}' did not detect the 'Referer' header," \
+                                   " which was not the same page that has the vulnerable form."
     page_result.solution += "The best way to prevent CSRF vulnerability is to use CSRF Tokens, " \
                             f"\n{padding} read more about it in: 'https://portswigger.net/web-security/csrf/tokens'."
