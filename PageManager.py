@@ -202,7 +202,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome, prev
     if page.url != curr_url:
         # If the current URL is redirecting to another URL
         troublesome.append(curr_url)
-        if not get_links([curr_url], previous):
+        if not get_links([page.url], previous):
             # The Redirected link is out of the website
             return
 
@@ -299,12 +299,14 @@ def get_session_pages(data: Classes.Data, browser: webdriver.Chrome):
     for page in non_session_pages:
         if "html" not in page.type:
             continue
-        # Setting browser for current page
-        browser.get(page.url)
-        form_details = get_login_form(data, Methods.get_forms(browser.page_source))
-        if not form_details:
-            # The page doesn't have valid login form
+        # Checking if the page has a login form
+        if not get_login_form(data, Methods.get_forms(page.content)):
             continue
+        # Setting browser for current page
+        print(page.url)
+        browser.get(page.url)
+        # Getting updated form
+        form_details = get_login_form(data, Methods.get_forms(browser.page_source))
         try:
             Methods.submit_form(form_details["inputs"], browser, data)
         except Exception:
@@ -314,19 +316,18 @@ def get_session_pages(data: Classes.Data, browser: webdriver.Chrome):
         if any(new_url == url for origin, url, form in login_pages):
             # The new url is already in the list
             continue
-        if all(new_url != p.url for p in data.pages):
-            # If the new URL is not in list
-            # And it is also redirecting
-            login_pages.append((page.url, new_url, form_details))
-        else:
-            # If the new URL is in the list
-            for p in data.pages:
-                if new_url == p.url:
-                    # Have the same URL
-                    if content != p.content:
-                        # Different content
-                        login_pages.append((page.url, new_url, form_details))
-                    break
+        login = True
+        for p in data.pages:
+            if new_url == p.url:
+                # Have the same URL
+                if Methods.remove_forms(content) != Methods.remove_forms(p.content):
+                    # Different content
+                    login_pages.append((page.url, new_url, form_details))
+                else:
+                    login = False  # Same URL and content
+                break  # We do not need to check anymore
+        if not login:
+            continue
         # Starting session
         logged_out = True
         global current_login_page
@@ -349,9 +350,8 @@ def get_session_pages(data: Classes.Data, browser: webdriver.Chrome):
                 browser.get(page.url)
                 Methods.submit_form(form_details["inputs"], browser, data)
                 # Doing the loop all over again, without the logout page
-        # If the session has not encountered a logout page
-        pages_backup = list(data.pages)
-    non_session_browser.close()  # Closing the webdriver
+        break
+    non_session_browser.quit()  # Closing the webdriver
 
 
 def is_session_alive(data: Classes.Data, browser: webdriver.Chrome) -> bool:
@@ -367,7 +367,7 @@ def is_session_alive(data: Classes.Data, browser: webdriver.Chrome) -> bool:
         if type(page) is Classes.SessionPage:
             browser.get(page.url)
             browser.refresh()
-            if browser.page_source != page.content:
+            if Methods.remove_forms(browser.page_source) != Methods.remove_forms(page.content):
                 # Does not have the same content
                 different_content += 1
             else:

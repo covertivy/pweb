@@ -10,6 +10,7 @@ CHECK_STRING = "Check"
 CHANGING_SIGN = "X1Y"
 WAITING_TIME = 10
 TEXT_TYPES = ["text", "password"]
+
 # ------------------------- Browser methods -------------------------
 
 
@@ -182,6 +183,17 @@ def get_forms(content: str) -> list:
         except Exception:
             continue
     return forms
+
+
+def remove_forms(content: str) -> str:
+    """
+    Function removes the form code blocks from the HTML content
+    @param content: The HTML page content
+    @return: The content without the forms
+    """
+    for form in get_forms(content):
+        content = content.replace(str(form["form"]), "")
+    return content
 
 
 def inject(data: Classes.Data, page: Classes.Page,
