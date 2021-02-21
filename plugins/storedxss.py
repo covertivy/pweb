@@ -2,10 +2,10 @@ import Data
 from colors import COLOR_MANAGER
 import bs4
 from bs4 import BeautifulSoup
-import plugins.analyzeReqHeaders as headerAnalyzer
 
 COLOR = COLOR_MANAGER.TURQUOISE
 PAYLOADS_PATH = "./plugins/xsspayloads.txt" # Assuming the payloads are in the same directory as the StoredXSS script.
+
 
 def check(data: Data.Data):
     stored_xss_results = Data.CheckResults("Stored XSS", COLOR)
@@ -20,7 +20,7 @@ def check(data: Data.Data):
         if 'html' not in page.type:
             continue
 
-        csp_info: dict= headerAnalyzer.csp_check(page)
+        csp_info: dict= csp_check(page)
 
         if csp_info is not None:
             allowed_script_sources: dict = {}
@@ -65,6 +65,46 @@ def check(data: Data.Data):
     data.mutex.acquire()
     data.results.append(stored_xss_results)
     data.mutex.release()
+
+
+def csp_check(page: Data.Page):
+    res_dict = {'allow_scripts': {}, 'allow_images': {}}
+    headers: dict = page.request.response.headers
+
+    if headers.get('Content-Security-Policy', None) is not None:
+        csp_param_str = headers.get('Content-Security-Policy').lstrip().rstrip()
+
+        def analyzeScriptSrcParams(param_args: list):
+            res_dict = {'*': False, 'unsafe_eval': False, 'unsafe_inline': False, 'unsafe_hashes': False}
+            for arg in param_args[1:]:
+                if arg == '*':
+                    res_dict['*'] = True
+                elif arg == 'unsafe_eval': 
+                    res_dict['unsafe_eval'] = True
+                elif arg == 'unsafe_inline':
+                    res_dict['unsafe_inline'] = True
+                elif arg == 'unsafe_hashes':
+                    res_dict['unsafe_hashes'] = True
+            return res_dict
+
+        def analyzeImageSrcParams(param_args: list):
+            res_dict = {'*': False}
+            for arg in param_args[1:]:
+                if arg == '*':
+                    res_dict['*'] = True
+            return res_dict
+        
+        for param in csp_param_str.split('; '):
+            # A param string will be "<param_name> <list of args separated by spaces>"
+            # A param list will be [param_name, args...]
+            param_args = param.split(' ')
+            if param_args[0] == 'script_src':
+                res_dict['allow_scripts'] = analyzeScriptSrcParams(param_args)
+            elif param_args[0] == 'img_src':
+                res_dict['allow_images'] = analyzeImageSrcParams(param_args)
+        return res_dict
+    else: 
+        return None
 
 
 def open_browser(data: Data.Data, page: Data.Page):
@@ -138,11 +178,11 @@ def select_payloads(allowed_sources: tuple):
     
     if not all(allowed_sources):
         for payload in payloads:
+            if not allowed_sources[0]: # Disallow scripts.
+                if 'script' in payload.lower():
+                    payloads.remove(payload)
             if not allowed_sources[1]: # Disallow images.
                 if 'img' in payload.lower():
-                    payloads.remove(payload)
-            else: # Disallow scripts.
-                if 'script' in payload.lower():
                     payloads.remove(payload)
     
     return payloads
