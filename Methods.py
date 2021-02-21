@@ -80,7 +80,8 @@ def submit_form(inputs: list, browser: webdriver.Chrome, data: Classes.Data) -> 
     start = time.time()  # Getting time of normal input
     # The elements we want to submit
     elements = list()
-    del browser.requests
+    if browser.requests:
+        del browser.requests
     try:
         for input_tag in inputs:
             if "type" in input_tag.keys() and input_tag['type'] == "hidden":
@@ -102,11 +103,13 @@ def submit_form(inputs: list, browser: webdriver.Chrome, data: Classes.Data) -> 
             # Did not do anything
             elements[0]["element"].submit()  # Sending the form
     except Exception as e:
+        data.mutex.release()
         if not len(browser.requests):
             # Did not do anything
             raise e
+    else:
+        data.mutex.release()
     run_time = time.time() - start
-    data.mutex.release()
     content = browser.page_source
     return content, run_time
 
@@ -191,48 +194,39 @@ def inject(data: Classes.Data, page: Classes.Page,
     @param interceptor: A pointer to an interceptor
     @return: Set of (the content of the page, the time it took submit the form, the random string that was used)
     """
-    browser = None
     check_string = ""
-    try:
-        # Creating new browser
-        browser = new_browser(data, page, interceptor=interceptor)
-        # The arguments body we want to submit
-        inputs = list()
-        for new_form in get_forms(browser.page_source):
-            # Getting the updated forms, in case of CSRF tokens
-            if new_form["action"] != form["action"] or new_form["method"] != form["method"]:
-                # It is not the right form
-                continue
-            new_inputs = new_form["inputs"]
-            inputs = form["inputs"]
-            for index in range(len(new_inputs)):
-                if not new_inputs[index]["value"]:
-                    # If there is no string specified
-                    if inputs[index]["value"]:
-                        # If there is a value in the old input tag
-                        if CHANGING_SIGN in inputs[index]["value"]:
-                            # If there is a changing sign in the string
-                            check_string = get_random_str(browser.page_source)
-                            # Replacing the CHANGING SIGN
-                            inputs[index]["value"] = inputs[index]["value"].replace(CHANGING_SIGN, check_string)
-                    else:
-                        # If there is not, generate a random value
-                        inputs[index]["value"] = get_random_str(browser.page_source)
+    # Creating new browser
+    browser = new_browser(data, page, interceptor=interceptor)
+    # The arguments body we want to submit
+    inputs = list()
+    for new_form in get_forms(browser.page_source):
+        # Getting the updated forms, in case of CSRF tokens
+        if new_form["action"] != form["action"] or new_form["method"] != form["method"]:
+            # It is not the right form
+            continue
+        new_inputs = new_form["inputs"]
+        inputs = form["inputs"]
+        check_string = get_random_str(browser.page_source)
+        for index in range(len(new_inputs)):
+            if not new_inputs[index]["value"]:
+                # If there is no string specified
+                if inputs[index]["value"]:
+                    # If there is a value in the old input tag
+                    if CHANGING_SIGN in inputs[index]["value"]:
+                        # If there is a changing sign in the string
+                        # Replacing the CHANGING SIGN
+                        inputs[index]["value"] = inputs[index]["value"].replace(CHANGING_SIGN, check_string)
                 else:
-                    # There is a specified value, may be a CSRF token
-                    inputs[index]["value"] = new_inputs[index]["value"]
-            break  # We found the form we were looking for
-        # Submitting the new form
-        content, run_time = submit_form(inputs, browser, data)
-    except Exception:
-        # In case of failing, try again
-        if browser:
-            browser.quit()
-        return inject(data, page, form, interceptor)
-    else:
-        # Success in submitting the form
-        browser.quit()
-        return content, run_time, check_string
+                    # If there is not, generate a random value
+                    inputs[index]["value"] = get_random_str(browser.page_source)
+            else:
+                # There is a specified value, may be a CSRF token
+                inputs[index]["value"] = new_inputs[index]["value"]
+        break  # We found the form we were looking for
+    # Submitting the new form
+    content, run_time = submit_form(inputs, browser, data)
+    browser.quit()
+    return content, run_time, check_string
 
 
 def filling_form(form: dict, curr_text_input: dict, string: str) -> dict:

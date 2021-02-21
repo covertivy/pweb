@@ -6,6 +6,9 @@ import Methods
 # Consts:
 COLOR = COLOR_MANAGER.rgb(255, 0, 128)
 MINIMUM_ATTEMPTS = 3
+MAXIMUM_ATTEMPTS = 3
+NON_BLIND_WORDS = ["error", "fail"]
+NON_BLIND_SIGN = 400
 
 # Global variables:
 comments = {"#": [f"sleep({Methods.WAITING_TIME})"],
@@ -84,25 +87,44 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
     for text_input in text_inputs:
         # Setting keys for the results
         results[text_input["name"]] = 0
+    words_count = dict()
+    for key in NON_BLIND_WORDS:
+        words_count[key] = 0
+    words_count["sleep"] = 0
     found_vulnerability = False
     normal_time = 0
     normal_attempts = 0
     for _ in range(MINIMUM_ATTEMPTS):
         # Injecting
         temp_form = Methods.filling_form(form, dict(), "")
+        fill_temp_form(temp_form)
         content, run_time, s = Methods.inject(data, page, temp_form)
+        for key in words_count.keys():
+            if content.lower().count(key) > words_count[key]:
+                words_count[key] = content.lower().count(key)
         normal_time += run_time
         normal_attempts += 1
-
     for comment in comments.keys():
         # Checking every comment
         for sleep in comments[comment]:
             # Checking every sleep function
             temp_form = Methods.filling_form(form, text_inputs[0], f"{Methods.CHANGING_SIGN}'"
                                                                    f" OR NOT {sleep} LIMIT 1{comment}")
-            content, run_time, s = Methods.inject(data, page, temp_form)
+            fill_temp_form(temp_form)
+            content, run_time, string = Methods.inject(data, page, temp_form)
             injection_time = run_time  # Injected input run time
             injection_attempts = 1
+            for key in NON_BLIND_WORDS:
+                if content.lower().count(key) > words_count[key] and\
+                        (string in content or content.lower().count("sleep") > words_count["sleep"]):
+                    # The screen printed an error message
+                    results[text_inputs[0]["name"]] = NON_BLIND_SIGN
+                    comments = {comment: [sleep]}  # Found the data base's sleep function and comment
+                    found_vulnerability = True
+                    break
+            if found_vulnerability:
+                # If a vulnerability is found, There is no reason to check another comment
+                break
             while True:
                 difference = injection_time/injection_attempts - normal_time/normal_attempts
                 if difference < Methods.WAITING_TIME + 2:
@@ -115,13 +137,22 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
                         break
                     if difference < 2:
                         break
-                # It took too much time to load the page
-                content, run_time, s = Methods.inject(data, page, Methods.filling_form(form, dict(), ""))
+                elif injection_attempts == MAXIMUM_ATTEMPTS:
+                    # It took too much time to load the page
+                    results[text_inputs[0]["name"]] = difference
+                    comments = {comment: [sleep]}  # Found the data base's sleep function and comment
+                    found_vulnerability = True
+                    break
+                # Between 2-8 seconds we need to make sure
+                temp_form = Methods.filling_form(form, dict(), "")
+                fill_temp_form(temp_form)
+                content, run_time, string = Methods.inject(data, page, temp_form)
                 normal_time += run_time
                 normal_attempts += 1
                 temp_form = Methods.filling_form(form, text_inputs[0], f"{Methods.CHANGING_SIGN}'"
                                                                        f" OR NOT {sleep} LIMIT 1{comment}")
-                content, run_time, s = Methods.inject(data, page, temp_form)
+                fill_temp_form(temp_form)
+                content, run_time, string = Methods.inject(data, page, temp_form)
                 injection_time += run_time  # Injected input run time
                 injection_attempts += 1
             if found_vulnerability:
@@ -132,6 +163,22 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
             break
     write_vulnerability(results, page_result)
     return page_result
+
+
+def fill_temp_form(form: dict):
+    """
+    Function fill the temp form text inputs with the CHANGING_SIGN
+    @param form: The temp form
+    @return: None
+    """
+    if len(Methods.get_text_inputs(form["inputs"])) < 3:
+        return
+    for input_tag in form["inputs"]:
+        if input_tag in Methods.get_text_inputs(form["inputs"]):
+            # If it is a text input
+            if "value" in input_tag.keys() and not input_tag["value"]:
+                # There is no value to the text input
+                input_tag["value"] = Methods.CHANGING_SIGN
 
 
 def write_vulnerability(results: dict, page_result: Classes.PageResult):
@@ -145,8 +192,13 @@ def write_vulnerability(results: dict, page_result: Classes.PageResult):
         # For every text input
         if results[key]:
             # If the input is vulnerable
-            page_result.problem = f"The text parameter '{key}' allowed blind SQL injection," \
-                                  " the server has slowed down by %3.1f seconds." % results[key]
+            if results[key] == NON_BLIND_SIGN:
+                page_result.problem = f"The text parameter '{key}' may have allowed SQL injection," \
+                                      " the plugin detected an error message that " \
+                                      "may indicate about a SQL vulnerability."
+            else:
+                page_result.problem = f"The text parameter '{key}' allowed blind SQL injection," \
+                                      " the server has slowed down by %3.1f seconds." % results[key]
             page_result.solution = f"You can validate the input from the " \
                                    f"'{key}' parameter, by checking for " \
                                    f"vulnerable characters or wrong input type"

@@ -199,11 +199,10 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome, prev
             # Couldn't parse, might be non-html format, like pdf or docx
             troublesome.append(page.url)
             return
-
     if page.url != curr_url:
         # If the current URL is redirecting to another URL
         troublesome.append(curr_url)
-        if not get_links([curr_url], page.url):
+        if not get_links([curr_url], previous):
             # The Redirected link is out of the website
             return
 
