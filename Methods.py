@@ -14,22 +14,22 @@ TEXT_TYPES = ["text", "password"]
 # ------------------------- Browser methods -------------------------
 
 
-def new_browser(data: Classes.Data, page: [Classes.Page, Classes.SessionPage] = None,
+def new_browser(data: Classes.Data, page: Classes.Page = None,
                 debug: bool = False, interceptor=None) -> webdriver.Chrome:
     """
-    Function creates a new browser instance for new session
-    @param data: The data object of the program
-    @param page: The browser needs the cookies and URL
-    @param debug: In case of debugging, True will make the chromium window appear
-    @param interceptor: A pointer to an interceptor
-    @return: Chrome driver object
+    Function creates a new browser instance for new session.
+    @param data: The data object of the program.
+    @param page: The browser needs the cookies and URL.
+    @param debug: In case of debugging, True will make the chromium window appear.
+    @param interceptor: A pointer to an interceptor.
+    @return: Chrome driver object.
     """
     if not data.driver:
-        # There is no driver file path
+        # There is no driver file path.
         raise Exception("There is no driver file path", "\t")
     options = webdriver.ChromeOptions()
     if not debug:
-        # If it's not debug, the chromium will be headless
+        # If it's not debug, the chromium will be headless.
         options.add_argument("headless")
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
     try:
@@ -81,6 +81,7 @@ def submit_form(inputs: list, browser: webdriver.Chrome, data: Classes.Data) -> 
     start = time.time()  # Getting time of normal input
     # The elements we want to submit
     elements = list()
+    # Maybe check entire legth without destroying everything...
     if browser.requests:
         del browser.requests
     try:
@@ -95,6 +96,7 @@ def submit_form(inputs: list, browser: webdriver.Chrome, data: Classes.Data) -> 
                     # You can send key only to text inputs
                     element.send_keys(input_tag["value"])
                 elements.append({"element": element, "name": input_tag["name"], "type": input_tag["type"]})
+            # Maybe add check to use id as well as name.
         for element in elements[::-1]:
             if element["type"] in TEXT_TYPES:
                 element["element"].send_keys(Keys.ENTER)  # Sending the form
@@ -240,7 +242,7 @@ def inject(data: Classes.Data, page: Classes.Page,
     browser.quit()
     return content, run_time, check_string
 
-
+# Change name to fill_input.
 def filling_form(form: dict, curr_text_input: dict, string: str) -> dict:
     """
     Function make a deep copy of a form and fill the specified text input with the string
