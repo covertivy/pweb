@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import argparse
-from Data import Data
+from Classes import Data
 from colors import COLOR_MANAGER
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from Data import Data, CheckResults
+from Classes import Data, CheckResults
 from colors import *
 import threading
 import time
