@@ -96,7 +96,7 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
     normal_attempts = 0
     for _ in range(MINIMUM_ATTEMPTS):
         # Injecting
-        temp_form = Methods.filling_form(form, dict(), "")
+        temp_form = Methods.fill_input(form, dict(), "")
         fill_temp_form(temp_form)
         content, run_time, s = Methods.inject(data, page, temp_form)
         for key in words_count.keys():
@@ -108,7 +108,7 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
         # Checking every comment
         for sleep in comments[comment]:
             # Checking every sleep function
-            temp_form = Methods.filling_form(form, text_inputs[0], f"{Methods.CHANGING_SIGN}'"
+            temp_form = Methods.fill_input(form, text_inputs[0], f"{Methods.CHANGING_SIGN}'"
                                                                    f" OR NOT {sleep} LIMIT 1{comment}")
             fill_temp_form(temp_form)
             content, run_time, string = Methods.inject(data, page, temp_form)
@@ -144,13 +144,13 @@ def sql_injection(page, form: dict, data: Classes.Data) -> Classes.PageResult:
                     found_vulnerability = True
                     break
                 # Between 2-8 seconds we need to make sure
-                temp_form = Methods.filling_form(form, dict(), "")
+                temp_form = Methods.fill_input(form, dict(), "")
                 fill_temp_form(temp_form)
                 content, run_time, string = Methods.inject(data, page, temp_form)
                 normal_time += run_time
                 normal_attempts += 1
-                temp_form = Methods.filling_form(form, text_inputs[0], f"{Methods.CHANGING_SIGN}'"
-                                                                       f" OR NOT {sleep} LIMIT 1{comment}")
+                temp_form = Methods.fill_input(form, text_inputs[0], f"{Methods.CHANGING_SIGN}'"
+                                                                     f" OR NOT {sleep} LIMIT 1{comment}")
                 fill_temp_form(temp_form)
                 content, run_time, string = Methods.inject(data, page, temp_form)
                 injection_time += run_time  # Injected input run time

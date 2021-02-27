@@ -14,7 +14,7 @@ TEXT_TYPES = ["text", "password"]
 # ------------------------- Browser methods -------------------------
 
 
-def new_browser(data: Classes.Data, page: Classes.Page = None,
+def new_browser(data: Classes.Data, page=None,
                 debug: bool = False, interceptor=None) -> webdriver.Chrome:
     """
     Function creates a new browser instance for new session.
@@ -242,8 +242,8 @@ def inject(data: Classes.Data, page: Classes.Page,
     browser.quit()
     return content, run_time, check_string
 
-# Change name to fill_input.
-def filling_form(form: dict, curr_text_input: dict, string: str) -> dict:
+
+def fill_input(form: dict, curr_text_input: dict, string: str) -> dict:
     """
     Function make a deep copy of a form and fill the specified text input with the string
     @param form: The current form

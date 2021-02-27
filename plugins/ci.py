@@ -87,7 +87,7 @@ def command_injection(page, form: dict, data: Classes.Data) -> Classes.PageResul
     global curr_char
     for curr_char in chars_to_filter:
         for curr_text_input in text_inputs:  # In case of more than one text input
-            temp_form = Methods.filling_form(form, curr_text_input, "echo " + Methods.CHANGING_SIGN)
+            temp_form = Methods.fill_input(form, curr_text_input, "echo " + Methods.CHANGING_SIGN)
             # Getting content of non-blind injection
             content, run_time, check_string = Methods.inject(data, page, temp_form, interceptor)
             normal_time += run_time
@@ -105,8 +105,8 @@ def command_injection(page, form: dict, data: Classes.Data) -> Classes.PageResul
                 injection_time = 0
                 injection_attempts = 0
                 while True:
-                    temp_form = Methods.filling_form(form, curr_text_input,
-                                                     f" ping -c {Methods.WAITING_TIME} 127.0.0.1")
+                    temp_form = Methods.fill_input(form, curr_text_input,
+                                                   f" ping -c {Methods.WAITING_TIME} 127.0.0.1")
                     content, run_time, s = Methods.inject(data, page, temp_form, interceptor)
                     injection_time += run_time
                     injection_attempts += 1
