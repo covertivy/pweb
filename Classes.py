@@ -17,6 +17,7 @@ class Data:
         self.blacklist = None
         self.whitelist = None
         self.aggressive = False
+        self.cookies = None
         self.driver = None
         self.pages = list()  # Pages
         self.results = list()  # Vulnerabilities results
