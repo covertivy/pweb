@@ -4,12 +4,15 @@ import Classes
 from seleniumwire import webdriver, request as selenium_request
 from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
+import json
 
-# ------------------------------ Consts ------------------------------
+
+# ------------- Consts -----------------
 CHECK_STRING = "Check"
 CHANGING_SIGN = "X1Y"
 WAITING_TIME = 10
 TEXT_TYPES = ["text", "password"]
+# ---------------------------------------
 
 # ------------------------- Browser methods -------------------------
 
@@ -115,6 +118,34 @@ def submit_form(inputs: list, browser: webdriver.Chrome, data: Classes.Data) -> 
     run_time = time.time() - start
     content = browser.page_source
     return content, run_time
+
+
+def enter_cookies(data: Classes.Data, browser: webdriver.Chrome, url: str) -> bool:
+    """
+    Function adds the specified cookie to the browser.
+    @param data: The data object of the program.
+    @param browser: The webdriver object
+    @param url: The current URL
+    @return: True - The cookies were added, False - The cookies were not added
+    """
+    browser.get(url)
+    before = browser.get_cookies()
+    if data.cookies:
+        try:
+            with open(data.cookies) as json_file:
+                cookies = json.load(json_file)
+                if type(cookies) is list:
+                    for cookie in cookies:
+                        browser.add_cookie(cookie)
+                if type(cookies) is dict:
+                    browser.add_cookie(cookies)
+        except Exception:
+            return False
+        if before != browser.get_cookies():
+            # Changed the cookies
+            browser.get(url)
+            return True
+    return False
 
 # ------------------------------ Helper methods ------------------------------
 
