@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from Classes import Data
+from Data import Data
 from colors import COLOR_MANAGER
 import socket
 import subprocess

@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from Classes import Data
+from Data import Data
 import FlagManager
 import PluginManager
 import AddressManager
@@ -91,8 +91,7 @@ def main():
         else:
             COLOR_MANAGER.print_error(str(e))
     finally:
-        if os.path.exists('CheckDevice.py'):
-            os.remove('CheckDevice.py')
+        os.remove('CheckDevice.py')
         exit(code=0)
 
 

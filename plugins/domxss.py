@@ -1,8 +1,9 @@
 #!/usr/bin/python3
 from colors import COLOR_MANAGER
-import Classes
+import Data
 import bs4 as soup
 import re as regex  #? Used `https://regex101.com/` a lot to verify regex string.
+from selenium import webdriver
 
 
 COLOR = COLOR_MANAGER.rgb(169, 69, 169)
@@ -17,8 +18,8 @@ RESULT_STR = "The primary rule that you must follow to prevent DOM XSS is: sanit
                 "\t\t\tFor more information please visit: https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html\n"
 
 
-def check(data: Classes.Data):
-    dom_xss_results = Classes.CheckResults("DOMXSS", COLOR)
+def check(data: Data.Data):
+    dom_xss_results = Data.CheckResults("DOMXSS", COLOR)
     data.mutex.acquire()
     pages = data.pages
     data.mutex.release()
@@ -32,7 +33,7 @@ def check(data: Classes.Data):
                                   f"\t\t\tThe Line is: {find_script_by_src(page.parent.content, page.url)}\n" \
                                   f"\t\t\tFrom page {page.parent.url}\n"
                     
-                    res = Classes.PageResult(page.parent, problem_str, RESULT_STR)
+                    res = Data.PageResult(page.parent, problem_str, RESULT_STR)
                     dom_xss_results.page_results.append(res)
             else:
                  continue  # Ignore non javascript pages.       
@@ -59,7 +60,7 @@ def check(data: Classes.Data):
                                 f"\t\t\tThe source patterns are: {str(script_tuple[2])}\n" \
                                 f"\t\t\tDanger level is {str(script_tuple[3])}\n"
                
-                res = Classes.PageResult(page, problem_str, RESULT_STR)
+                res = Data.PageResult(page, problem_str, RESULT_STR)
                 dom_xss_results.page_results.append(res)
 
         if len(vulnerable_input_scripts.keys()) > 0:
@@ -73,7 +74,7 @@ def check(data: Classes.Data):
                                 f"\t\t\tThe input sources are: {str(script_tuple[2])}\n" \
                                 f"\t\t\tDanger level is {str(script_tuple[3])}\n"
                
-                res = Classes.PageResult(page, problem_str, RESULT_STR)
+                res = Data.PageResult(page, problem_str, RESULT_STR)
                 dom_xss_results.page_results.append(res)
 
     data.mutex.acquire()
@@ -135,8 +136,6 @@ def find_script_by_src(html: str, page_url:str):
     def script_filter(tag: soup.element.Tag):
         return tag.name == "script" and tag.has_attr("src") and page_url.endswith(tag["src"])
     scripts = soup_obj.find_all(script_filter, limit=1)
-    if len(scripts) == 0:
-        return None
     return scripts[0]
 
 
