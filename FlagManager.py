@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import argparse
-from Data import Data
+from Classes import Data
 from colors import COLOR_MANAGER
 
 
@@ -22,6 +22,14 @@ def parse_args() -> argparse.Namespace:
     @return: Namespace of the arguments
     """
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-c",
+        default=None,
+        type=str,
+        help="Enter the path to a JSON file which have a list of cookies or one cookie, "
+             "every cookie must contain the keys: \"name\", \"value\" and \"domain\".",
+        dest="cookies",
+    )
     parser.add_argument(
         "-i",
         default="127.0.0.1",
@@ -148,6 +156,9 @@ def get_final_args(args) -> Data:
             output_obj.username = char_arr_to_string(args.login[0])
             output_obj.password = char_arr_to_string(args.login[1])
 
+    # Set cookies
+    output_obj.cookies = args.cookies
+
     # Set IP
     output_obj.ip = args.ip
 
@@ -172,9 +183,7 @@ def get_final_args(args) -> Data:
                     output_obj.port = args.port
                 # No valid port was specified.
                 else:
-                    COLOR_MANAGER.print_error(
-                        "Invalid port number, using default port 80."
-                    )
+                    COLOR_MANAGER.print_error("Invalid port number, using default port 80.")
                     output_obj.port = 80
 
             # No url port, check if port flag specified.
@@ -196,9 +205,7 @@ def get_final_args(args) -> Data:
     # Set limit of pages.
     if args.number_of_pages and args.number_of_pages <= 0:
         # If the number is set and it is invalid
-        COLOR_MANAGER.print_error(
-            "Invalid number of pages! Running with unlimited pages."
-        )
+        COLOR_MANAGER.print_error("Invalid number of pages! Running with unlimited pages.")
         output_obj.max_pages = None
     else:
         # If the number wasn't specified or it was specified and is valid
