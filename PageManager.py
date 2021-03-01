@@ -130,7 +130,7 @@ def is_session_alive(data: Classes.Data, browser: webdriver.Chrome,
 
 
 def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
-              previous: Classes.Page, non_session_browser: webdriver.Chrome, recursive=True):
+              previous, non_session_browser: webdriver.Chrome, recursive=True):
     """
     Function gets the list of pages to the data object
     @param data: The data object of the program
@@ -379,7 +379,7 @@ def get_session_pages(data: Classes.Data, browser: webdriver.Chrome,
             # Until it won't encounter a logout page
             logged_out = False
             # Attempting to achieve data from page
-            get_pages(data, new_url, browser, page.url, non_session_browser=non_session_browser)
+            get_pages(data, new_url, browser, page, non_session_browser=non_session_browser)
             if logged_out:
                 # If the session has encountered a logout page
                 already_checked.clear()  # The function needs to go through all the session pages
@@ -524,7 +524,7 @@ def logic(data: Classes.Data):
         raise Exception(e, "\t")
     try:
         # Getting the pages
-        get_pages(data, data.url, browser, data.url, non_session_browser=non_session_browser)
+        get_pages(data, data.url, browser, None, non_session_browser=non_session_browser)
         # We need to clear them in case of session pages
         global already_checked
         already_checked.clear()
