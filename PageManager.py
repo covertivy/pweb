@@ -130,7 +130,7 @@ def is_session_alive(data: Classes.Data, browser: webdriver.Chrome,
 
 
 def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
-              previous: str, non_session_browser: webdriver.Chrome, recursive=True):
+              previous: Classes.Page, non_session_browser: webdriver.Chrome, recursive=True):
     """
     Function gets the list of pages to the data object
     @param data: The data object of the program
@@ -190,7 +190,8 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
                         troublesome.append(curr_url)  # No need to check
                         return
                     same_url = True
-                if "html" in p.type and p.content == browser.page_source:
+                if "html" in p.type and \
+                        Methods.remove_forms(p.content) == Methods.remove_forms(browser.page_source):
                     # Have the same content of another page
                     if type(p) is Classes.SessionPage:
                         # Redirected to another session page
@@ -212,7 +213,8 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
                     browser.get(request.url)
             non_session_browser.get(browser.current_url)
             if non_session_browser.current_url != browser.current_url or \
-                    non_session_browser.page_source != browser.page_source:
+                    Methods.remove_forms(non_session_browser.page_source) !=\
+                    Methods.remove_forms(browser.page_source):
                 # If the URL can be reachable from non-session point the session has logged out
                 # Session page
                 page = Classes.SessionPage(
@@ -242,7 +244,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
     if page.url != curr_url:
         # If the current URL is redirecting to another URL
         troublesome.append(curr_url)
-        if not get_links([page.url], previous):
+        if previous and not get_links([page.url], previous.url):
             # The Redirected link is out of the website
             return
 
@@ -297,7 +299,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
         # Checking only scripts and style file
         if link in [req.url for req in browser.requests]:
             # Were already requested with the current page
-            get_pages(data, link, browser, page.url, non_session_browser, recursive=data.recursive)
+            get_pages(data, link, browser, page, non_session_browser, recursive=data.recursive)
 
     del browser.requests  # We do not need the previous requests anymore
 
@@ -316,7 +318,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
             if (not any(link == checked_page.url for checked_page in already_checked)
                     and link not in troublesome):
                 # Page was not checked, it is not troublesome or in the black list
-                get_pages(data, link, browser, page.url, non_session_browser, recursive=data.recursive)
+                get_pages(data, link, browser, page, non_session_browser, recursive=data.recursive)
 
 
 def get_session_pages(data: Classes.Data, browser: webdriver.Chrome,

@@ -224,6 +224,7 @@ def remove_forms(content: str) -> str:
     @param content: The HTML page content
     @return: The content without the forms
     """
+    # TODO: check
     for form in get_forms(content):
         content = content.replace(str(form["form"]), "")
     return content

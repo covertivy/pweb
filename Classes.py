@@ -43,7 +43,7 @@ class Data:
 
 class Page:
     def __init__(self, url: str, status: int, mime_type: str,
-                 content: str, request: selenium_request, parent: str):
+                 content: str, request: selenium_request, parent):
         self.url = url
         self.status = status
         self.type = mime_type
@@ -62,7 +62,7 @@ class Page:
 
 class SessionPage(Page):
     def __init__(self, url: str, status: int, mime_type: str,
-                 content: str, cookies: list, login: set, request: selenium_request, parent: str):
+                 content: str, cookies: list, login: set, request: selenium_request, parent):
         super(SessionPage, self).__init__(url, status, mime_type, content, request, parent)
         self.cookies = cookies  # List of dictionaries that webdriver can use
         self.login = login  # Set(The page which the session started from, It's Login form)
