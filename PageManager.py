@@ -10,25 +10,30 @@ import os
 import io
 import zipfile
 
-# Global variables
-# Dictionary of the mime-types and their color (find values in the logic function)
-type_colors = dict()
-already_printed = []  # List of printed Pages/SessionPages
-already_checked = []  # List of checked Pages/SessionPages
-troublesome = []  # List of troublesome URLs
-logout = []  # List of logout URLs
-logged_out = False  # Logout flag
-current_login_page = set()  # Where the session started
-black_list = list()  # List of words that the user do not want to check
-white_list = list()  # List of words that the user only wants to check
+# ------------------------------ Global variables -----------------------|
+type_colors = dict()  # Dictionary of the mime-types and their color.    |
+# See values in the logic() function.                                    |
+# -------------- Pages lists ----------------------------------|         |
+already_printed = list()  # List of printed Pages/SessionPages.|         |
+already_checked = list()  # List of checked Pages/SessionPages.|         |
+troublesome = list()  # List of troublesome URLs.              |         |
+# -------------- Session variables ----------------------------|         |
+logout = list()  # List of logout URLs.                   |              |
+logged_out = False  # Logout flag.                        |              |
+current_login_page = set()  # Where the session started.  |              |
+# --------------- Word lists --------------------------------------------|
+black_list = list()  # List of words that the user do not want to check. |
+white_list = list()  # List of words that the user only wants to check.  |
+# -----------------------------------------------------------------------|
 
-# Consts:
-PADDING = 4
+# ------ Consts ---------|
+PADDING = 4  # Spaces.   |
+# -----------------------|
 
 
 def get_links(links: list, url: str) -> list:
     """
-    Function filters the links list
+    Function returns a filtered list of links that not equal to the current URL but have same domain.
     @param links: The list of every link in the page
     @param url: The current URL
     @return: List of valid links
@@ -88,22 +93,57 @@ def valid_in_list(page: Classes.Page) -> bool:
                 (black_list and any(word in page.url for word in black_list)))
 
 
-def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome, previous: str,
-              recursive=True, non_session_browser: webdriver.Chrome = None):
+def is_session_alive(data: Classes.Data, browser: webdriver.Chrome,
+                     non_session_browser: webdriver.Chrome) -> bool:
+    """
+    Function checks if the session of the browser is still alive
+    @param data: The data object of the program
+    @param browser: Chrome driver object
+    @param non_session_browser: The web driver that check if a page is really in a session
+    @return: True - session still alive, False - session has logged out
+    """
+    if len(browser.get_cookies()) != len(non_session_browser.get_cookies()):
+        # Does not have same amount of cookies, one must be session
+        return True
+    for cookie in browser.get_cookies():
+        if cookie["name"] not in \
+                [non_cookie["name"] for non_cookie in non_session_browser.get_cookies()]:
+            # There is at least one cookie which is different by name
+            return True
+    # Cookies does not matter
+    same_content = 0
+    different_content = 0
+    for session_page in [page for page in data.pages if type(page) is Classes.SessionPage]:
+        if session_page.cookies != browser.get_cookies():
+            # Does not have the same cookies of the other session pages
+            return False
+        browser.get(session_page.url)
+        browser.refresh()
+        if Methods.remove_forms(browser.page_source) != Methods.remove_forms(session_page.content):
+            # Does not have the same content
+            different_content += 1
+        else:
+            # Have the same content
+            same_content += 1
+    # If there are more same-content pages than different-content pages
+    return different_content <= same_content
+
+
+def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
+              previous, non_session_browser: webdriver.Chrome, recursive=True):
     """
     Function gets the list of pages to the data object
     @param data: The data object of the program
     @param curr_url: The current URL the function checks
     @param browser: The web driver that gets the rendered content
     @param previous: The previous page
-    @param recursive: True- check all website pages, False- only the first reachable one
-    @param non_session_browser: In case of session, we need another browser to tell us if it is indeed a session
+    @param non_session_browser: The web driver that check if a page is really in a session
+    @param recursive: True - check all website pages, False - only the first reachable one
     @return: None
     """
     if len(data.pages) == data.max_pages:
         # In case of specified amount of pages, the function will stop
         return
-
     global logged_out
     if logged_out or curr_url in logout:
         # Not open logout pages
@@ -150,7 +190,8 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome, prev
                         troublesome.append(curr_url)  # No need to check
                         return
                     same_url = True
-                if "html" in p.type and p.content == browser.page_source:
+                if "html" in p.type and \
+                        Methods.remove_forms(p.content) == Methods.remove_forms(browser.page_source):
                     # Have the same content of another page
                     if type(p) is Classes.SessionPage:
                         # Redirected to another session page
@@ -161,7 +202,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome, prev
                     # Already found what we were looking for
                     break
             if "logout" in curr_url.lower() or same_content:
-                if not is_session_alive(data, browser):
+                if not is_session_alive(data, browser, non_session_browser):
                     # It redirected to a non-session page, and have the same content or logout in name
                     print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
                           f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
@@ -172,7 +213,8 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome, prev
                     browser.get(request.url)
             non_session_browser.get(browser.current_url)
             if non_session_browser.current_url != browser.current_url or \
-                    non_session_browser.page_source != browser.page_source:
+                    Methods.remove_forms(non_session_browser.page_source) !=\
+                    Methods.remove_forms(browser.page_source):
                 # If the URL can be reachable from non-session point the session has logged out
                 # Session page
                 page = Classes.SessionPage(
@@ -202,7 +244,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome, prev
     if page.url != curr_url:
         # If the current URL is redirecting to another URL
         troublesome.append(curr_url)
-        if not get_links([page.url], previous):
+        if previous and not get_links([page.url], previous.url):
             # The Redirected link is out of the website
             return
 
@@ -257,8 +299,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome, prev
         # Checking only scripts and style file
         if link in [req.url for req in browser.requests]:
             # Were already requested with the current page
-            get_pages(data, link, browser, page.url,
-                      recursive=data.recursive, non_session_browser=non_session_browser)
+            get_pages(data, link, browser, page, non_session_browser, recursive=data.recursive)
 
     del browser.requests  # We do not need the previous requests anymore
 
@@ -277,22 +318,25 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome, prev
             if (not any(link == checked_page.url for checked_page in already_checked)
                     and link not in troublesome):
                 # Page was not checked, it is not troublesome or in the black list
-                get_pages(data, link, browser, page.url,
-                          recursive=data.recursive, non_session_browser=non_session_browser)
+                get_pages(data, link, browser, page, non_session_browser, recursive=data.recursive)
 
 
-def get_session_pages(data: Classes.Data, browser: webdriver.Chrome):
+def get_session_pages(data: Classes.Data, browser: webdriver.Chrome,
+                      non_session_browser: webdriver.Chrome):
     """
     Function looking for login forms and scraping session pages through them
     @param data: The data object of the program
     @param browser: The webdriver browser
+    @param non_session_browser: The web driver that check if a page is really in a session
     @return: None
     """
     if not (data.username and data.password):
         # If there are no username or password
         return
+    if not non_session_browser:
+        # If the instance is not already set, set up a new one
+        non_session_browser = Methods.new_browser(data)
     non_session_pages = list(data.pages)
-    non_session_browser = Methods.new_browser(data)  # New session for non-session page
     pages_backup = list(data.pages)
     login_pages = list()
     global logged_out
@@ -303,7 +347,6 @@ def get_session_pages(data: Classes.Data, browser: webdriver.Chrome):
         if not get_login_form(data, Methods.get_forms(page.content)):
             continue
         # Setting browser for current page
-        print(page.url)
         browser.get(page.url)
         # Getting updated form
         form_details = get_login_form(data, Methods.get_forms(browser.page_source))
@@ -336,7 +379,7 @@ def get_session_pages(data: Classes.Data, browser: webdriver.Chrome):
             # Until it won't encounter a logout page
             logged_out = False
             # Attempting to achieve data from page
-            get_pages(data, new_url, browser, page.url, non_session_browser=non_session_browser)
+            get_pages(data, new_url, browser, page, non_session_browser=non_session_browser)
             if logged_out:
                 # If the session has encountered a logout page
                 already_checked.clear()  # The function needs to go through all the session pages
@@ -348,40 +391,19 @@ def get_session_pages(data: Classes.Data, browser: webdriver.Chrome):
                 # Updating the session
                 browser.delete_all_cookies()
                 browser.get(page.url)
+                Methods.enter_cookies(data, browser, page.url)
                 Methods.submit_form(form_details["inputs"], browser, data)
                 # Doing the loop all over again, without the logout page
         break
-    non_session_browser.quit()  # Closing the webdriver
+    # Closing the non session browser
+    non_session_browser.quit()
 
 
-def is_session_alive(data: Classes.Data, browser: webdriver.Chrome) -> bool:
-    """
-    Function checks if the session of the browser is still alive
-    @param data: The data object of the program
-    @param browser: Chrome driver object
-    @return: True - session still alive, False - session has logged out
-    """
-    same_content = 0
-    different_content = 0
-    for page in data.pages:
-        if type(page) is Classes.SessionPage:
-            browser.get(page.url)
-            browser.refresh()
-            if Methods.remove_forms(browser.page_source) != Methods.remove_forms(page.content):
-                # Does not have the same content
-                different_content += 1
-            else:
-                # Have the same content
-                same_content += 1
-    # If there are more same-content pages than different-content pages
-    return different_content <= same_content
-
-
-def set_chromedriver(data: Classes.Data) -> webdriver.Chrome:
+def set_chromedriver(data: Classes.Data):
     """
     Function sets a browser web driver object
     @param data: The data object of the program
-    @return: Chrome driver object
+    @return: None
     """
     driver_file = "chromedriver"
     pl = sys.platform
@@ -415,7 +437,6 @@ def set_chromedriver(data: Classes.Data) -> webdriver.Chrome:
     try:
         print(f"\t[{COLOR_MANAGER.YELLOW}?{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
               f"Setting up the Chromedriver...{COLOR_MANAGER.ENDC}")
-        return Methods.new_browser(data)
     except Exception:
         raise Exception("Setting up the web driver failed, please try again.")
 
@@ -480,25 +501,40 @@ def logic(data: Classes.Data):
         "XML": COLOR_MANAGER.YELLOW,
         "Other": COLOR_MANAGER.PURPLE}  # Dictionary of the mime-types and their color
     print(f"{COLOR_MANAGER.BLUE + COLOR_MANAGER.HEADER}Scraping pages:{COLOR_MANAGER.ENDC}")
-    # Setting white and black list
-    set_lists(data)
+    # Setting environment
     try:
-        browser = set_chromedriver(data)  # Setting web browser driver
+        set_lists(data)  # Setting white and black list
+        set_chromedriver(data)  # Setting web browser driver
+        browser = Methods.new_browser(data)  # Setting up browser object
+        non_session_browser = None
+        if data.cookies:
+            # If user specified cookies
+            if Methods.enter_cookies(data, browser, data.url):
+                # Success
+                non_session_browser = Methods.new_browser(data)  # setting up secondary browser object
+                print(f"\t[{COLOR_MANAGER.YELLOW}!{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
+                      f"Cookies were added to the session.{COLOR_MANAGER.ENDC}")
+            else:
+                # Failure
+                print(f"\t[{COLOR_MANAGER.YELLOW}!{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
+                      f"Invalid cookies, read about the format in the manual section.{COLOR_MANAGER.ENDC}")
+                data.cookies = None  # There is no need to use them again
         print(COLOR_MANAGER.ENDC)
     except Exception as e:
         raise Exception(e, "\t")
     try:
-        get_pages(data, data.url, browser, "")
-        global already_checked
+        # Getting the pages
+        get_pages(data, data.url, browser, None, non_session_browser=non_session_browser)
         # We need to clear them in case of session pages
+        global already_checked
         already_checked.clear()
     except Exception as e:
         raise Exception("Unknown problem occurred.", "\t")
     # In case of empty website
     if len(data.pages) == 0:
         raise Exception("Your website doesn't have any valid web pages", "\t")
-    # Getting session pages
-    get_session_pages(data, browser)
+    # Getting the session pages
+    get_session_pages(data, browser, non_session_browser)
     # Printing the results
     print_result(data)
     # Transferring only the valid pages

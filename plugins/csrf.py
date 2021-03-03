@@ -121,9 +121,9 @@ def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data) -> Classes.P
     if normal_content == referer_content:
         # Does not filter referer header
         vulnerability[1] = True
-    else:
+    elif page.parent:
         # Getting local redirected content
-        referer_content = get_response(form["inputs"], page.parent, data, page)
+        referer_content = get_response(form["inputs"], page.parent.url, data, page)
         if normal_content == referer_content:
             # Does not filter referer header
             vulnerability[2] = True
@@ -167,7 +167,9 @@ def get_response(inputs: list, referer: str, data: Classes.Data, page) -> str:
             # In case that the random string is in the content
             content = content.replace(string, "")
         # In case of referrers in content
-        content = content.replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent, "")
+        content = content.replace(page.url, "").replace(OUTSIDE_URL, "")
+        if page.parent:
+            content = content.replace(page.parent.url, "")
     except Exception as e:
         pass
     finally:

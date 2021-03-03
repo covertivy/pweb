@@ -246,3 +246,4 @@ My Stuff/
 pylama.ini
 *.txt
 CheckDevice.py
+*.json
