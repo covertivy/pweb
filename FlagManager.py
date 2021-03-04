@@ -28,74 +28,62 @@ def parse_args() -> argparse.Namespace:
         type=str,
         help="Enter the path to a JSON file which have a list of cookies or one cookie, "
              "every cookie must contain the keys: \"name\", \"value\" and \"domain\".",
-        dest="cookies",
-    )
+        dest="cookies")
     parser.add_argument(
         "-i",
-        default="127.0.0.1",
         type=str,
         help="Enter the ip of the host server. (Not necessary if argument <url> is specified)",
-        dest="ip",
-    )
+        dest="ip")
     parser.add_argument(
         "-V",
         "--verbose",
         action="store_false",
         help="Specify this flag when you don't want to print our cool logo.",
-        dest="verbose",
-    )
+        dest="verbose")
     parser.add_argument(
         "-p",
-        default=80,
         type=int,
         help="Specify a known port on which a web server is serving, if not specified, default port would be 80.\n "
         "You can use flag -P to force an all-port scan.",
-        dest="port",
-    )
+        dest="port")
     parser.add_argument(
         "-P",
         "--all_ports",
         action="store_true",
         help="Specify this flag when port isn't known and you wish to scan all ports.",
-        dest="all_ports",
-    )
+        dest="all_ports")
     parser.add_argument(
         "-u",
         default=None,
         type=str,
         help="Instead of specifying an ip address you can specifically specify a url.",
-        dest="url",
-    )
+        dest="url")
     parser.add_argument(
         "-n",
         default=None,
         type=int,
         help="Limit the amount of pages checked to a specific amount.",
-        dest="number_of_pages",
-    )
+        dest="number_of_pages")
     parser.add_argument(
         "-L",
         default=list(),
         type=list,
         nargs=2,
         help="Specify a username and password to be used in any login form on the website.",
-        dest="login",
-    )
+        dest="login")
     parser.add_argument(
         "-o",
         default=None,
         type=str,
         help="Specify a file path in which the outputs will be stored (xml).",
-        dest="output",
-    )
+        dest="output")
     parser.add_argument(
         "-R",
         "--recursive",
         action="store_true",
         help="recursive page scraper, will check all the reachable pages in the website.",
         dest="recursive",
-        default=False,
-    )
+        default=False)
     parser.add_argument(
         "-b",
         "--blacklist",
@@ -103,8 +91,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Specify a blacklist of words that may be found in a page's URL, "
         " if the word is in the page url, the page is blocked. blacklist must be a `.txt` file.",
-        dest="blacklist",
-    )
+        dest="blacklist")
     parser.add_argument(
         "-w",
         "--whitelist",
@@ -113,33 +100,16 @@ def parse_args() -> argparse.Namespace:
         help="Specify a whitelist of words that may be found in a page's URL, "
         " if the word is in the page url, the page is will be saved, otherwise we ignore the page,"
         " whitelist must be a `.txt` file.",
-        dest="whitelist",
-    )
+        dest="whitelist")
     parser.add_argument(
         "-A",
         "--aggressive",
         action="store_true",
         help="some of the default plugins will mess up with the website data base and source code, "
         "this flag is your signing that you agree to have minimal damage in case of vulnerability.",
-        dest="aggressive",
-    )
+        dest="aggressive")
     args = parser.parse_args()
     return args
-
-
-def get_port_from_url(url: str) -> int:
-    port = None
-    try:
-        from urllib.parse import urlparse
-
-        parsed = urlparse(url)
-        port = parsed.port
-        if port is not None:
-            port = int(port)
-    except ImportError:
-        return None
-
-    return port
 
 
 def get_final_args(args) -> Data:
@@ -169,38 +139,9 @@ def get_final_args(args) -> Data:
 
     # Check if all ports flag is set.
     if args.all_ports:
-        output_obj.port = "1-65535"
-    else:  # Not all ports scan.
-        # Check if tjere was a port specified within the url.
-        if args.url is not None:
-            url_port = get_port_from_url(args.url)
-            if url_port is not None:  # url has port.
-                # Check if url port is in valid range.
-                if url_port > 0 or url_port < 65536:
-                    output_obj.port = url_port
-                # Check if user specified a port via flag.
-                elif args.port > 0 or args.port < 65536:
-                    output_obj.port = args.port
-                # No valid port was specified.
-                else:
-                    COLOR_MANAGER.print_error("Invalid port number, using default port 80.")
-                    output_obj.port = 80
-
-            # No url port, check if port flag specified.
-            elif args.port > 0 or args.port < 65536:
-                output_obj.port = args.port
-            else:
-                # No valid port was specified.
-                COLOR_MANAGER.print_error("Invalid port number, using default port 80.")
-                output_obj.port = 80
-
-        # Check if flag port is in valid range.
-        elif args.port > 0 or args.port < 65536:
-            output_obj.port = args.port
-        else:
-            # No valid port was specified.
-            COLOR_MANAGER.print_error("Invalid port number, using default port 80.")
-            output_obj.port = 80
+        output_obj.port = 0
+    else:
+        output_obj.port = args.port
 
     # Set limit of pages.
     if args.number_of_pages and args.number_of_pages <= 0:

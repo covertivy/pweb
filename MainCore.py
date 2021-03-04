@@ -77,7 +77,7 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     try:
         data = get_data()  # Get data through flag manager, address manager and page manager.
-        if type(data.port) is not int:
+        if data.port == 0:
             # If the user asked for ports scan (-P) there is no need to continue the run
             exit()
         print_data(data)
