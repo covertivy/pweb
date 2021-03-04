@@ -56,7 +56,7 @@ def valid_address(data: Data):
         if MAXIMUM_PORT <= port or port <= 0:
             # Port out of range
             raise Exception(
-                f"Port in the URL is out of range ('{port}' is not between 0-255)", "\t")
+                f"Port is out of range ('{port}' is not between 0-255)", "\t")
     elif data.port == 0:
         # -P was specified
         port = 0
