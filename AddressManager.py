@@ -25,6 +25,7 @@ def valid_address(data: Data):
     ip = data.ip
     scheme = "http"
     path = "/"
+    query = ""
     if url:
         # URL is the most important
         if not url.startswith(scheme):
@@ -35,6 +36,7 @@ def valid_address(data: Data):
             port = parse.port if parse.port else port  # Assigning the found port
             scheme = parse.scheme  # Must have a scheme (http or https)
             path = parse.path  # Must have a path (even "/" counts)
+            query = "?" + parse.query if parse.query else query
         except Exception:
             print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW} "
                   f"The port which was specified in the URL is invalid.{COLOR_MANAGER.ENDC}")
@@ -44,8 +46,8 @@ def valid_address(data: Data):
             pass
     if ip:
         # Found IP in the URL or was already specified
-        if data.ip.count(".") != 3 or \
-                not all(field.isnumeric() and 0 <= int(field) <= 255 for field in data.ip.split(".")):
+        if ip.count(".") != 3 or \
+                not all(field.isnumeric() and 0 <= int(field) <= 255 for field in ip.split(".")):
             # If the number of fields is not 4 or any of them are not in range of 0-255
             raise Exception(f"The IP is not in the right of format of xxx.xxx.xxx.xxx.", "\t")
     else:
@@ -66,7 +68,7 @@ def valid_address(data: Data):
               f"Using default port 80.{COLOR_MANAGER.ENDC}")
         port = 80
     # Setting address into the data object
-    data.url = f"{scheme}://{ip}:{port}{path}"
+    data.url = f"{scheme}://{ip}:{port}{path}{query}"
     data.port = port
     data.ip = ip
 

@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from colors import COLOR_MANAGER
 import Classes
 import Methods
@@ -10,25 +10,26 @@ import os
 import io
 import zipfile
 
-# ------------------------------ Global variables -----------------------|
+# -------------------------- Global variables ---------------------------+
 type_colors = dict()  # Dictionary of the mime-types and their color.    |
 # See values in the logic() function.                                    |
-# -------------- Pages lists ----------------------------------|         |
+# -------------- Pages lists ----------------------------------+         |
 already_printed = list()  # List of printed Pages/SessionPages.|         |
 already_checked = list()  # List of checked Pages/SessionPages.|         |
 troublesome = list()  # List of troublesome URLs.              |         |
-# -------------- Session variables ----------------------------|         |
-logout = list()  # List of logout URLs.                   |              |
+# -------------- Session variables ----------------------------+         |
+logout_list = list()  # List of logout URLs.              |              |
 logged_out = False  # Logout flag.                        |              |
+logged_in = False  # If set, we made a login act          |              |
 current_login_page = set()  # Where the session started.  |              |
-# --------------- Word lists --------------------------------------------|
+# --------------- Word lists --------------------------------------------+
 black_list = list()  # List of words that the user do not want to check. |
 white_list = list()  # List of words that the user only wants to check.  |
-# -----------------------------------------------------------------------|
+# -----------------------------------------------------------------------+
 
-# ------ Consts ---------|
+# ------ Consts ---------+
 PADDING = 4  # Spaces.   |
-# -----------------------|
+# -----------------------+
 
 
 def get_links(links: list, url: str) -> list:
@@ -40,9 +41,9 @@ def get_links(links: list, url: str) -> list:
     """
     valid_links = list()
     for link in [urljoin(url, link) for link in links]:
-        clean_link = link.replace("http://", "").replace("https://", "")
-        clean_url = url.replace('http://', '').replace('https://', '')
-        if clean_link.startswith(clean_url.split(':')[0].split('/')[0]) and clean_link != clean_url:
+        clean_link = link.replace(urlparse(link).scheme, '')
+        clean_url = url.replace(urlparse(url).scheme, '')
+        if urlparse(link).hostname == urlparse(url).hostname and clean_link != clean_url:
             # Only URLs that belongs to the website and not equal to the parent URL
             valid_links.append(link)
     valid_links = list(set(valid_links))
@@ -144,10 +145,23 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
     if len(data.pages) == data.max_pages:
         # In case of specified amount of pages, the function will stop
         return
-    global logged_out
-    if logged_out or curr_url in logout:
-        # Not open logout pages
+
+    if curr_url in logout_list:
+        # Do not open logout pages
         return
+
+    global logged_out
+    global logged_in
+    if logged_out:
+        # If the session already logged out
+        if non_session_browser:
+            # Remove non session browser
+            non_session_browser.quit()
+            non_session_browser = None
+        if logged_in:
+            # If we logged in (-L) we need to return
+            # If we used cookies (-c) we can keep going
+            return
 
     try:
         # Trying to get the current URL
@@ -160,7 +174,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
                 if req.response.headers.get("Content-Type"):
                     # Only if the page has content type
                     break
-        if not request:
+        if not request or request.response.status_code != 200:
             # Did not find the request
             raise Exception()  # The request is not found
         browser.refresh()
@@ -206,7 +220,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
                     # It redirected to a non-session page, and have the same content or logout in name
                     print(f"\t[{COLOR_MANAGER.RED}-{COLOR_MANAGER.ENDC}]"
                           f" {COLOR_MANAGER.RED}{curr_url}{COLOR_MANAGER.ENDC}")
-                    logout.append(curr_url)
+                    logout_list.append(curr_url)
                     logged_out = True
                     return
                 else:
@@ -244,7 +258,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
     if page.url != curr_url:
         # If the current URL is redirecting to another URL
         troublesome.append(curr_url)
-        if previous and not get_links([page.url], previous.url):
+        if previous and not get_links([previous.url], page.url):
             # The Redirected link is out of the website
             return
 
@@ -297,9 +311,12 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
 
     for link in links:
         # Checking only scripts and style file
-        if link in [req.url for req in browser.requests]:
-            # Were already requested with the current page
-            get_pages(data, link, browser, page, non_session_browser, recursive=data.recursive)
+        for req in browser.requests:
+            if link == req.url:
+                # Were already requested with the current page
+                get_pages(data, link, browser, page, non_session_browser,
+                          recursive=data.recursive)
+                break
 
     del browser.requests  # We do not need the previous requests anymore
 
@@ -309,7 +326,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
         links.extend(get_links([link.get("href") for link in soup.find_all("a")], page.url))
 
     for link in links:
-        if logged_out or len(data.pages) == data.max_pages:
+        if (logged_out and logged_in) or len(data.pages) == data.max_pages:
             # More efficient to check every time.
             # If the session logged out or the pages amount is at its maximum.
             return
@@ -336,10 +353,11 @@ def get_session_pages(data: Classes.Data, browser: webdriver.Chrome,
     if not non_session_browser:
         # If the instance is not already set, set up a new one
         non_session_browser = Methods.new_browser(data)
+
     non_session_pages = list(data.pages)
     pages_backup = list(data.pages)
     login_pages = list()
-    global logged_out
+
     for page in non_session_pages:
         if "html" not in page.type:
             continue
@@ -371,10 +389,16 @@ def get_session_pages(data: Classes.Data, browser: webdriver.Chrome,
                 break  # We do not need to check anymore
         if not login:
             continue
-        # Starting session
+
+        # Setting login flags
+        global logged_out
+        global logged_in
         logged_out = True
+        logged_in = True
+
         global current_login_page
         current_login_page = (page.url, form_details)
+
         while logged_out:
             # Until it won't encounter a logout page
             logged_out = False
