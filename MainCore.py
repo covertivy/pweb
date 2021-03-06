@@ -9,18 +9,7 @@ import datetime
 import signal
 import sys
 import os
-from colors import COLOR_MANAGER, LOGO
-
-
-def print_startup():
-    """
-    Function prints majestic logo.
-    @return: None
-    """
-    for char in LOGO:
-        print(COLOR_MANAGER.rand_color() + char, end="")
-    print(COLOR_MANAGER.ENDC + "\n")
-    print(f"{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}")
+from colors import COLOR_MANAGER, startup
 
 
 def get_data() -> Data:
@@ -30,7 +19,9 @@ def get_data() -> Data:
     """
     data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
     if data.verbose:
-        print_startup()  # Print startup logo and current time.
+        # Print startup logo and current time.
+        print(startup())
+        print(f"{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}")
     AddressManager.set_target(data)
     return data
 

@@ -2,7 +2,6 @@
 from Classes import Data, CheckResults
 from colors import *
 import threading
-import time
 import xml.etree.ElementTree as ET
 
 

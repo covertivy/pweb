@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import argparse
 from Classes import Data
-from colors import COLOR_MANAGER
+from colors import COLOR_MANAGER, startup
 
 # --------------------------------------- CONSTS ----------------------------------------------------------------+
 ONE_LINER = "R|"  # For lines which are longer from the default width.                                           |
@@ -29,8 +29,8 @@ class SmartFormatter(argparse.HelpFormatter):
     """
     def _format_usage(self, usage, actions, groups, prefix):
         # Function for the 'description' variable
-        return COLOR_MANAGER.RED + \
-               argparse.HelpFormatter._format_usage(self, usage, actions, groups, "\nUsage: ")
+        return startup() + COLOR_MANAGER.RED + \
+               argparse.HelpFormatter._format_usage(self, usage, actions, groups, f"\nUsage: ")
 
     def _fill_text(self, text, width, indent):
         # Function for the 'epilog' variable
