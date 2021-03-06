@@ -9,17 +9,7 @@ import datetime
 import signal
 import sys
 import os
-from colors import COLOR_MANAGER
-
-LOGO = """                           __        
-                          /\ \       
- _____   __  __  __     __\ \ \____  
-/\ '__`\/\ \/\ \/\ \  /'__`\ \ '__`\ 
-\ \ \L\ \ \ \_/ \_/ \/\  __/\ \ \L\ \\
- \ \ ,__/\ \___x___/'\ \____\\\ \_,__/
-  \ \ \/  \/__//__/   \/____/ \/___/ 
-   \ \_\                             
-    \/_/                             """
+from colors import COLOR_MANAGER, LOGO
 
 
 def print_startup():
