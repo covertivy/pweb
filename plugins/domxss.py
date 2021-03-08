@@ -75,10 +75,13 @@ def check(data: Classes.Data):
                
                 res = Classes.PageResult(page, problem_str, RESULT_STR)
                 dom_xss_results.page_results.append(res)
-
-    data.mutex.acquire()
-    data.results.append(dom_xss_results)
-    data.mutex.release()
+    
+    ##################|Uncomment if you want to use the domxss script independently|###################
+    # data.mutex.acquire()
+    # data.results.append(dom_xss_results)
+    # data.mutex.release()
+    ###################################################################################################
+    return dom_xss_results
 
 
 def analyse_javascript(javascript_code:str):
