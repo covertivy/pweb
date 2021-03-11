@@ -1,7 +1,14 @@
 #!/usr/bin/python3
 import argparse
 from Classes import Data
-from colors import COLOR_MANAGER
+from colors import COLOR_MANAGER, startup
+
+# --------------------------------------- CONSTS ----------------------------------------------------------------+
+ONE_LINER = "R|"  # For lines which are longer from the default width.                                           |
+MAX_LINE = 25  # For the 'epilog' variable.                                                                      |
+PADDING = " " * 3  # For the examples line, instead ot '\t'.                                                     |
+SEPARATOR = f"{PADDING}{COLOR_MANAGER.YELLOW}python{COLOR_MANAGER.LIGHT_GREEN} %(prog)s {COLOR_MANAGER.ENDC}"  # |
+# ---------------------------------------------------------------------------------------------------------------+
 
 
 def char_arr_to_string(arr: list) -> str:
@@ -16,86 +23,136 @@ def char_arr_to_string(arr: list) -> str:
     return to_ret
 
 
+class SmartFormatter(argparse.HelpFormatter):
+    """
+    A helper class that overrides the default functions of the argparse class
+    """
+    def _format_usage(self, usage, actions, groups, prefix):
+        # Function for the 'description' variable
+        return startup() + COLOR_MANAGER.RED + \
+               argparse.HelpFormatter._format_usage(self, usage, actions, groups, f"\nUsage: ")
+
+    def _fill_text(self, text, width, indent):
+        # Function for the 'epilog' variable
+        if text.startswith(ONE_LINER):
+            paragraphs = text[2:].splitlines()
+            import textwrap
+            rebroken = [textwrap.wrap(par, width + MAX_LINE) for par in paragraphs]
+            rebrokenstr = []
+            for tlinearr in rebroken:
+                if len(tlinearr) == 0:
+                    rebrokenstr.append("")
+                else:
+                    for tlinepiece in tlinearr:
+                        rebrokenstr.append(tlinepiece)
+            return '\n'.join(rebrokenstr)
+        return argparse.RawDescriptionHelpFormatter._fill_text(self, text, width, indent)
+
+
+def examples() -> str:
+    """
+    Function creates examples for the user
+    @return: The examples
+    """
+    return f"{COLOR_MANAGER.UNDERLINE}{COLOR_MANAGER.LIGHT_GREEN}examples of usage:{COLOR_MANAGER.ENDC}\n" \
+           + SEPARATOR + \
+           f"-i 192.168.56.102 -P\n" \
+           + SEPARATOR + \
+           f"-i 192.168.56.102 -p 8081 -R -A -V\n" \
+           + SEPARATOR + \
+           f"-u http://192.168.56.102:8081/ -n 20 -L admin admin\n" \
+           + SEPARATOR + \
+           f"-u http://192.168.56.102:8081/ -c cookies.json -o output.xml\n" \
+           + SEPARATOR + \
+           f"-u http://192.168.56.102/ -b blacklist.txt -w whitelist.txt\n"
+
+
 def parse_args() -> argparse.Namespace:
     """
     Function gets command line arguments using argparse
     @return: Namespace of the arguments
     """
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description=f"{ONE_LINER}{COLOR_MANAGER.UNDERLINE}{COLOR_MANAGER.BLUE}This is a tool for "
+                    f"pentesting web security "
+                    f"flaws in sites and web servers.{COLOR_MANAGER.ENDC}",
+        formatter_class=SmartFormatter,
+        epilog=examples(),
+        add_help=False)
+    # Changing the title
+    parser._optionals.title = f'{COLOR_MANAGER.UNDERLINE}Optional arguments{COLOR_MANAGER.ENDC}'
+    # Adding arguments
+    parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
+                        help=f'Show this help message and exit.{COLOR_MANAGER.YELLOW}')
+    parser.add_argument(
+        "-i",
+        type=str,
+        help="Enter the ip of the host server. (Not necessary if argument <url> is specified)",
+        dest="ip")
+    parser.add_argument(
+        "-u",
+        default=None,
+        type=str,
+        help=f"Instead of specifying an ip address you can specifically specify a url.{COLOR_MANAGER.ORANGE}",
+        dest="url")
+    parser.add_argument(
+        "-p",
+        type=int,
+        help="Specify a known port on which a web server is serving, if not specified, default port would be 80.\n "
+             f"You can use flag -P to force an all-port scan.{COLOR_MANAGER.CYAN}",
+        dest="port")
+    parser.add_argument(
+        "-P",
+        "--all_ports",
+        action="store_true",
+        help=f"Specify this flag when port isn't known and you wish to scan all ports.",
+        dest="all_ports")
+    parser.add_argument(
+        "-R",
+        "--recursive",
+        action="store_true",
+        help="Recursive page scraper, will check all the reachable pages in the website.",
+        dest="recursive",
+        default=False)
+    parser.add_argument(
+        "-A",
+        "--aggressive",
+        action="store_true",
+        help="some of the default plugins will mess up with the website data base and source code, "
+             "this flag is your signing that you agree to have minimal damage in case of vulnerability.",
+        dest="aggressive")
+    parser.add_argument(
+        "-V",
+        "--verbose",
+        action="store_false",
+        help=f"Specify this flag when you don't want to print our cool logo.{COLOR_MANAGER.GREEN}",
+        dest="verbose")
+    parser.add_argument(
+        "-L",
+        default=list(),
+        type=list,
+        nargs=2,
+        help=f"Specify a username and password to be used in any login form on the website.",
+        dest="login")
+    parser.add_argument(
+        "-n",
+        default=None,
+        type=int,
+        help=f"Limit the amount of pages checked to a specific amount.{COLOR_MANAGER.PINK}",
+        dest="number_of_pages")
     parser.add_argument(
         "-c",
         default=None,
         type=str,
         help="Enter the path to a JSON file which have a list of cookies or one cookie, "
              "every cookie must contain the keys: \"name\", \"value\" and \"domain\".",
-        dest="cookies",
-    )
-    parser.add_argument(
-        "-i",
-        default="127.0.0.1",
-        type=str,
-        help="Enter the ip of the host server. (Not necessary if argument <url> is specified)",
-        dest="ip",
-    )
-    parser.add_argument(
-        "-V",
-        "--verbose",
-        action="store_false",
-        help="Specify this flag when you don't want to print our cool logo.",
-        dest="verbose",
-    )
-    parser.add_argument(
-        "-p",
-        default=80,
-        type=int,
-        help="Specify a known port on which a web server is serving, if not specified, default port would be 80.\n "
-        "You can use flag -P to force an all-port scan.",
-        dest="port",
-    )
-    parser.add_argument(
-        "-P",
-        "--all_ports",
-        action="store_true",
-        help="Specify this flag when port isn't known and you wish to scan all ports.",
-        dest="all_ports",
-    )
-    parser.add_argument(
-        "-u",
-        default=None,
-        type=str,
-        help="Instead of specifying an ip address you can specifically specify a url.",
-        dest="url",
-    )
-    parser.add_argument(
-        "-n",
-        default=None,
-        type=int,
-        help="Limit the amount of pages checked to a specific amount.",
-        dest="number_of_pages",
-    )
-    parser.add_argument(
-        "-L",
-        default=list(),
-        type=list,
-        nargs=2,
-        help="Specify a username and password to be used in any login form on the website.",
-        dest="login",
-    )
+        dest="cookies")
     parser.add_argument(
         "-o",
         default=None,
         type=str,
         help="Specify a file path in which the outputs will be stored (xml).",
-        dest="output",
-    )
-    parser.add_argument(
-        "-R",
-        "--recursive",
-        action="store_true",
-        help="recursive page scraper, will check all the reachable pages in the website.",
-        dest="recursive",
-        default=False,
-    )
+        dest="output")
     parser.add_argument(
         "-b",
         "--blacklist",
@@ -103,8 +160,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Specify a blacklist of words that may be found in a page's URL, "
         " if the word is in the page url, the page is blocked. blacklist must be a `.txt` file.",
-        dest="blacklist",
-    )
+        dest="blacklist")
     parser.add_argument(
         "-w",
         "--whitelist",
@@ -112,34 +168,10 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Specify a whitelist of words that may be found in a page's URL, "
         " if the word is in the page url, the page is will be saved, otherwise we ignore the page,"
-        " whitelist must be a `.txt` file.",
-        dest="whitelist",
-    )
-    parser.add_argument(
-        "-A",
-        "--aggressive",
-        action="store_true",
-        help="some of the default plugins will mess up with the website data base and source code, "
-        "this flag is your signing that you agree to have minimal damage in case of vulnerability.",
-        dest="aggressive",
-    )
+        f" whitelist must be a `.txt` file.{COLOR_MANAGER.ENDC}",
+        dest="whitelist")
     args = parser.parse_args()
     return args
-
-
-def get_port_from_url(url: str) -> int:
-    port = None
-    try:
-        from urllib.parse import urlparse
-
-        parsed = urlparse(url)
-        port = parsed.port
-        if port is not None:
-            port = int(port)
-    except ImportError:
-        return None
-
-    return port
 
 
 def get_final_args(args) -> Data:
@@ -169,38 +201,9 @@ def get_final_args(args) -> Data:
 
     # Check if all ports flag is set.
     if args.all_ports:
-        output_obj.port = "1-65535"
-    else:  # Not all ports scan.
-        # Check if tjere was a port specified within the url.
-        if args.url is not None:
-            url_port = get_port_from_url(args.url)
-            if url_port is not None:  # url has port.
-                # Check if url port is in valid range.
-                if url_port > 0 or url_port < 65536:
-                    output_obj.port = url_port
-                # Check if user specified a port via flag.
-                elif args.port > 0 or args.port < 65536:
-                    output_obj.port = args.port
-                # No valid port was specified.
-                else:
-                    COLOR_MANAGER.print_error("Invalid port number, using default port 80.")
-                    output_obj.port = 80
-
-            # No url port, check if port flag specified.
-            elif args.port > 0 or args.port < 65536:
-                output_obj.port = args.port
-            else:
-                # No valid port was specified.
-                COLOR_MANAGER.print_error("Invalid port number, using default port 80.")
-                output_obj.port = 80
-
-        # Check if flag port is in valid range.
-        elif args.port > 0 or args.port < 65536:
-            output_obj.port = args.port
-        else:
-            # No valid port was specified.
-            COLOR_MANAGER.print_error("Invalid port number, using default port 80.")
-            output_obj.port = 80
+        output_obj.port = 0
+    else:
+        output_obj.port = args.port
 
     # Set limit of pages.
     if args.number_of_pages and args.number_of_pages <= 0:

@@ -1,6 +1,16 @@
 #!/usr/bin/python3
 import random
 
+LOGO = r"                           __" + "\n" \
+       r"                          /\ \   " + "\n" \
+       r" _____   __  __  __     __\ \ \____" + "\n" \
+       r"/\ '__`\/\ \/\ \/\ \  /'__`\ \ '__`\ " + "\n" \
+       r"\ \ \L\ \ \ \_/ \_/ \/\  __/\ \ \L\ \ " + "\n" \
+       r" \ \ ,__/\ \___x___/'\ \____\\ \_,__/" + "\n" \
+       r"  \ \ \/  \/__//__/   \/____/ \/___/ " + "\n" \
+       r"   \ \_\ " + "\n"\
+       r"    \/_/"
+
 
 def rgb(red: int, green: int, blue: int):
     """
@@ -11,13 +21,6 @@ def rgb(red: int, green: int, blue: int):
     @return: Paint format
     """
     return "\033[38;2;{};{};{}m".format(red, green, blue)
-
-
-def string_characteristics(characteristics: set):
-    result = ""
-    for feature in characteristics:
-        result = result + feature
-    return result
 
 
 class Colors:
@@ -72,19 +75,7 @@ class Colors:
         return rgb(
             random.choice(range(255)),
             random.choice(range(255)),
-            random.choice(range(255)),
-        )
-
-    @staticmethod
-    def print(text: str, characteristics: list = None,
-              r: int = None, g: int = None, b: int = None, end="\n"):
-        if characteristics is None:
-            if all((r > -1 and r < 256, g > -1 and g < 256, b > -1 and b < 256)):
-                print(rgb(r, g, b) + text + Colors.ENDC, end=end)
-            else:
-                print(text, end=end)
-        else:
-            print(string_characteristics(set(characteristics)) + text + Colors.ENDC, end=end)
+            random.choice(range(255)))
 
     @staticmethod
     def print_warning(warning: str = "WARNING!", begins_with: str = ""):
@@ -104,8 +95,7 @@ class Colors:
             + "] "
             + Colors.BOLD_YELLOW
             + warning
-            + Colors.ENDC
-        )
+            + Colors.ENDC)
 
     @staticmethod
     def print_error(error: str = "ERROR!", begins_with: str = ""):
@@ -125,8 +115,7 @@ class Colors:
             + "] "
             + Colors.BOLD_RED
             + error
-            + Colors.ENDC
-        )
+            + Colors.ENDC)
 
     @staticmethod
     def print_success(success: str = "SUCCESS!", begins_with: str = ""):
@@ -150,3 +139,15 @@ class Colors:
 
 
 COLOR_MANAGER = Colors()  # Colors instance
+
+
+def startup() -> str:
+    """
+    Function prints majestic logo.
+    @return: None
+    """
+    logo = ""
+    for char in LOGO:
+        logo += COLOR_MANAGER.rand_color() + char
+    logo += COLOR_MANAGER.ENDC + "\n"
+    return logo

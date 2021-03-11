@@ -6,7 +6,6 @@ from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 import json
 
-
 # ------------- Consts -----------------
 CHECK_STRING = "Check"
 CHANGING_SIGN = "X1Y"

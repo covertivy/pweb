@@ -9,28 +9,7 @@ import datetime
 import signal
 import sys
 import os
-from colors import COLOR_MANAGER
-
-LOGO = """                           __        
-                          /\ \       
- _____   __  __  __     __\ \ \____  
-/\ '__`\/\ \/\ \/\ \  /'__`\ \ '__`\ 
-\ \ \L\ \ \ \_/ \_/ \/\  __/\ \ \L\ \\
- \ \ ,__/\ \___x___/'\ \____\\\ \_,__/
-  \ \ \/  \/__//__/   \/____/ \/___/ 
-   \ \_\                             
-    \/_/                             """
-
-
-def print_startup():
-    """
-    Function prints majestic logo.
-    @return: None
-    """
-    for char in LOGO:
-        print(COLOR_MANAGER.rand_color() + char, end="")
-    print(COLOR_MANAGER.ENDC + "\n")
-    print(f"{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}")
+from colors import COLOR_MANAGER, startup
 
 
 def get_data() -> Data:
@@ -40,7 +19,9 @@ def get_data() -> Data:
     """
     data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
     if data.verbose:
-        print_startup()  # Print startup logo and current time.
+        # Print startup logo and current time.
+        print(startup())
+        print(f"{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}")
     AddressManager.set_target(data)
     return data
 
@@ -77,7 +58,7 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     try:
         data = get_data()  # Get data through flag manager, address manager and page manager.
-        if type(data.port) is not int:
+        if data.port == 0:
             # If the user asked for ports scan (-P) there is no need to continue the run
             exit()
         print_data(data)
