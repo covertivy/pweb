@@ -61,7 +61,10 @@ def new_browser(data: Classes.Data, page=None,
         # Only if a page was specified
         if type(page) is Classes.SessionPage:
             # In case of session page
-            browser.get(page.parent)  # Getting parent URL
+            if page.parent:
+                browser.get(page.parent.url)  # Getting parent URL
+            else:
+                browser.get(page.url)  # Getting current URL
             for cookie in page.cookies:  # Adding cookies
                 browser.add_cookie(cookie)
             # Getting the page again, with the cookies

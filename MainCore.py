@@ -37,21 +37,6 @@ def print_data(data: Data):
     print(COLOR_MANAGER.ENDC)
 
 
-def signal_handler():
-    """
-    Function wait for a key interrupt and killing the process safely
-    @return: None
-    """
-    COLOR_MANAGER.print_warning("You have decided to close the process, please wait few seconds...\n", "\n\t")
-    for proc in psutil.process_iter():
-        try:
-            if "chrome" in proc.name() and '--test-type=webdriver' in proc.cmdline():
-                psutil.Process(proc.pid).terminate()  # Deleting chromedriver objects from RAM
-        except Exception as e:
-            # In case of required permission
-            continue
-
-
 def main():
     """
     Function connects the different managers together
@@ -62,22 +47,29 @@ def main():
         data = get_data()  # Get data through flag manager, address manager and page manager.
         if data.port == 0:
             # If the user asked for ports scan (-P) there is no need to continue the run.
-            exit()
+            exit(0)
         print_data(data)
         PageManager.logic(data)  # Get all pages from website.
-        exit(0)
         PluginManager.generate_check_device()  # Generate Check Device in our directory.
         VulnerabilityManager.logic(data)
         print(COLOR_MANAGER.ENDC)
     except KeyboardInterrupt as e:
         # The user pressed ctrl+c
-        signal_handler()
+        COLOR_MANAGER.print_warning("You have decided to close the process, please wait few seconds...\n", "\n\t")
     except Exception as e:
         if len(e.args) == 2:
             COLOR_MANAGER.print_error(str(e.args[0]), str(e.args[1]))
         else:
             COLOR_MANAGER.print_error(str(e))
     finally:
+        # Every time the program has finished it's run, we make sure it deleted every chromedriver.
+        for proc in psutil.process_iter():
+            try:
+                if "chrome" in proc.name() and '--test-type=webdriver' in proc.cmdline():
+                    psutil.Process(proc.pid).terminate()  # Deleting chromedriver objects from RAM
+            except Exception as e:
+                # In case of required permission
+                continue
         if os.path.exists('CheckDevice.py'):
             os.remove('CheckDevice.py')
         exit(code=0)
