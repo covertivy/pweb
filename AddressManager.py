@@ -194,6 +194,8 @@ def scan_ports(data: Data):
             # If there are no open http ports on the host
             raise Exception(
                 "There are no open http ports on your host, please check the host or try again.", "\t")
+        # If the user asked for ports scan (-P) there is no need to continue the run.
+        exit(code=0)
     else:
         # If the user used -p or used the default port 80
         if not http_ports:

@@ -3,6 +3,7 @@ import time
 import Classes
 from seleniumwire import webdriver, request as selenium_request
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome import service
 from bs4 import BeautifulSoup
 import json
 
@@ -32,7 +33,7 @@ def new_browser(data: Classes.Data, page=None,
     options = webdriver.ChromeOptions()
     if not debug:
         # If it's not debug, the chromium will be headless.
-        options.add_argument("headless")
+        options.headless = True
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
     try:
         browser = webdriver.Chrome(executable_path=data.driver, options=options)
@@ -56,7 +57,7 @@ def new_browser(data: Classes.Data, page=None,
     else:
         browser.request_interceptor = default_interceptor
     # Setting long timeout
-    browser.set_page_load_timeout(60)
+    browser.set_page_load_timeout(30)
     if page:
         # Only if a page was specified
         if type(page) is Classes.SessionPage:
@@ -131,7 +132,7 @@ def enter_cookies(data: Classes.Data, browser: webdriver.Chrome, url: str) -> bo
     @return: True - The cookies were added, False - The cookies were not added
     """
     browser.get(url)
-    before = browser.get_cookies()
+    before = list(browser.get_cookies())
     if data.cookies:
         try:
             with open(data.cookies) as json_file:
@@ -143,9 +144,9 @@ def enter_cookies(data: Classes.Data, browser: webdriver.Chrome, url: str) -> bo
                     browser.add_cookie(cookies)
         except Exception:
             return False
+        browser.get(url)
         if before != browser.get_cookies():
             # Changed the cookies
-            browser.get(url)
             return True
     return False
 
