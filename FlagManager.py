@@ -9,14 +9,14 @@ import datetime
 ONE_LINER = "R|"  # For lines which are longer from the default width.                                           |
 MAX_LINE = 25  # For the 'epilog' variable.                                                                      |
 PADDING = " " * 3  # For the examples line, instead ot '\t'.                                                     |
-SEPARATOR = f"{PADDING}{COLOR_MANAGER.YELLOW}python{COLOR_MANAGER.LIGHT_GREEN} %(prog)s {COLOR_MANAGER.ENDC}"   #|
+SEPARATOR = f"{PADDING}{COLOR_MANAGER.YELLOW}python{COLOR_MANAGER.LIGHT_GREEN} %(prog)s {COLOR_MANAGER.ENDC}"  # |
 # ---------------------------------------------------------------------------------------------------------------+
 
 
 def char_arr_to_string(arr: list):
     """
     This function converts a char array to a string.
-    @param arr (list): A Character list.
+    @param arr: A Character list.
     @returns str: The string made from the char array.
     """
     to_ret = ""
@@ -31,7 +31,8 @@ class SmartFormatter(argparse.HelpFormatter):
     """
     def _format_usage(self, usage, actions, groups, prefix):
         # Function for the `description` variable.
-        return startup() + COLOR_MANAGER.RED + argparse.HelpFormatter._format_usage(self, usage, actions, groups, f"\nUsage: ")
+        return startup() + COLOR_MANAGER.RED + \
+               argparse.HelpFormatter._format_usage(self, usage, actions, groups, f"\nUsage: ")
 
     def _fill_text(self, text, width, indent):
         # Function for the `epilog` variable.

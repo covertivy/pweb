@@ -8,8 +8,8 @@ import xml.etree.ElementTree as ET
 def print_results(results: Classes.CheckResults):
     """
     This function prints the latest check results.
-    @param results (Classes.CheckResults): The check results given by the plugins.
-    @returns None.
+    @param results: The check results given by the plugins.
+    @return: None
     """
     print(f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:"
           f"{COLOR_MANAGER.ENDC}{results.color}")
