@@ -1,15 +1,15 @@
 #!/usr/bin/python3
-from Classes import Data, CheckResults
+import Classes
 from colors import *
 import threading
 import xml.etree.ElementTree as ET
 
 
-def print_results(results: CheckResults):
+def print_results(results: Classes.CheckResults):
     """
-    Function prints the latest check results
-    @param results: The check results
-    @return: None
+    This function prints the latest check results.
+    @param results (Classes.CheckResults): The check results given by the plugins.
+    @returns None.
     """
     print(f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:"
           f"{COLOR_MANAGER.ENDC}{results.color}")
@@ -31,11 +31,11 @@ def print_results(results: CheckResults):
         COLOR_MANAGER.print_error("Something went wrong", "\t")
 
 
-def save_results(data):
+def save_results(data: Classes.Data):
     """
-    Function saves the results to the xml output file
-    @param data: The data object of the program
-    @return: None
+    This function saves the results to the xml output file.
+    @param data (Classes.Data): The data object of the program.
+    @returns None.
     """
     root = ET.Element("root", name="root")  # Create a root for the element tree.
     for thread_results in data.results:
@@ -60,39 +60,51 @@ def save_results(data):
         tree.write(f, encoding="unicode")
 
 
-def logic(data: Data, all_threads_done_event: threading.Event):
+def logic(data: Classes.Data, all_threads_done_event: threading.Event):
     """
-    Function prints the check results to the screen or to a xml file
-    @param data: The data object of the program
-    @param all_threads_done_event: Signals when the plugins has finished their run
-    @return: None
+    This function controls the general output of the plugins to the screen,
+    prints the check results to the screen or to a xml file and prints the print queue.
+    @param data (Classes.Data): The data object of the program.
+    @param all_threads_done_event (threading.Event): Signals when all the plugins have finished their run.
+    @returns None.
     """
     index = 0
     print(f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
     if data.output is None:
-        # If there is no specified file path
+        # There is no need to save results to an output file.
         while True:
-            # While the plugins are still running
+            # While the plugins are still running.
             data.mutex.acquire()
             if len(data.results) == index:
-                #  If there are no new results
+                # If there are no new results.
                 if all_threads_done_event.isSet():
-                    #  If all the threads has finished their run
+                    # If all the threads has finished their run.
                     data.mutex.release()
                     break
                 else:
                     data.mutex.release()
                     continue
             else:
-                # If there are new results
+                # If there are new results.
                 results = data.results[index]  # The most recent results.
                 data.mutex.release()
                 index += 1
                 # Print the current found results.
                 print_results(results)
+            
+            data.mutex.acquire()
+            # Check if there is anything to print.
+            while data.print_queue.not_empty:
+                # Print the print queue.
+                curr: tuple = data.print_queue.get()
+                # Validate print request.
+                if curr is not None and len(curr) == 2:
+                    print(f"{curr[0]}: {curr[1]}")
+                # If request is not valid simply continue to the next one.
+            data.mutex.release()
     else:
-        # If there is a specified file path
-        all_threads_done_event.wait()  # Waiting for the plugins to finish their run
-        print(f"\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Saving to Output File"
+        # If there is a specified output file path.
+        all_threads_done_event.wait()  # Waiting for the plugins to finish their run.
+        print(f"\t{COLOR_MANAGER.BOLD}{COLOR_MANAGER.GREEN}Saving Results to Output File"
               f" ({data.output})...{COLOR_MANAGER.ENDC}")
-        save_results(data)  # Saving the results
+        save_results(data)  # Saving the results in the output file.

@@ -30,11 +30,11 @@ def main():
     os.system("color")  # Without it, the COLOR_MANAGER won't work.
     try:
         data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
-        # AddressManager.set_target(data)  # Check specified address
-        print_data(data)  # Print specified arguments
-        PageManager.logic(data)  # Get all pages from website.
-        PluginManager.generate_check_device()  # Generate Check Device in our directory.
-        VulnerabilityManager.logic(data)
+        # AddressManager.set_target(data)  # Check specified address.
+        print_data(data)  # Print given arguments.
+        PageManager.logic(data)  # Get all the pages from the website.
+        PluginManager.generate_check_device()  # Generate the `Check Device` in our directory.
+        VulnerabilityManager.logic(data) # Run plugins with the `Check Device` and `VulnerabilityManager`.
         print(COLOR_MANAGER.ENDC)
     except KeyboardInterrupt as e:
         # The user pressed ctrl+c
@@ -51,23 +51,24 @@ def main():
 
 def finishing_up():
     """
-    Every time the program has finished, we need to remove every Chromedriver
-    @return: None
+    Every time the program has finished we need to remove every instance of ChromeDriver processes from memory.
+    @returns None
     """
     try:
-        # We make sure it deleted every chromedriver.
+        # We check if we have deleted every chromedriver instance.
         for proc in psutil.process_iter():
             try:
                 if "chrome" in proc.name() and '--test-type=webdriver' in proc.cmdline():
-                    psutil.Process(proc.pid).terminate()  # Deleting chromedriver objects from RAM
+                    psutil.Process(proc.pid).terminate()  # Deleting chromedriver processes from memory.
             except Exception as e:
-                # In case of required permission
+                # In case of required permission.
                 continue
+        # Deleting the `check device` file after the program has finished it's run.
         if os.path.exists('CheckDevice.py'):
             os.remove('CheckDevice.py')
         exit(code=0)
     except KeyboardInterrupt as e:
-        # If the interrupted we must try again
+        # If we are interrupted we must check again to prevent partial deletion of processes.
         finishing_up()
 
 

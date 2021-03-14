@@ -42,6 +42,7 @@ class Colors:
     GREEN = rgb(0, 255, 0)
     ORANGE = rgb(255, 128, 0)
     BLUE = rgb(0, 128, 255)
+    LIGHT_BLUE = rgb(51, 153, 255)
     LIGHT_GREEN = rgb(0, 255, 128)
     PURPLE = rgb(128, 0, 255)
     CYAN = rgb(0, 255, 255)
@@ -75,6 +76,7 @@ class Colors:
         """
         return rgb(red, green, blue)
 
+
     @staticmethod
     def rand_color():
         """
@@ -86,48 +88,9 @@ class Colors:
             random.choice(range(255)),
             random.choice(range(255)))
 
-    @staticmethod
-    def print_warning(warning: str = "WARNING!", begins_with: str = ""):
-        """
-        Function prints a specified warning.
-        @param warning: The specified warning.
-        @param begins_with: Optional string to start with.
-        @returns None.
-        """
-        print(
-            begins_with
-            + Colors.ENDC
-            + "["
-            + Colors.BOLD_YELLOW
-            + "!"
-            + Colors.ENDC
-            + "] "
-            + Colors.BOLD_YELLOW
-            + warning
-            + Colors.ENDC)
 
     @staticmethod
-    def print_error(error: str = "ERROR!", begins_with: str = ""):
-        """
-        Function prints a specified error.
-        @param error: The specified error.
-        @param begins_with: Optional string to start with.
-        @returns None.
-        """
-        print(
-            begins_with
-            + Colors.ENDC
-            + "["
-            + Colors.BOLD_RED
-            + "!"
-            + Colors.ENDC
-            + "] "
-            + Colors.BOLD_RED
-            + error
-            + Colors.ENDC)
-
-    @staticmethod
-    def print_success(success: str = "SUCCESS!", begins_with: str = ""):
+    def print_success(success: str = "SUCCESS!", begins_with: str = "", ends_with: str = ""):
         """
         Function prints a given success message.
         @param success: The specified message.
@@ -144,8 +107,76 @@ class Colors:
             + "] "
             + Colors.BOLD_GREEN
             + success
-            + Colors.ENDC)
+            + Colors.ENDC
+            + ends_with)
     
+
+    @staticmethod
+    def print_information(info: str, begins_with: str = "", ends_with: str = ""):
+        """
+        Function prints a given success message.
+        @param success: The specified message.
+        @param begins_with: Optional string to start with.
+        @returns None.
+        """
+        print(
+            begins_with
+            + Colors.ENDC
+            + "["
+            + Colors.LIGHT_BLUE
+            + "?"
+            + Colors.ENDC
+            + "] "
+            + Colors.LIGHT_BLUE
+            + info
+            + Colors.ENDC
+            + ends_with)
+    
+
+    @staticmethod
+    def print_warning(warning: str = "WARNING!", begins_with: str = "", ends_with: str = ""):
+        """
+        Function prints a specified warning.
+        @param warning: The specified warning.
+        @param begins_with: Optional string to start with.
+        @returns None.
+        """
+        print(
+            begins_with
+            + Colors.ENDC
+            + "["
+            + Colors.BOLD_YELLOW
+            + "!"
+            + Colors.ENDC
+            + "] "
+            + Colors.BOLD_YELLOW
+            + warning
+            + Colors.ENDC
+            + ends_with)
+
+
+    @staticmethod
+    def print_error(error: str = "ERROR!", begins_with: str = "", ends_with: str = ""):
+        """
+        Function prints a specified error.
+        @param error: The specified error.
+        @param begins_with: Optional string to start with.
+        @returns None.
+        """
+        print(
+            begins_with
+            + Colors.ENDC
+            + "["
+            + Colors.BOLD_RED
+            + "!"
+            + Colors.ENDC
+            + "] "
+            + Colors.BOLD_RED
+            + error
+            + Colors.ENDC
+            + ends_with)
+
+
     @staticmethod
     def modify_string(input_str: str, parameters: list):
         """
