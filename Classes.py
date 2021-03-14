@@ -43,13 +43,14 @@ class Data:
 
 class Page:
     def __init__(self, url: str, status: int, mime_type: str,
-                 content: str, request: selenium_request, parent):
-        self.url = url
-        self.status = status
-        self.type = mime_type
-        self.content = content
-        self.request = request
-        self.parent = parent
+                 content: str, request: selenium_request, cookies: list, parent):
+        self.url = url  # The URL of the page
+        self.status = status  # The status code of the response (200, 300, 400, etc)
+        self.type = mime_type  # The MIME type of the page
+        self.content = content  # The content of the page
+        self.request = request  # The request that achieved this page
+        self.cookies = cookies  # List of dictionaries that webdriver can use
+        self.parent = parent  # The parent page of this current page
 
     def __str__(self):
         return (
@@ -57,21 +58,20 @@ class Page:
             f"STATUS: {self.status}\n"
             f"CONTENT-TYPE: {self.type}\n"
             f"CONTENT: {self.content}\n"
-            f"PARENT URL: {self.parent}\n")
+            f"PARENT URL: {self.parent.url}\n")
 
 
 class SessionPage(Page):
     def __init__(self, url: str, status: int, mime_type: str,
                  content: str, cookies: list, login: set, request: selenium_request, parent):
-        super(SessionPage, self).__init__(url, status, mime_type, content, request, parent)
-        self.cookies = cookies  # List of dictionaries that webdriver can use
+        super(SessionPage, self).__init__(url, status, mime_type, content, request, cookies, parent)
         self.login = login  # Set(The page which the session started from, It's Login form)
 
 
 class PageResult(Page):
     def __init__(self, page: Page, problem: str, solution: str):
         super(PageResult, self).__init__(page.url, page.status, page.type,
-                                         page.content, page.request, page.parent)
+                                         page.content, page.request, list(), page.parent)
         self.problem = problem  # String of problems that were found
         self.solution = solution  # A solution in case of problems
 

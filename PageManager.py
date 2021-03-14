@@ -103,16 +103,6 @@ def is_session_alive(data: Classes.Data, browser: webdriver.Chrome) -> bool:
     @param browser: Chrome driver object
     @return: True - session still alive, False - session has logged out
     """
-    global non_session_browser
-    if len(browser.get_cookies()) != len(non_session_browser[0].get_cookies()):
-        # Does not have same amount of cookies, one must be session
-        return True
-    for cookie in browser.get_cookies():
-        if cookie["name"] not in \
-                [non_cookie["name"] for non_cookie in non_session_browser[0].get_cookies()]:
-            # There is at least one cookie which is different by name
-            return True
-    # Cookies does not matter
     same_content = 0
     different_content = 0
     for session_page in [page for page in data.pages if type(page) is Classes.SessionPage]:
@@ -189,6 +179,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
         request.response.headers.get("Content-Type").split(";")[0],
         browser.page_source,
         request,
+        browser.get_cookies(),
         previous)
     color = COLOR_MANAGER.BLUE
 
@@ -197,21 +188,14 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
         try:
             same_content = False
             same_url = False
-            for p in data.pages:
-                if not get_links([p.url], browser.current_url):
+            a_page = None
+            for a_page in data.pages:
+                if not get_links([a_page.url], browser.current_url):
                     # Have the same URL
-                    if type(p) is Classes.SessionPage:
-                        # Redirected to another session page
-                        troublesome.append(curr_url)  # No need to check
-                        return
                     same_url = True
-                if "html" in p.type and \
-                        Methods.remove_forms(p.content) == Methods.remove_forms(browser.page_source):
+                if "html" in a_page.type and \
+                        Methods.remove_forms(a_page.content) == Methods.remove_forms(browser.page_source):
                     # Have the same content of another page
-                    if type(p) is Classes.SessionPage:
-                        # Redirected to another session page
-                        troublesome.append(curr_url)  # No need to check
-                        return
                     same_content = True
                 if same_url or same_content:
                     # Already found what we were looking for
@@ -233,10 +217,13 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
                         print(f"\t[{COLOR_MANAGER.RED}!{COLOR_MANAGER.ENDC}]"
                               f" {COLOR_MANAGER.RED}Cookies are invalid anymore,"
                               f" all session pages were removed.{COLOR_MANAGER.ENDC}")
-                        browser.delete_all_cookies()
                     return
                 else:
                     browser.get(request.url)
+            if same_content and same_url and type(a_page) is Classes.SessionPage:
+                # Redirected to another session page with the same URL or content
+                troublesome.append(curr_url)  # No need to check
+                return
             non_session_browser[0].get(browser.current_url)
             if non_session_browser[0].current_url != browser.current_url or \
                     Methods.remove_forms(non_session_browser[0].page_source) !=\
@@ -328,6 +315,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
                 # Were already requested with the current page
                 get_pages(data, link, browser, page,
                           recursive=data.recursive)
+                links.remove(link)
                 break
 
     del browser.requests  # We do not need the previous requests anymore
@@ -521,6 +509,27 @@ def set_lists(data: Classes.Data):
     print(COLOR_MANAGER.ENDC)
 
 
+def set_cookies(data: Classes.Data, browser: webdriver.Chrome):
+    """
+    Function sets the specified cookies
+    @param data: The data object of the program
+    @param browser: The webdriver browser
+    @return: None
+    """
+    if data.cookies:
+        # If user specified cookies
+        if Methods.enter_cookies(data, browser, data.url):
+            # Success
+            non_session_browser[0] = Methods.new_browser(data)  # setting up secondary browser object
+            print(f"\t[{COLOR_MANAGER.YELLOW}!{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
+                  f"Cookies were added to the session.{COLOR_MANAGER.ENDC}")
+        else:
+            # Failure
+            print(f"\t[{COLOR_MANAGER.YELLOW}!{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
+                  f"Invalid cookies, check your syntax and try again. {COLOR_MANAGER.ENDC}")
+            data.cookies = None  # There is no need to use them again
+
+
 def logic(data: Classes.Data):
     """
     Function gets the page list
@@ -536,25 +545,14 @@ def logic(data: Classes.Data):
         "Other": COLOR_MANAGER.PURPLE}  # Dictionary of the mime-types and their color
     print(f"{COLOR_MANAGER.BLUE + COLOR_MANAGER.HEADER}Scraping pages:{COLOR_MANAGER.ENDC}")
     # Setting environment
+    global non_session_browser
+    non_session_browser = list()
+    non_session_browser.append(None)
     try:
         set_lists(data)  # Setting white and black list
         set_chromedriver(data)  # Setting web browser driver
         browser = Methods.new_browser(data)  # Setting up browser object
-        global non_session_browser
-        non_session_browser = list()
-        non_session_browser.append(None)
-        if data.cookies:
-            # If user specified cookies
-            if Methods.enter_cookies(data, browser, data.url):
-                # Success
-                non_session_browser[0] = Methods.new_browser(data)  # setting up secondary browser object
-                print(f"\t[{COLOR_MANAGER.YELLOW}!{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
-                      f"Cookies were added to the session.{COLOR_MANAGER.ENDC}")
-            else:
-                # Failure
-                print(f"\t[{COLOR_MANAGER.YELLOW}!{COLOR_MANAGER.ENDC}] {COLOR_MANAGER.YELLOW}"
-                      f"Invalid cookies, read about the format in the manual section.{COLOR_MANAGER.ENDC}")
-                data.cookies = None  # There is no need to use them again
+        set_cookies(data, browser)  # Setting up specified cookies
         print(COLOR_MANAGER.ENDC)
     except Exception as e:
         raise Exception(e, "\t")

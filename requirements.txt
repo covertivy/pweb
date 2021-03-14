@@ -4,3 +4,4 @@ beautifulsoup4==4.9.3
 argparse==1.4.0
 configparser==5.0.1
 selenium-wire==4.0.4
+psutil==5.8.0

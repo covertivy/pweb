@@ -2,6 +2,8 @@
 import argparse
 from Classes import Data
 from colors import COLOR_MANAGER, startup
+import datetime
+
 
 # --------------------------------------- CONSTS ----------------------------------------------------------------+
 ONE_LINER = "R|"  # For lines which are longer from the default width.                                           |
@@ -145,7 +147,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         type=str,
         help="Enter the path to a JSON file which have a list of cookies or one cookie, "
-             "every cookie must contain the keys: \"name\", \"value\" and \"domain\".",
+             "every cookie must contain the keys: \"name\" and \"value\".",
         dest="cookies")
     parser.add_argument(
         "-o",
@@ -246,6 +248,10 @@ def get_final_args(args) -> Data:
 
     # Set verbose flag
     output_obj.verbose = args.verbose
+    if args.verbose:
+        # Print startup logo and current time.
+        print(startup())
+        print(f"{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}")
 
     # Set agreement flag
     output_obj.aggressive = args.aggressive
