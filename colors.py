@@ -14,11 +14,16 @@ LOGO = r"                           __" + "\n" \
 
 def rgb(red: int, green: int, blue: int):
     """
-    Function paints the text.
-    @param red (int): Red value of RGB 0-255.
-    @param green (int): Green value of RGB 0-255.
-    @param blue (int): Blue value of RGB 0-255.
-    @returns str: ANSI color value string.
+    This function converts RGB values to ANSI color codes.
+    
+    @param red: Red value of RGB 0-255.
+    @type red: int.
+    @param green: Green value of RGB 0-255.
+    @type green: int.
+    @param blue: Blue value of RGB 0-255.
+    @type blue: int.
+    @return: ANSI color code string.
+    @rtype str.
     """
     return "\033[38;2;{};{};{}m".format(red, green, blue)
 
@@ -33,7 +38,7 @@ def validate_parameter(param: tuple, strlen: int):
 
 
 class Colors:
-    ENDC = "\033[0m"  # back to normal
+    ENDC = "\033[0m"  # Clear all ANSI changes.
     BOLD = "\033[1m"
     UNDERLINE = "\033[4m"
     HEADER = BOLD + UNDERLINE
@@ -68,11 +73,16 @@ class Colors:
     @staticmethod
     def rgb(red: int, green: int, blue: int):
         """
-        Function paints the text.
-        @param red (int): Red value of RGB 0-255.
-        @param green (int): Green value of RGB 0-255.
-        @param blue (int): Blue value of RGB 0-255.
-        @returns str: ANSI color value string.
+        This function converts RGB values to ANSI color codes.
+    
+        @param red: Red value of RGB 0-255.
+        @type red: int.
+        @param green: Green value of RGB 0-255.
+        @type green: int.
+        @param blue: Blue value of RGB 0-255.
+        @type blue: int.
+        @return: ANSI color code string.
+        @rtype str.
         """
         return rgb(red, green, blue)
 
@@ -80,8 +90,10 @@ class Colors:
     @staticmethod
     def rand_color():
         """
-        Function paints the text in random color
-        @returns str: Random ANSI color value string.
+        This function returns a random ANSI color code string.
+
+        @return: Random ANSI color value string.
+        @rtype str.
         """
         return rgb(
             random.choice(range(255)),
@@ -92,10 +104,15 @@ class Colors:
     @staticmethod
     def print_success(success: str = "SUCCESS!", begins_with: str = "", ends_with: str = ""):
         """
-        Function prints a given success message.
-        @param success: The specified message.
+        This function prints a given success message.
+
+        @param success: The specified success message.
+        @type success: str.
         @param begins_with: Optional string to start with.
-        @returns None.
+        @type starts_with: str.
+        @param ends_with: Optional string to end with.
+        @type ends_with: str.
+        @return: None.
         """
         print(
             begins_with
@@ -114,10 +131,15 @@ class Colors:
     @staticmethod
     def print_information(info: str, begins_with: str = "", ends_with: str = ""):
         """
-        Function prints a given success message.
-        @param success: The specified message.
+        This function prints a given information message.
+
+        @param info: The specified information message.
+        @type info: str.
         @param begins_with: Optional string to start with.
-        @returns None.
+        @type starts_with: str.
+        @param ends_with: Optional string to end with.
+        @type ends_with: str.
+        @return: None.
         """
         print(
             begins_with
@@ -136,10 +158,15 @@ class Colors:
     @staticmethod
     def print_warning(warning: str = "WARNING!", begins_with: str = "", ends_with: str = ""):
         """
-        Function prints a specified warning.
+        This function prints a specified warning message.
+
         @param warning: The specified warning.
+        @type warning: str.
         @param begins_with: Optional string to start with.
-        @returns None.
+        @type starts_with: str.
+        @param ends_with: Optional string to end with.
+        @type ends_with: str.
+        @return: None.
         """
         print(
             begins_with
@@ -158,10 +185,15 @@ class Colors:
     @staticmethod
     def print_error(error: str = "ERROR!", begins_with: str = "", ends_with: str = ""):
         """
-        Function prints a specified error.
+        This function prints a specified error message.
+
         @param error: The specified error.
+        @type error: str
         @param begins_with: Optional string to start with.
-        @returns None.
+        @type starts_with: str.
+        @param ends_with: Optional string to end with.
+        @type ends_with: str.
+        @return: None.
         """
         print(
             begins_with
@@ -194,10 +226,13 @@ class Colors:
         !   For example:
         !       in the string "hello, world!", to modify the word `hello` we will use the indexes (0, 5).
         
-        @param input_str (str): The string to modify with the given parameters.
-        @param parameters (list): The parameters to modify the string with, each parameter is a tuple of:
+        @param input_str: The string to modify with the given parameters.
+        @type input_str: str.
+        @param parameters: The parameters to modify the string with, each parameter is a tuple of:
         >   (begin_index : int, stop_index : int, ansi_modification : str).
-        @returns str: The modified string with the valid changes made to it, if for some reason there are some missing changes please read the description. 
+        @type parameters: list[tuple].
+        @return: The modified string with the valid changes made to it, if for some reason there are some missing changes please read the description.
+        @rtype str.
         """
         # Get list of all valid parameters.
         valid_params = [param for param in parameters if validate_parameter(param, len(input_str))]
@@ -266,13 +301,13 @@ class Colors:
         return output_str
 
 
-COLOR_MANAGER = Colors()  # Colors instance
+COLOR_MANAGER = Colors()  # Colors Object.
 
 
 def startup():
     """
-    Function prints majestic logo.
-    @returns None.
+    This function prints our majestic logo.
+    @return: None.
     """
     logo = ""
     for char in LOGO:
