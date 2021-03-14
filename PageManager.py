@@ -179,6 +179,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
         request.response.headers.get("Content-Type").split(";")[0],
         browser.page_source,
         request,
+        browser.get_cookies(),
         previous)
     color = COLOR_MANAGER.BLUE
 
@@ -216,7 +217,6 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
                         print(f"\t[{COLOR_MANAGER.RED}!{COLOR_MANAGER.ENDC}]"
                               f" {COLOR_MANAGER.RED}Cookies are invalid anymore,"
                               f" all session pages were removed.{COLOR_MANAGER.ENDC}")
-                        browser.delete_all_cookies()
                     return
                 else:
                     browser.get(request.url)

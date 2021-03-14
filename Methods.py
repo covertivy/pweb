@@ -3,21 +3,19 @@ import time
 import Classes
 from seleniumwire import webdriver, request as selenium_request
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome import service
 from bs4 import BeautifulSoup
 import json
 
-# ------------- Consts -----------------
+# ------------- {Consts} -----------------
 CHECK_STRING = "Check"
 CHANGING_SIGN = "X1Y"
 WAITING_TIME = 10
 TEXT_TYPES = ["text", "password"]
-# ---------------------------------------
 
-# ------------------------- Browser methods -------------------------
+# ------------------------- {Browser methods} -------------------------
 
 
-def new_browser(data: Classes.Data, page=None,
+def new_browser(data: Classes.Data, page: Classes.Page = None,
                 debug: bool = False, interceptor=None) -> webdriver.Chrome:
     """
     Function creates a new browser instance for new session.
@@ -57,18 +55,16 @@ def new_browser(data: Classes.Data, page=None,
     else:
         browser.request_interceptor = default_interceptor
     # Setting long timeout
-    browser.set_page_load_timeout(30)
+    browser.set_page_load_timeout(60)
     if page:
         # Only if a page was specified
-        if type(page) is Classes.SessionPage:
-            # In case of session page
-            if page.parent:
-                browser.get(page.parent.url)  # Getting parent URL
-            else:
-                browser.get(page.url)  # Getting current URL
-            for cookie in page.cookies:  # Adding cookies
-                browser.add_cookie(cookie)
-            # Getting the page again, with the cookies
+        if page.parent:
+            browser.get(page.parent.url)  # Getting parent URL
+        else:
+            browser.get(page.url)  # Getting current URL
+        for cookie in page.cookies:  # Adding cookies
+            browser.add_cookie(cookie)
+        # Getting the page again, with the cookies
         browser.get(page.url)
     return browser
 
@@ -87,7 +83,6 @@ def submit_form(inputs: list, browser: webdriver.Chrome, data: Classes.Data) -> 
     start = time.time()  # Getting time of normal input
     # The elements we want to submit
     elements = list()
-    # Maybe check entire legth without destroying everything...
     if browser.requests:
         del browser.requests
     try:
@@ -131,6 +126,20 @@ def enter_cookies(data: Classes.Data, browser: webdriver.Chrome, url: str) -> bo
     @param url: The current URL
     @return: True - The cookies were added, False - The cookies were not added
     """
+    def add_cookie(a_cookie: dict):
+        """
+        Inner function enter one cookie dictionary and checks if it was already in the browser
+        @param a_cookie: Specified cookie
+        @return: None
+        """
+        for b_cookie in browser.get_cookies():
+            if a_cookie["name"] == b_cookie["name"]:
+                # The cookies already in browser
+                for key in a_cookie.keys():
+                    b_cookie[key] = a_cookie[key]
+            else:
+                # The cookie is not in the browser
+                browser.add_cookie(a_cookie)
     browser.get(url)
     before = list(browser.get_cookies())
     if data.cookies:
@@ -139,9 +148,9 @@ def enter_cookies(data: Classes.Data, browser: webdriver.Chrome, url: str) -> bo
                 cookies = json.load(json_file)
                 if type(cookies) is list:
                     for cookie in cookies:
-                        browser.add_cookie(cookie)
+                        add_cookie(cookie)
                 if type(cookies) is dict:
-                    browser.add_cookie(cookies)
+                    add_cookie(cookies)
         except Exception:
             return False
         browser.get(url)
@@ -150,7 +159,7 @@ def enter_cookies(data: Classes.Data, browser: webdriver.Chrome, url: str) -> bo
             return True
     return False
 
-# ------------------------------ Helper methods ------------------------------
+# ------------------------------ {Helper methods} ------------------------------
 
 
 def get_random_str(content: str) -> str:
