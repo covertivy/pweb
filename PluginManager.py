@@ -81,7 +81,7 @@ def generate_check_device():
     then stores their functions in a list.
     @returns None.
     """
-    paths = fetch_plugins()  # Get all the paths from the plugin config file.
+    paths: list = fetch_plugins()  # Get all the paths from the plugin config file.
 
     COLOR_MANAGER.print_information(f"Creating Check Device '{CHECK_DEVICE_NAME}.py'...")
 

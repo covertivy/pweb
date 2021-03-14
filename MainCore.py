@@ -12,9 +12,9 @@ import psutil
 
 def print_data(data: Data):
     """
-    Function prints the inserted data
-    @param data: The data object of the program
-    @return: None
+    This function prints the given data to the console.
+    @param data: The data object of the program.
+    @returns None.
     """
     print(f"\n{COLOR_MANAGER.PINK + COLOR_MANAGER.HEADER}Inserted data:{COLOR_MANAGER.ENDC}")
     for line in str(data).split("\n"):
@@ -24,12 +24,12 @@ def print_data(data: Data):
 
 def main():
     """
-    Function connects the different managers together
-    @return: None
+    This function connects the different managers together.
+    @returns None.
     """
     os.system("color")  # Without it, the COLOR_MANAGER won't work.
     try:
-        data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
+        data: Data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
         # AddressManager.set_target(data)  # Check specified address.
         print_data(data)  # Print given arguments.
         PageManager.logic(data)  # Get all the pages from the website.
@@ -52,7 +52,7 @@ def main():
 def finishing_up():
     """
     Every time the program has finished we need to remove every instance of ChromeDriver processes from memory.
-    @returns None
+    @returns None.
     """
     try:
         # We check if we have deleted every chromedriver instance.
