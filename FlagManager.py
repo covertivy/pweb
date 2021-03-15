@@ -16,8 +16,10 @@ SEPARATOR = f"{PADDING}{COLOR_MANAGER.YELLOW}python{COLOR_MANAGER.LIGHT_GREEN} %
 def char_arr_to_string(arr: list):
     """
     This function converts a char array to a string.
-    @param arr (list): A Character list.
-    @returns str: The string made from the char array.
+    @param arr: A Character list.
+    @type arr: list.
+    @return: The string made from the char array.
+    @rtype: str.
     """
     to_ret = ""
     for item in arr:
@@ -53,7 +55,9 @@ class SmartFormatter(argparse.HelpFormatter):
 def examples():
     """
     This function creates a string of usage examples for the user.
-    @returns str: The usage examples.
+
+    @return: The usage examples.
+    @rtype: str.
     """
     return f"{COLOR_MANAGER.UNDERLINE}{COLOR_MANAGER.LIGHT_GREEN}examples of usage:{COLOR_MANAGER.ENDC}\n" \
            + SEPARATOR + \
@@ -71,7 +75,9 @@ def examples():
 def parse_args():
     """
     This function gets the command line arguments using the argparse module.
-    @returns argparse.Namespace: The namespace of the arguments.
+
+    @return: The namespace of the arguments.
+    @rtype: argparse.Namespace.
     """
     parser = argparse.ArgumentParser(
         description=f"{ONE_LINER}{COLOR_MANAGER.UNDERLINE}{COLOR_MANAGER.BLUE}This is a tool for "
@@ -180,8 +186,11 @@ def get_final_args(args: argparse.Namespace):
     """
     This function gets the arguments from the argparse namespace and inserts 
     them into a Data object which is returned to the main program.
-    @param args (argparse.Namespace): All the command line arguments.
-    @returns Data: The returned data object, will be processed furthermore in the Main Core.
+
+    @param args: All the command line arguments.
+    @type args: argparse.Namespace.
+    @return: The returned data object, will be processed furthermore in the Main Core.
+    @rtype: Data.
     """
     output_obj = Data()
 

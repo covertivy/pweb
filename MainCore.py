@@ -13,8 +13,10 @@ import psutil
 def print_data(data: Data):
     """
     This function prints the given data to the console.
+
     @param data: The data object of the program.
-    @returns None.
+    @type data: Data.
+    @return: None.
     """
     print(f"\n{COLOR_MANAGER.PINK + COLOR_MANAGER.HEADER}Inserted data:{COLOR_MANAGER.ENDC}")
     for line in str(data).split("\n"):
@@ -25,7 +27,8 @@ def print_data(data: Data):
 def main():
     """
     This function connects the different managers together.
-    @returns None.
+
+    @return: None.
     """
     os.system("color")  # Without it, the COLOR_MANAGER won't work.
     try:
@@ -52,7 +55,8 @@ def main():
 def finishing_up():
     """
     Every time the program has finished we need to remove every instance of ChromeDriver processes from memory.
-    @returns None.
+
+    @return: None.
     """
     try:
         # We check if we have deleted every chromedriver instance.
