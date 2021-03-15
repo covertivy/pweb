@@ -5,30 +5,41 @@ import threading
 import xml.etree.ElementTree as ET
 
 
-def print_results(results: Classes.CheckResults):
+def print_results(check_results: Classes.CheckResults):
     """
     This function prints the latest check results.
-    @param results: The check results given by the plugins.
+    @param check_results: The check results given by the plugins.
     @return: None
     """
-    print(f"{COLOR_MANAGER.BOLD}{results.color}- {COLOR_MANAGER.UNDERLINE}{results.headline}:"
-          f"{COLOR_MANAGER.ENDC}{results.color}")
-    if type(results.page_results) == list:
-        if not len(results.page_results):
-            COLOR_MANAGER.print_success("No vulnerabilities were found on the specified website's pages.", "\t")
-        for res in results.page_results:
-            print(f"\t{COLOR_MANAGER.BOLD}Page: {COLOR_MANAGER.ENDC}{results.color}{res.url}")
-            if res.problem:
-                print(f"\t\t{COLOR_MANAGER.BOLD_RED}Problem:"
-                      f" {COLOR_MANAGER.ENDC}{results.color}{res.problem}")
-            if res.solution:
-                print(f"\t\t{COLOR_MANAGER.BOLD_GREEN}Solution:"
-                      f" {COLOR_MANAGER.ENDC}{results.color}{res.solution}")
-            print("")
-    elif type(results.page_results) == str:
-        COLOR_MANAGER.print_error(results.page_results, "\t")
-    else:
-        COLOR_MANAGER.print_error("Something went wrong", "\t")
+    print(f"{COLOR_MANAGER.BOLD}{check_results.color}- {COLOR_MANAGER.UNDERLINE}"
+          f"{check_results.headline}:{COLOR_MANAGER.ENDC}")
+    if check_results.error:
+        COLOR_MANAGER.print_error(check_results.error, "\t")
+        return
+    if check_results.warning:
+        COLOR_MANAGER.print_warning(check_results.warning, "\t")
+        return
+    if check_results.success:
+        COLOR_MANAGER.print_success(check_results.success, "\t")
+    if all(not check_result.page_results for check_result in check_results.results):
+        COLOR_MANAGER.print_success("No vulnerabilities were found on the specified website's pages.\n", "\t")
+        return
+    for check_result in check_results.results:
+        if not check_result.page_results:
+            continue
+        for page_result in check_result.page_results:
+            print(f"\t{COLOR_MANAGER.ENDC}[{check_results.color}*{COLOR_MANAGER.ENDC}]"
+                  f" {check_results.color}{page_result.url}")
+            if page_result.description:
+                for line in page_result.description.split("\n"):
+                    print(f"\t\t- {line}")
+        print(f"\t{COLOR_MANAGER.BOLD_RED}Problem:"
+              f" {COLOR_MANAGER.ENDC}{check_results.color}{check_result.problem}")
+        print(f"\t{COLOR_MANAGER.BOLD_GREEN}Solution:"
+              f" {COLOR_MANAGER.ENDC}{check_results.color}{check_result.solution}\n")
+    if check_results.conclusion:
+        print(f"\t{COLOR_MANAGER.BOLD_PURPLE}Conclusion:"
+              f" {COLOR_MANAGER.ENDC}{check_results.color}{check_results.conclusion}")
 
 
 def save_results(data: Classes.Data):
@@ -68,40 +79,21 @@ def logic(data: Classes.Data, all_threads_done_event: threading.Event):
     @param all_threads_done_event (threading.Event): Signals when all the plugins have finished their run.
     @returns None.
     """
-    index = 0
+    def empty_the_queue():
+        # Check if there is anything to print.
+        data.mutex.acquire()
+        while not data.results_queue.empty():
+            # Print the print queue.
+            print_results(data.results_queue.get())
+        data.mutex.release()
+
     print(f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
     if data.output is None:
         # There is no need to save results to an output file.
-        while True:
+        while not all_threads_done_event.isSet():
             # While the plugins are still running.
-            data.mutex.acquire()
-            if len(data.results) == index:
-                # If there are no new results.
-                if all_threads_done_event.isSet():
-                    # If all the threads has finished their run.
-                    data.mutex.release()
-                    break
-                else:
-                    data.mutex.release()
-                    continue
-            else:
-                # If there are new results.
-                results = data.results[index]  # The most recent results.
-                data.mutex.release()
-                index += 1
-                # Print the current found results.
-                print_results(results)
-            
-            data.mutex.acquire()
-            # Check if there is anything to print.
-            while data.print_queue.not_empty:
-                # Print the print queue.
-                curr: tuple = data.print_queue.get()
-                # Validate print request.
-                if curr is not None and len(curr) == 2:
-                    print(f"{curr[0]}: {curr[1]}")
-                # If request is not valid simply continue to the next one.
-            data.mutex.release()
+            empty_the_queue()
+        empty_the_queue()
     else:
         # If there is a specified output file path.
         all_threads_done_event.wait()  # Waiting for the plugins to finish their run.

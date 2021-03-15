@@ -83,7 +83,7 @@ def generate_check_device():
     """
     paths: list = fetch_plugins()  # Get all the paths from the plugin config file.
 
-    COLOR_MANAGER.print_information(f"Creating Check Device '{CHECK_DEVICE_NAME}.py'...")
+    COLOR_MANAGER.print_information(f"Creating Check Device '{CHECK_DEVICE_NAME}.py'...", "\t")
 
     checker = open(f"{CHECK_DEVICE_NAME}.py", "w")  # Generate a new check device.
 
@@ -101,4 +101,4 @@ def generate_check_device():
 
     checker.write("]\n")
     checker.close()
-    COLOR_MANAGER.print_success(f"Successfully Creaded Check Device file '{CHECK_DEVICE_NAME}.py'!", ends_with="\n\n")
+    COLOR_MANAGER.print_success(f"Successfully Created Check Device file '{CHECK_DEVICE_NAME}.py'!", "\t", "\n")

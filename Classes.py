@@ -23,9 +23,7 @@ class Data:
         self.pages = list()  # The pages that were gathered from the website using PageManager.
         self.results = list()  # Results that were harvested by the plugins.
         self.mutex = Lock()  # Mutex
-        # A queue for plugin printing tasks (useful for debugging or simple output).
-        # Each value in the queue is a tuple containing the origin and the data to print (origin: str, data: str).
-        self.print_queue = Queue(20) 
+        self.results_queue = Queue(20)  # A queue for the check results
 
     def __str__(self):
         output_str = ""
@@ -83,8 +81,8 @@ class PageResult(Page):
 
 
 class CheckResult:
-    def __init__(self, page_results: list, problem: str, solution: str):
-        self.page_results = page_results  # A List of `PageResult` objects.
+    def __init__(self, problem: str, solution: str):
+        self.page_results = list()  # A List of `PageResult` objects.
         self.problem = problem  # String of problems that were found.
         self.solution = solution  # A solution in case of problems.
 
@@ -94,3 +92,7 @@ class CheckResults:
         self.headline = headline  # The name of the plugin (xss, rfi, etc..).
         self.color = color  # Used in the case of printing to the screen.
         self.results = list()  # A List of `CheckResult` objects.
+        self.conclusion = str()
+        self.error = str()
+        self.warning = str()
+        self.success = str()

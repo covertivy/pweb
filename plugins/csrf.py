@@ -2,6 +2,7 @@
 from colors import COLOR_MANAGER
 import Classes
 import Methods
+import OutputManager
 
 # Consts:
 COLOR = COLOR_MANAGER.rgb(0, 255, 200)
@@ -9,6 +10,12 @@ OUTSIDE_URL = "https://google.com"
 
 # Global variables:
 current_referer = None
+problem_get = Classes.CheckResult("The use of GET request when submitting the form might be vulnerable.",
+                                  "You can change the method of the request to POST.")
+problem_referer = Classes.CheckResult("The form submission did not detect the 'Referer' header,"
+                                      " which was not the same page that has the vulnerable form.",
+                                      "You can validate the 'Referer' header of the request,"
+                                      " so it will perform only actions from the current page.")
 
 
 def check(data: Classes.Data):
@@ -29,22 +36,23 @@ def check(data: Classes.Data):
             if forms and not aggressive:
                 # The user did not specified his agreement
                 # and there is a vulnerable page
-                csrf_results.page_results = "The plugin check routine requires injecting text boxes," \
+                csrf_results.warning = "The plugin check routine requires injecting text boxes," \
                                             " read about (-A) in our manual and try again."
                 break
             for form in forms:
                 try:
-                    result = csrf(page, form, data)
-                    if result.problem:
-                        # If there is a problem with the page
-                        csrf_results.page_results.append(result)
+                    csrf(page, form, data)
                 except Exception:
                     continue
     except Exception as e:
-        csrf_results.page_results = "Something went wrong..."
+        csrf_results.error = "Something went wrong..."
 
+    csrf_results.results.append(problem_get)
+    csrf_results.results.append(problem_referer)
+    csrf_results.conclusion = "The best way to prevent CSRF vulnerability is to use CSRF Tokens, " \
+                              "read more about it in: 'https://portswigger.net/web-security/csrf/tokens'."
     data.mutex.acquire()
-    data.results.append(csrf_results)  # Adding the results to the data object
+    data.results_queue.put(csrf_results)  # Adding the results to the queue
     data.mutex.release()
 
 
@@ -63,16 +71,15 @@ def filter_forms(page: Classes.Page) -> list:
     return filtered_forms
 
 
-def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data) -> Classes.PageResult:
+def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data):
     """
     Function checks the page for csrf
     @param page: The current page
     @param form: The page's action form
     @param data: The data object of the program
-    @return: Page result object
+    @return: None
     """
-    page_result = Classes.PageResult(page, "", "")
-    vulnerability = [False, False, False]
+    page_result = Classes.PageResult(page, f"Action form: '{form['action']}'")
     # Checking for csrf tokens
     request_headers = page.request.headers
     response_headers = page.request.response.headers
@@ -80,7 +87,7 @@ def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data) -> Classes.P
             ("SameSite=Strict" in response_headers.get("Set-Cookie") or
              "csrf" in response_headers.get("Set-Cookie")) or request_headers.get("X-Csrf-Token"):
         # Found a SameSite or csrf token in response header
-        return page_result
+        return
     # Setting new browser
     browser = Methods.new_browser(data, page, interceptor=interceptor)
     token = False
@@ -109,28 +116,24 @@ def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data) -> Classes.P
     browser.quit()
     if token:
         # Found a csrf token
-        return page_result
+        return
     # Join the url with the action (form request URL)
     if form["method"] == "get":
         # Dangerous by itself
-        vulnerability[0] = True
+        Methods.add_page_result(problem_get, page_result, ", ")
     # Getting normal content
     normal_content = get_response(form["inputs"], page.url, data, page)
     # Getting redirected content
     referer_content = get_response(form["inputs"], OUTSIDE_URL, data, page)
     if normal_content == referer_content:
         # Does not filter referer header
-        vulnerability[1] = True
+        Methods.add_page_result(problem_referer, page_result, ", ")
     elif page.parent:
         # Getting local redirected content
         referer_content = get_response(form["inputs"], page.parent.url, data, page)
         if normal_content == referer_content:
             # Does not filter referer header
-            vulnerability[2] = True
-    if sum(vulnerability):
-        # If there is a vulnerability
-        write_vulnerability(form, vulnerability, page_result)
-    return page_result
+            Methods.add_page_result(problem_referer, page_result, ", ")
 
 
 def get_response(inputs: list, referer: str, data: Classes.Data, page) -> str:
@@ -173,7 +176,7 @@ def get_response(inputs: list, referer: str, data: Classes.Data, page) -> str:
     except Exception as e:
         pass
     finally:
-        return content
+        return Methods.remove_forms(content)
 
 
 def interceptor(request):
@@ -191,36 +194,3 @@ def interceptor(request):
         # In case of referer specified
         del request.headers['Referer']  # Remember to delete the header first
         request.headers['Referer'] = current_referer  # Spoof the referer
-
-
-def write_vulnerability(form: dict, results: list, page_result: Classes.PageResult):
-    """
-    Function writes the problem and the solution of every problem that is found for a page
-    @param form: The vulnerable form
-    @param results: A list of booleans that shows which vulnerability it has
-    @param page_result: Aage result object of the current page
-    @return: None
-    """
-    lines = sum(results)
-    padding = " " * 25
-    if results[0]:
-        # GET problem
-        page_result.problem += f"The use of GET request when submitting the form might be vulnerable."
-        page_result.solution += f"You can change the method of the request to POST.\n{padding} "
-        if lines > 1:
-            # More than one line
-            page_result.problem += "\n" + padding
-    if results[1] or results[2]:
-        # Referer problem
-        page_result.solution += "You can validate the 'Referer' header of the request," \
-                                f" so it will perform only actions from the current page.\n{padding} "
-        if results[1]:
-            # Referer to outside of the domain
-            page_result.problem += f"The form '{form['action']}' did not detect the 'Referer' header," \
-                                   f" which was outside of your domain."
-        else:
-            # Referer to inside of the domain
-            page_result.problem += f"The form '{form['action']}' did not detect the 'Referer' header," \
-                                   " which was not the same page that has the vulnerable form."
-    page_result.solution += "The best way to prevent CSRF vulnerability is to use CSRF Tokens, " \
-                            f"\n{padding} read more about it in: 'https://portswigger.net/web-security/csrf/tokens'."
