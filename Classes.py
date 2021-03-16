@@ -23,9 +23,7 @@ class Data:
         self.pages = list()  # The pages that were gathered from the website using PageManager.
         self.results = list()  # Results that were harvested by the plugins.
         self.mutex = Lock()  # Mutex
-        # A queue for plugin printing tasks (useful for debugging or simple output).
-        # Each value in the queue is a tuple containing the origin and the data to print (origin: str, data: str).
-        self.print_queue = Queue(20) 
+        self.results_queue = Queue(20)  # A queue for the check results
 
     def __str__(self):
         output_str = ""
@@ -71,20 +69,30 @@ class SessionPage(Page):
     def __init__(self, url: str, status: int, mime_type: str,
                  content: str, cookies: list, login: set, request: selenium_request, parent):
         super(SessionPage, self).__init__(url, status, mime_type, content, request, cookies, parent)
-        self.login = login  # A Set containing information about the session (The page which the session started from, It's Login form).
+        self.login = login  # A Set containing information about the session:
+        # (The page which the session started from, It's Login form)
 
 
 class PageResult(Page):
-    def __init__(self, page: Page, problem: str, solution: str, text_chunk: str = None):
+    def __init__(self, page: Page, description: str = ""):
         super(PageResult, self).__init__(page.url, page.status, page.type,
                                          page.content, page.request, list(), page.parent)
+        self.description = description  # Specific message of the current page.
+
+
+class CheckResult:
+    def __init__(self, problem: str, solution: str):
+        self.page_results = list()  # A List of `PageResult` objects.
         self.problem = problem  # String of problems that were found.
         self.solution = solution  # A solution in case of problems.
-        self.text_chunk = text_chunk # If this is initialized the problem and solution will not be printed and instead this will be shown.
 
 
 class CheckResults:
     def __init__(self, headline: str, color: str):
         self.headline = headline  # The name of the plugin (xss, rfi, etc..).
         self.color = color  # Used in the case of printing to the screen.
-        self.page_results = list()  # A List of `PageResult` objects.
+        self.results = list()  # A List of `CheckResult` objects.
+        self.conclusion = str()
+        self.error = str()
+        self.warning = str()
+        self.success = str()

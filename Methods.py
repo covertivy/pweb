@@ -39,9 +39,10 @@ def new_browser(data: Classes.Data, page: Classes.Page = None,
         # In case of failure, we need to try again
         return new_browser(data, page, debug, interceptor)
 
-    def default_interceptor(request: selenium_request):
+    def default_interceptor(request):
         """
         Inner function acts like proxy, it aborts every requests that we don't want
+        @type request: selenium_request.Request
         @param request: The current request
         @return: None
         """
@@ -307,3 +308,18 @@ def fill_input(form: dict, curr_text_input: dict, string: str) -> dict:
             new_input_tag["value"] = string
         new_form["inputs"].append(new_input_tag)
     return new_form
+
+
+def add_page_result(check_result: Classes.CheckResult, page_result: Classes.PageResult, separator: str = str()):
+    """
+    Function adds a page result to the list
+    @param check_result:
+    @param page_result:
+    @param separator:
+    @return:
+    """
+    for page in check_result.page_results:
+        if page.url == page_result.url:
+            page.description += separator + page_result.description
+            return
+    check_result.page_results.append(page_result)
