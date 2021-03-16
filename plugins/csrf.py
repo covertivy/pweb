@@ -2,13 +2,12 @@
 from colors import COLOR_MANAGER
 import Classes
 import Methods
-import OutputManager
 
-# Consts:
+# ---------------------------------- {Consts} --------------------------
 COLOR = COLOR_MANAGER.rgb(0, 255, 200)
 OUTSIDE_URL = "https://google.com"
 
-# Global variables:
+# ---------------------------- {Global variables} ----------------------------
 current_referer = None
 problem_get = Classes.CheckResult("The use of GET request when submitting the form might be vulnerable.",
                                   "You can change the method of the request to POST.")
@@ -18,9 +17,10 @@ problem_referer = Classes.CheckResult("The form submission did not detect the 'R
                                       " so it will perform only actions from the current page.")
 
 
-def check(data: Classes.Data):
+def check(data):
     """
     Function checks the website for CSRF
+    @type data: Classes.Data
     @param data: The data object of the program
     @return: None
     """
@@ -56,10 +56,12 @@ def check(data: Classes.Data):
     data.mutex.release()
 
 
-def filter_forms(page: Classes.Page) -> list:
+def filter_forms(page):
     """
     Function filters the pages that has an action form
+    @type page: Classes.Page
     @param page: The current page
+    @rtype: list
     @return: List of forms
     """
     filtered_forms = list()
@@ -71,11 +73,14 @@ def filter_forms(page: Classes.Page) -> list:
     return filtered_forms
 
 
-def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data):
+def csrf(page, form, data):
     """
     Function checks the page for csrf
+    @type page: : Classes.SessionPage
     @param page: The current page
+    @type form: dict
     @param form: The page's action form
+    @type data: Classes.Data
     @param data: The data object of the program
     @return: None
     """
@@ -136,13 +141,18 @@ def csrf(page: Classes.SessionPage, form: dict, data: Classes.Data):
             Methods.add_page_result(problem_referer, page_result, ", ")
 
 
-def get_response(inputs: list, referer: str, data: Classes.Data, page) -> str:
+def get_response(inputs, referer, data, page):
     """
     Function submits a specified form and gets the result content
+    @type inputs: list
     @param inputs: A list of inputs of action form
+    @type referer: str
     @param referer: A specified referer address
+    @type data: Classes.Data
     @param data: The data object of the program
+    @type page: Classes.SessionPage
     @param page: The current page
+    @rtype: str
     @return: The content of the resulted page
     """
     content = ""
@@ -182,6 +192,7 @@ def get_response(inputs: list, referer: str, data: Classes.Data, page) -> str:
 def interceptor(request):
     """
     Function acts like proxy, it changes the requests header
+    @type request: Methods.selenium_request.Request
     @param request: The current request
     @return: None
     """

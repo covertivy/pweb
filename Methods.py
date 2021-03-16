@@ -39,9 +39,10 @@ def new_browser(data: Classes.Data, page: Classes.Page = None,
         # In case of failure, we need to try again
         return new_browser(data, page, debug, interceptor)
 
-    def default_interceptor(request: selenium_request):
+    def default_interceptor(request):
         """
         Inner function acts like proxy, it aborts every requests that we don't want
+        @type request: selenium_request.Request
         @param request: The current request
         @return: None
         """
