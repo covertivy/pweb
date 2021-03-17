@@ -86,6 +86,21 @@ class CheckResult:
         self.problem = problem  # String of problems that were found.
         self.solution = solution  # A solution in case of problems.
 
+    def add_page_result(self, page_result, separator=str()):
+        """
+        Function appends a new page result to the list and checks if it is already in the list.
+        @type page_result: PageResult
+        @param page_result: The page result the function appending
+        @type separator: str
+        @param separator: Separates between the different descriptions
+        @return: None
+        """
+        for page in self.page_results:
+            if page.url == page_result.url:
+                page.description += separator + page_result.description
+                return
+        self.page_results.append(page_result)
+
 
 class CheckResults:
     def __init__(self, headline: str, color: str):

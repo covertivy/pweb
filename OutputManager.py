@@ -5,13 +5,15 @@ import threading
 import xml.etree.ElementTree as ET
 
 
-def print_results(check_results: Classes.CheckResults):
+def print_results(check_results):
     """
     This function prints the latest check results.
+    @type check_results: Classes.CheckResults
     @param check_results: The check results given by the plugins.
     @return: None
     """
-    print(f"{COLOR_MANAGER.BOLD}{check_results.color}- {COLOR_MANAGER.UNDERLINE}"
+    color = check_results.color
+    print(f"{COLOR_MANAGER.BOLD}{color}- {COLOR_MANAGER.UNDERLINE}"
           f"{check_results.headline}:{COLOR_MANAGER.ENDC}")
     if check_results.error:
         COLOR_MANAGER.print_error(check_results.error, "\t")
@@ -25,28 +27,65 @@ def print_results(check_results: Classes.CheckResults):
         COLOR_MANAGER.print_success("No vulnerabilities were found on the specified website's pages.\n", "\t")
         return
     for check_result in check_results.results:
-        if not check_result.page_results:
-            continue
-        for page_result in check_result.page_results:
-            print(f"\t{COLOR_MANAGER.ENDC}[{check_results.color}*{COLOR_MANAGER.ENDC}]"
-                  f" {check_results.color}{page_result.url}")
-            if page_result.description:
-                for line in page_result.description.split("\n"):
-                    print(f"\t\t- {line}")
-        print(f"\t{COLOR_MANAGER.BOLD_RED}Problem:"
-              f" {COLOR_MANAGER.ENDC}{check_results.color}{check_result.problem}")
-        print(f"\t{COLOR_MANAGER.BOLD_GREEN}Solution:"
-              f" {COLOR_MANAGER.ENDC}{check_results.color}{check_result.solution}\n")
+        print_check_result(check_result, color)
     if check_results.conclusion:
         print(f"\t{COLOR_MANAGER.BOLD_PURPLE}Conclusion:"
-              f" {COLOR_MANAGER.ENDC}{check_results.color}{check_results.conclusion}")
+              f" {COLOR_MANAGER.ENDC}{color}{check_results.conclusion}")
 
 
-def save_results(data: Classes.Data):
+def print_check_result(check_result, color):
+    """
+    Function prints a specific check result
+    @type check_result: Classes.CheckResult
+    @param check_result: The printed check result
+    @type color: str
+    @param color: The color of the text
+    @return: None
+    """
+    def print_lines(message, first_line_start, new_line_start):
+        """
+        Inner function separates the lines of the message
+        @type message: str
+        @param message: The message to print
+        @type first_line_start: str
+        @param first_line_start: First line begins with this string
+        @type new_line_start: str
+        @param new_line_start: Every new line begins with this string
+        @return: None
+        """
+        index = 0
+        for line in message.split("\n"):
+            if not index:
+                # First line.
+                print(f"{first_line_start}{color}{line}")
+            else:
+                # Any other line
+                print(f"{new_line_start}{color}{line}")
+            index += 1
+    if not check_result.page_results:
+        return
+    for page_result in check_result.page_results:
+        print(f"\t{COLOR_MANAGER.ENDC}[{color}*{COLOR_MANAGER.ENDC}]"
+              f" {color}{page_result.url}")
+        if page_result.description:
+            print_lines(page_result.description, "\t\t- ", "\t\t- ")
+    if check_result.problem:
+        print_lines(check_result.problem,
+                    f"\t{COLOR_MANAGER.BOLD_RED}Problem: {COLOR_MANAGER.ENDC}",
+                    "\t" + len("Problem: ") * " ")
+    if check_result.solution:
+        print_lines(check_result.solution,
+                    f"\t{COLOR_MANAGER.BOLD_GREEN}Solution: {COLOR_MANAGER.ENDC}",
+                    "\t" + len("Solution: ") * " ")
+    print("")
+
+
+def save_results(data):
     """
     This function saves the results to the xml output file.
-    @param data (Classes.Data): The data object of the program.
-    @returns None.
+    @type data: Classes.Data
+    @param data: The data object of the program.
+    @return None
     """
     root = ET.Element("root", name="root")  # Create a root for the element tree.
     for thread_results in data.results:
@@ -71,13 +110,15 @@ def save_results(data: Classes.Data):
         tree.write(f, encoding="unicode")
 
 
-def logic(data: Classes.Data, all_threads_done_event: threading.Event):
+def logic(data, all_threads_done_event):
     """
     This function controls the general output of the plugins to the screen,
     prints the check results to the screen or to a xml file and prints the print queue.
-    @param data (Classes.Data): The data object of the program.
-    @param all_threads_done_event (threading.Event): Signals when all the plugins have finished their run.
-    @returns None.
+    @type data: Classes.Data
+    @param data: The data object of the program.
+    @type all_threads_done_event: threading.Event
+    @param all_threads_done_event: Signals when all the plugins have finished their run.
+    @return None
     """
     def empty_the_queue():
         # Check if there is anything to print.

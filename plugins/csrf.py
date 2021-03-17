@@ -125,20 +125,20 @@ def csrf(page, form, data):
     # Join the url with the action (form request URL)
     if form["method"] == "get":
         # Dangerous by itself
-        Methods.add_page_result(problem_get, page_result, ", ")
+        problem_get.add_page_result(page_result, ", ")
     # Getting normal content
     normal_content = get_response(form["inputs"], page.url, data, page)
     # Getting redirected content
     referer_content = get_response(form["inputs"], OUTSIDE_URL, data, page)
     if normal_content == referer_content:
         # Does not filter referer header
-        Methods.add_page_result(problem_referer, page_result, ", ")
+        problem_referer.add_page_result(page_result, ", ")
     elif page.parent:
         # Getting local redirected content
         referer_content = get_response(form["inputs"], page.parent.url, data, page)
         if normal_content == referer_content:
             # Does not filter referer header
-            Methods.add_page_result(problem_referer, page_result, ", ")
+            problem_referer.add_page_result(page_result, ", ")
 
 
 def get_response(inputs, referer, data, page):
