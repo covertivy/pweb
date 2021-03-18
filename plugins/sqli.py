@@ -66,10 +66,12 @@ def check(data):
     data.mutex.release()
 
 
-def filter_forms(page: Classes.Page) -> list:
+def filter_forms(page):
     """
     Function filters the pages that has an action form
+    @type page: Classes.Page
     @param page: The current page
+    @rtype: list
     @return: List of forms
     """
     filtered_forms = list()
