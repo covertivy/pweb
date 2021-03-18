@@ -5,6 +5,30 @@ import threading
 import xml.etree.ElementTree as ET
 
 
+def print_lines(message, color, first_line_start, new_line_start):
+    """
+    Function separates the lines of the message
+    @type message: str
+    @param message: The message to print
+    @type color: str
+    @param color: The color of the printed message.
+    @type first_line_start: str
+    @param first_line_start: First line begins with this string
+    @type new_line_start: str
+    @param new_line_start: Every new line begins with this string
+    @return: None
+    """
+    index = 0
+    for line in message.split("\n"):
+        if not index:
+            # First line.
+            print(f"{first_line_start}{color}{line}")
+        else:
+            # Any other line
+            print(f"{new_line_start}{color}{line}")
+        index += 1
+
+
 def print_results(check_results):
     """
     This function prints the latest check results.
@@ -28,8 +52,9 @@ def print_results(check_results):
     for check_result in check_results.results:
         print_check_result(check_result, color)
     if check_results.conclusion:
-        print(f"\t{COLOR_MANAGER.BOLD_PURPLE}Conclusion:"
-              f" {COLOR_MANAGER.ENDC}{color}{check_results.conclusion}")
+        print_lines(check_results.conclusion, color,
+                    f"\t{COLOR_MANAGER.BOLD_PURPLE}Conclusion: {COLOR_MANAGER.ENDC}",
+                    "\t" + len("Conclusion: ") * " ")
     print("")
 
 
@@ -42,41 +67,25 @@ def print_check_result(check_result, color):
     @param color: The color of the text
     @return: None
     """
-    def print_lines(message, first_line_start, new_line_start):
-        """
-        Inner function separates the lines of the message
-        @type message: str
-        @param message: The message to print
-        @type first_line_start: str
-        @param first_line_start: First line begins with this string
-        @type new_line_start: str
-        @param new_line_start: Every new line begins with this string
-        @return: None
-        """
-        index = 0
-        for line in message.split("\n"):
-            if not index:
-                # First line.
-                print(f"{first_line_start}{color}{line}")
-            else:
-                # Any other line
-                print(f"{new_line_start}{color}{line}")
-            index += 1
     if not check_result.page_results:
         return
     for page_result in check_result.page_results:
         print(f"\t{COLOR_MANAGER.ENDC}[{color}*{COLOR_MANAGER.ENDC}]"
               f" {color}{page_result.url}")
         if page_result.description:
-            print_lines(page_result.description, "\t\t- ", "\t\t- ")
+            print_lines(page_result.description, color, "\t\t- ", "\t\t- ")
     if check_result.problem:
-        print_lines(check_result.problem,
+        print_lines(check_result.problem, color,
                     f"\t{COLOR_MANAGER.BOLD_RED}Problem: {COLOR_MANAGER.ENDC}",
                     "\t" + len("Problem: ") * " ")
     if check_result.solution:
-        print_lines(check_result.solution,
+        print_lines(check_result.solution, color,
                     f"\t{COLOR_MANAGER.BOLD_GREEN}Solution: {COLOR_MANAGER.ENDC}",
                     "\t" + len("Solution: ") * " ")
+    if check_result.explanation:
+        print_lines(check_result.explanation, color,
+                    f"\t{COLOR_MANAGER.BOLD_LIGHT_GREEN}Explanation: {COLOR_MANAGER.ENDC}",
+                    "\t" + len("Explanation: ") * " ")
     print("")
 
 

@@ -10,11 +10,20 @@ OUTSIDE_URL = "https://google.com"
 # ---------------------------- {Global variables} ----------------------------
 current_referer = None
 problem_get = Classes.CheckResult("The use of GET request when submitting the form might be vulnerable.",
-                                  "You can change the method of the request to POST.")
+                                  "You can change the method of the request to POST.",
+                                  "The plugin checks the DOM of the action form,\n"
+                                  "in case of GET method, we recommend to change it or make sure it is secure.\n"
+                                  "For a CSRF attacker it will be much harder to use this form for his attack"
+                                  " if the form uses POST method.")
 problem_referer = Classes.CheckResult("The form submission did not detect the 'Referer' header,"
                                       " which was not the same page that has the vulnerable form.",
                                       "You can validate the 'Referer' header of the request,"
-                                      " so it will perform only actions from the current page.")
+                                      " so it will perform only actions from the current page.",
+                                      "The plugin submits the action form with 3 different referer header values,\n"
+                                      "first one is the URL of the page, the second one is https://google.com, "
+                                      "and the third one is another page from the session, with the same domain.\n"
+                                      "If the first result is the same as the other results, "
+                                      "it might point out that the action form is letting other sources to use it.")
 success_message = ""
 
 
