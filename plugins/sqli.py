@@ -15,8 +15,14 @@ comments = {"#": [f"sleep({Methods.WAITING_TIME})"],
             "--": [f"dbms_pipe.receive_message(('a'),{Methods.WAITING_TIME})",
                    f"WAITFOR DELAY '0:0:{Methods.WAITING_TIME}'", f"pg_sleep({Methods.WAITING_TIME})"]}
 query = str()
-non_blind_problem = Classes.CheckResult("", "")
-blind_problem = Classes.CheckResult("", "")
+non_blind_problem = Classes.CheckResult("", "", "The plugin submits the action forms and check for 'error' or 'fail'"
+                                                " words in the resulted page, it might indicate false positives,"
+                                                " it made for sleep function blocking.\n"
+                                                "You can check yourself if these are just irrelevant error messages.")
+blind_problem = Classes.CheckResult("", "", "The plugin uses the sleep function of SQL "
+                                            "to slow down the server's response.\n"
+                                            "Compares between the response time and if the difference"
+                                            " is close to 10 seconds, it must indicate SQL injection vulnerability.")
 
 
 def check(data):
@@ -49,7 +55,7 @@ def check(data):
                     continue
     except Exception as e:
         sqli_results.error = "Something went wrong..."
-        
+
     non_blind_problem.problem = "These text inputs *may* have allowed SQL injection," \
                                 " the plugin has detected an error message that " \
                                 f"may indicate about a SQL vulnerability,\n" \

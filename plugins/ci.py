@@ -11,11 +11,20 @@ curr_text_input = dict()
 curr_char = ""
 blind_problem = Classes.CheckResult("These text inputs allowed blind Command injection, "
                                     f"the query ' ping -c {Methods.WAITING_TIME} 127.0.0.1' "
-                                    f"has slowed down the server's response.", "")
+                                    f"has slowed down the server's response.", "",
+                                    "The plugin submits the action form with the query "
+                                    f"' ping -c {Methods.WAITING_TIME} 127.0.0.1',\n"
+                                    f"if the server's response is delayed, "
+                                    f"it must indicate of Command injection vulnerability.")
 non_blind_problem = Classes.CheckResult("These text inputs *may* have allowed Command injection,"
                                         " the plugin has detected an echo message that "
-                                        f"indicate about a Command injection vulnerability,\n"
-                                        f"while using the query 'echo check'.", "")
+                                        f"indicate about a Command injection vulnerability.", "",
+                                        "The plugin submits the action form with a 'echo check' "
+                                        "in each of the text inputs, and counting the amount of 'check' "
+                                        "strings in compare of the amount of 'echo' strings in the DOM of the resulted"
+                                        "page.\n"
+                                        "If there are more 'check' than 'echo' it might indicate of a non blind "
+                                        "Command injection.")
 
 
 def check(data):
