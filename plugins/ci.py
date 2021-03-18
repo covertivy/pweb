@@ -20,9 +20,9 @@ non_blind_problem = Classes.CheckResult("These text inputs *may* have allowed Co
                                         " the plugin has detected an echo message that "
                                         f"indicate about a Command injection vulnerability.", "",
                                         "The plugin submits the action form with a 'echo check' "
-                                        "in each of the text inputs, and counting the amount of 'check' "
-                                        "strings in compare of the amount of 'echo' strings in the DOM of the resulted"
-                                        "page.\n"
+                                        "in each of the text inputs,\n"
+                                        "and counting the amount of 'check' strings in compare of the amount of 'echo' "
+                                        "strings in the DOM of the resulted page.\n"
                                         "If there are more 'check' than 'echo' it might indicate of a non blind "
                                         "Command injection.")
 
