@@ -74,25 +74,42 @@ class SessionPage(Page):
 
 
 class PageResult(Page):
-    def __init__(self, page: Page, description: str = ""):
+    def __init__(self, page, description=str()):
+        """
+        Constructor of the PageResult Class.
+        @type page: Page
+        @param page: The problematic page.
+        @type description: str
+        @param description: A specific message of the current page.
+        """
         super(PageResult, self).__init__(page.url, page.status, page.type,
                                          page.content, page.request, list(), page.parent)
-        self.description = description  # Specific message of the current page.
+        self.description = description
 
 
 class CheckResult:
-    def __init__(self, problem: str, solution: str):
+    def __init__(self, problem, solution, explanation):
+        """
+        Constructor of the CheckResult Class.
+        @type problem: str
+        @param problem: String of problems that were found.
+        @type solution: str
+        @param solution: A solution in case of problems.
+        @type explanation: str
+        @param explanation: An explanation of the used algorithm.
+        """
+        self.problem = problem
+        self.solution = solution
+        self.explanation = explanation
         self.page_results = list()  # A List of `PageResult` objects.
-        self.problem = problem  # String of problems that were found.
-        self.solution = solution  # A solution in case of problems.
 
     def add_page_result(self, page_result, separator=str()):
         """
         Function appends a new page result to the list and checks if it is already in the list.
         @type page_result: PageResult
-        @param page_result: The page result the function appending
+        @param page_result: The page result the function appending.
         @type separator: str
-        @param separator: Separates between the different descriptions
+        @param separator: Separates between the different descriptions.
         @return: None
         """
         for page in self.page_results:
@@ -103,8 +120,15 @@ class CheckResult:
 
 
 class CheckResults:
-    def __init__(self, headline: str, color: str):
-        self.headline = headline  # The name of the plugin (xss, rfi, etc..).
+    def __init__(self, headline, color):
+        """
+        Constructor of the CheckResults Class.
+        @type headline: str
+        @param headline: The name of the vulnerability.
+        @type color: str
+        @param color: The color of the message.
+        """
+        self.headline = headline
         self.color = color  # Used in the case of printing to the screen.
         self.results = list()  # A List of `CheckResult` objects.
         self.conclusion = str()

@@ -16,14 +16,14 @@ def print_results(check_results):
     print(f"{COLOR_MANAGER.BOLD}{color}- {COLOR_MANAGER.UNDERLINE}"
           f"{check_results.headline}:{COLOR_MANAGER.ENDC}")
     if check_results.warning:
-        COLOR_MANAGER.print_warning(check_results.warning, "\t")
+        COLOR_MANAGER.print_warning(check_results.warning, "\t", "\n")
     if check_results.error:
-        COLOR_MANAGER.print_error(check_results.error, "\t")
+        COLOR_MANAGER.print_error(check_results.error, "\t", "\n")
     if all(not check_result.page_results for check_result in check_results.results):
         if check_results.success:
-            COLOR_MANAGER.print_success(check_results.success, "\t")
+            COLOR_MANAGER.print_success(check_results.success, "\t", "\n")
         if not check_results.error and not check_results.warning:
-            COLOR_MANAGER.print_success("No vulnerabilities were found on the specified website's pages.\n", "\t")
+            COLOR_MANAGER.print_success("No vulnerabilities were found on the specified website's pages.", "\t", "\n")
         return
     for check_result in check_results.results:
         print_check_result(check_result, color)

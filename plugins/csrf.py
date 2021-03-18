@@ -15,6 +15,7 @@ problem_referer = Classes.CheckResult("The form submission did not detect the 'R
                                       " which was not the same page that has the vulnerable form.",
                                       "You can validate the 'Referer' header of the request,"
                                       " so it will perform only actions from the current page.")
+success_message = ""
 
 
 def check(data):
@@ -47,6 +48,11 @@ def check(data):
     except Exception as e:
         csrf_results.error = "Something went wrong..."
 
+    if problem_get.page_results or problem_referer.page_results:
+        # Found a vulnerability
+        csrf_results.warning = "WARNING: The CSRF vulnerability is relevant only for action" \
+                               " forms that involve some user's data."
+    csrf_results.success = success_message
     csrf_results.results.append(problem_get)
     csrf_results.results.append(problem_referer)
     csrf_results.conclusion = "The best way to prevent CSRF vulnerability is to use CSRF Tokens, " \
@@ -85,6 +91,7 @@ def csrf(page, form, data):
     @return: None
     """
     page_result = Classes.PageResult(page, f"Action form: '{form['action']}'")
+    global success_message
     # Checking for csrf tokens
     request_headers = page.request.headers
     response_headers = page.request.response.headers
@@ -92,6 +99,7 @@ def csrf(page, form, data):
             ("SameSite=Strict" in response_headers.get("Set-Cookie") or
              "csrf" in response_headers.get("Set-Cookie")) or request_headers.get("X-Csrf-Token"):
         # Found a SameSite or csrf token in response header
+        success_message = "The website is using CSRF prevention methods in it's response headers."
         return
     # Setting new browser
     browser = Methods.new_browser(data, page, interceptor=interceptor)
@@ -121,6 +129,7 @@ def csrf(page, form, data):
     browser.quit()
     if token:
         # Found a csrf token
+        success_message = "The website is using the CSRF Tokens method in it's forms."
         return
     # Join the url with the action (form request URL)
     if form["method"] == "get":

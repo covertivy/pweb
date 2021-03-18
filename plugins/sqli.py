@@ -49,15 +49,15 @@ def check(data):
                     continue
     except Exception as e:
         sqli_results.error = "Something went wrong..."
-
-    blind_problem.problem = "These text inputs allowed blind SQL injection, " \
-                            f"the query '{query}' has slowed down the server's response."
-    sqli_results.results.append(blind_problem)
+        
     non_blind_problem.problem = "These text inputs *may* have allowed SQL injection," \
                                 " the plugin has detected an error message that " \
                                 f"may indicate about a SQL vulnerability,\n" \
                                 f"while using the query '{query}'."
     sqli_results.results.append(non_blind_problem)
+    blind_problem.problem = "These text inputs allowed blind SQL injection, " \
+                            f"the query '{query}' has slowed down the server's response."
+    sqli_results.results.append(blind_problem)
     sqli_results.conclusion = f"You can validate the input from the " \
                               f"vulnerable parameters, by checking for " \
                               f"vulnerable characters or wrong input type."
