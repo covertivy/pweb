@@ -148,7 +148,7 @@ def parse_args():
         default=None,
         help="Specify a whitelist of words that may be found in a page's URL, "
         " if the word is in the page url, the page is will be saved, otherwise we ignore the page,"
-        f" whitelist must be a `.txt` file.{COLOR_MANAGER.ENDC}",
+        f" whitelist must be a `.txt` file.{COLOR_MANAGER.GREEN}",
         dest="whitelist")
     parser.add_argument(
         "-P",
@@ -174,7 +174,7 @@ def parse_args():
         "-V",
         "--verbose",
         action="store_false",
-        help=f"Specify this flag when you don't want to print our cool logo.{COLOR_MANAGER.GREEN}",
+        help=f"Specify this flag when you don't want to print our cool logo.{COLOR_MANAGER.ENDC}",
         dest="verbose")
     # Get the command line arguments.
     args = parser.parse_args()
