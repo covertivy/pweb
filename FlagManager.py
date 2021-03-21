@@ -43,7 +43,7 @@ class FlagManager(Manager):
         pass
 
     @staticmethod
-    def _char_arr_to_string(arr: list):
+    def __char_arr_to_string(arr: list):
         """
         This function converts a char array to a string.
         @param arr: A Character list.
@@ -55,7 +55,7 @@ class FlagManager(Manager):
         return to_ret
 
     @staticmethod
-    def _examples():
+    def __examples():
         """
         This function creates a string of usage examples for the user.
         @rtype: str
@@ -73,7 +73,7 @@ class FlagManager(Manager):
                + SEPARATOR + \
                f"-u http://192.168.56.102/ -b blacklist.txt -w whitelist.txt\n"
 
-    def _parse_args(self):
+    def __parse_args(self):
         """
         This function gets the command line arguments using the argparse module.
         @rtype: argparse.Namespace
@@ -84,7 +84,7 @@ class FlagManager(Manager):
                         f"pentesting web security "
                         f"flaws in sites and web servers.{COLOR_MANAGER.ENDC}",
             formatter_class=SmartFormatter,
-            epilog=self._examples(),
+            epilog=self.__examples(),
             add_help=False)
         # Change the title.
         parser._optionals.title = f'{COLOR_MANAGER.UNDERLINE}Optional arguments{COLOR_MANAGER.ENDC}'
@@ -182,7 +182,7 @@ class FlagManager(Manager):
         args = parser.parse_args()
         return args
 
-    def _get_final_args(self, data, args):
+    def __get_final_args(self, data, args):
         """
         This function gets the arguments from the argparse namespace and inserts
         them into a Data object which is returned to the main program.
@@ -196,8 +196,8 @@ class FlagManager(Manager):
         # Set the `Username and Password`.
         if type(args.login) is not None:
             if len(args.login) == 2:
-                data.username = self._char_arr_to_string(args.login[0])
-                data.password = self._char_arr_to_string(args.login[1])
+                data.username = self.__char_arr_to_string(args.login[0])
+                data.password = self.__char_arr_to_string(args.login[1])
 
         # Set the `cookies`.
         data.cookies = args.cookies
@@ -273,5 +273,5 @@ class FlagManager(Manager):
         @param data: The data object of the program
         @return: None
         """
-        args = self._parse_args()
-        self._get_final_args(data, args)
+        args = self.__parse_args()
+        self.__get_final_args(data, args)
