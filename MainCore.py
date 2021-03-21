@@ -34,9 +34,10 @@ def main():
         # Initiate class instances
         data = Data()
         fm = FlagManager.FlagManager()
+        am = AddressManager.AddressManager()
         # Starting the process
         fm.logic(data)  # Get arguments from command line.
-        AddressManager.set_target(data)  # Check specified address.
+        am.logic(data)  # Check specified address.
         print_data(data)  # Print given arguments.
         PageManager.logic(data)  # Get all the pages from the website.
         PluginManager.generate_check_device()  # Generate the `Check Device` in our directory.
