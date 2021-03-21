@@ -60,7 +60,7 @@ def check(data):
     if problem_get.page_results or problem_referer.page_results:
         # Found a vulnerability
         csrf_results.warning = "WARNING: The CSRF vulnerability is relevant only for action" \
-                               " forms that involve some user's data."
+                               " forms that involve the user's data."
     csrf_results.success = success_message
     csrf_results.results.append(problem_get)
     csrf_results.results.append(problem_referer)

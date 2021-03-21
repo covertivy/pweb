@@ -4,8 +4,23 @@ from queue import Queue
 from seleniumwire import request as selenium_request
 
 
+class Manager:
+    def logic(self, data):
+        """
+        Abstract function, every manager must have a logic function
+        @type data: Classes.Data
+        @param data: The data object of the program
+        @return: None
+        """
+        pass
+
+
 class Data:
     def __init__(self):
+        """
+        Constructor of the Data class.
+        Responsible of storing each process information.
+        """
         self.ip = None
         self.url = None
         self.port = None
@@ -26,8 +41,12 @@ class Data:
         self.results_queue = Queue(20)  # A queue for the check results
 
     def __str__(self):
-        output_str = ""
-        output_str += f"IP: {self.ip}\n" if self.ip else f"IP: Not Specified\n"
+        """
+        Function makes a string of the Data instance
+        @rtype: str
+        @return: The object string
+        """
+        output_str = f"IP: {self.ip}\n" if self.ip else f"IP: Not Specified\n"
         output_str += f"PORT: {self.port}\n" if self.port else f"PORT: Not Specified\n"
         output_str += f"URL: {self.url}\n" if self.url else f"URL: Not Specified\n"
         output_str += f"MAXIMUM PAGES: {self.max_pages}\n" if self.max_pages else f"MAXIMUM PAGES: Not Specified\n"

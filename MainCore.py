@@ -27,17 +27,20 @@ def print_data(data: Data):
 def main():
     """
     This function connects the different managers together.
-
     @return: None.
     """
     os.system("color")  # Without it, the COLOR_MANAGER won't work.
     try:
-        data: Data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
-        # AddressManager.set_target(data)  # Check specified address.
+        # Initiate class instances
+        data = Data()
+        fm = FlagManager.FlagManager()
+        # Starting the process
+        fm.logic(data)  # Get arguments from command line.
+        AddressManager.set_target(data)  # Check specified address.
         print_data(data)  # Print given arguments.
         PageManager.logic(data)  # Get all the pages from the website.
         PluginManager.generate_check_device()  # Generate the `Check Device` in our directory.
-        VulnerabilityManager.logic(data) # Run plugins with the `Check Device` and `VulnerabilityManager`.
+        VulnerabilityManager.logic(data)  # Run plugins with the `Check Device` and `VulnerabilityManager`.
         print(COLOR_MANAGER.ENDC)
     except KeyboardInterrupt as e:
         # The user pressed ctrl+c
@@ -55,7 +58,6 @@ def main():
 def finishing_up():
     """
     Every time the program has finished we need to remove every instance of ChromeDriver processes from memory.
-
     @return: None.
     """
     try:
