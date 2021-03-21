@@ -105,7 +105,7 @@ def is_session_alive(data: Classes.Data, browser: webdriver.Chrome) -> bool:
     """
     same_content = 0
     different_content = 0
-    for session_page in [page for page in data.pages if type(page) is Classes.SessionPage]:
+    for session_page in [page for page in data.pages if page.is_session]:
         if session_page.cookies != browser.get_cookies():
             # Does not have the same cookies of the other session pages
             return False
@@ -211,7 +211,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
                         # In case of cookies (-c), the logout action makes the cookies invalid
                         removed_list = list()
                         for page in data.pages:
-                            if type(page) is not Classes.SessionPage:
+                            if not page.is_session:
                                 removed_list.append(page)
                         data.pages = removed_list
                         print(f"\t[{COLOR_MANAGER.RED}!{COLOR_MANAGER.ENDC}]"
@@ -220,7 +220,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
                     return
                 else:
                     browser.get(request.url)
-            if same_content and same_url and type(a_page) is Classes.SessionPage:
+            if same_content and same_url and a_page.is_session:
                 # Redirected to another session page with the same URL or content
                 troublesome.append(curr_url)  # No need to check
                 return
@@ -230,15 +230,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
                     Methods.remove_forms(browser.page_source):
                 # If the URL can be reachable from non-session point the session has logged out
                 # Session page
-                page = Classes.SessionPage(
-                    browser.current_url,
-                    request.response.status_code,
-                    request.response.headers.get("Content-Type").split(";")[0],
-                    browser.page_source,
-                    browser.get_cookies(),
-                    current_login_page,
-                    request,
-                    previous)
+                page.is_session = True
                 color = COLOR_MANAGER.ORANGE
         except Exception:
             troublesome.append(curr_url)
@@ -265,7 +257,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
     in_list = False
     for printed_page in already_printed:
         if not get_links([printed_page.url], page.url) and\
-                (printed_page.content == page.content or type(printed_page) == type(page)):
+                (printed_page.content == page.content or printed_page.is_session == page.is_session):
             # Same URL (without the http://) and content or both are session
             in_list = True
     if not in_list:
@@ -288,7 +280,7 @@ def get_pages(data: Classes.Data, curr_url: str, browser: webdriver.Chrome,
     in_list = False
     for a_page in data.pages:
         if not get_links([a_page.url], page.url) and\
-                (a_page.content == page.content or type(a_page) == type(page)):
+                (a_page.content == page.content or a_page.is_session == page.is_session):
             # Same URL (without the http://) and (content or both are session)
             in_list = True
     if not in_list:
@@ -603,13 +595,13 @@ def print_result(data: Classes.Data):
     global type_colors
     print("")
     non_session_pages = [page for page in data.pages
-                         if valid_in_list(page) and type(page) != Classes.SessionPage]
+                         if valid_in_list(page) and not page.is_session]
     if non_session_pages:
         print(f"\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization:{COLOR_MANAGER.ENDC}")
         type_colors["HTML"] = COLOR_MANAGER.BLUE
         print_type(non_session_pages, "+")
     session_pages = [page for page in data.pages
-                     if valid_in_list(page) and type(page) == Classes.SessionPage]
+                     if valid_in_list(page) and page.is_session]
     if session_pages:
         # If there are session pages
         print(f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization:{COLOR_MANAGER.ENDC}")

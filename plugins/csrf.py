@@ -80,7 +80,7 @@ def filter_forms(page):
     @return: List of forms
     """
     filtered_forms = list()
-    if "html" in page.type.lower() and type(page) is Classes.SessionPage:
+    if "html" in page.type.lower() and page.is_session:
         # The only thing we need is a HTML session page with a form
         for form in Methods.get_forms(page.content):
             # Adding the page and it's form to the list

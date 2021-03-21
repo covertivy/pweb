@@ -44,37 +44,54 @@ class Data:
 
 
 class Page:
-    def __init__(self, url: str, status: int, mime_type: str,
-                 content: str, request: selenium_request, cookies: list, parent):
-        self.url = url  # The URL of the page.
-        self.status = status  # The status code of the response (200, 300, 400, etc).
-        self.type = mime_type  # The MIME type of the page.
-        self.content = content  # The HTML content of the page.
-        self.request = request  # The request that fetched this page.
-        self.cookies = cookies  # List of dictionaries that are cookies that the webdriver can use.
-        self.parent = parent  # The parent page of this current page, If this is the base page this will be None.
+    def __init__(self, url, status=200, mime_type="html/text",
+                 content="", request=None, cookies=None, parent=None, is_session=False):
+        """
+        Constructor of the Page class.
+        @type url: str
+        @param url: The URL of the page.
+        @type status: int
+        @param status: The status code of the response (200, 300, 400, etc).
+        @type mime_type: str
+        @param mime_type: The MIME type of the page.
+        @type content: str
+        @param content: The HTML content of the page.
+        @type request: selenium_request.Request
+        @param request: The request that fetched this page.
+        @type cookies: list
+        @param cookies: List of dictionaries that are cookies that the webdriver can use.
+        @type parent: Page
+        @param parent: The parent page of this current page, If this is the base page this will be None.
+        @type is_session: bool
+        @param is_session: If the page is inside of a session.
+        """
+        self.url = url
+        self.status = status
+        self.type = mime_type
+        self.content = content
+        self.request = request
+        self.cookies = cookies
+        self.parent = parent
+        self.is_session = is_session
 
     def __str__(self):
-        return (
-            f"URL: {self.url}\n"
-            f"PARENT URL: {self.parent.url}\n"
-            f"STATUS: {self.status}\n"
-            f"COOKIES: {self.cookies}\n"
-            f"CONTENT TYPE: {self.type}\n"
-            f"CONTENT LENGTH: {len(self.content)}\n"
-            f"CONTENT: {self.content}\n")
-
-
-class SessionPage(Page):
-    def __init__(self, url: str, status: int, mime_type: str,
-                 content: str, cookies: list, login: set, request: selenium_request, parent):
-        super(SessionPage, self).__init__(url, status, mime_type, content, request, cookies, parent)
-        self.login = login  # A Set containing information about the session:
-        # (The page which the session started from, It's Login form)
+        """
+        Function makes a string of the Page instance
+        @rtype: str
+        @return: The object string
+        """
+        string = f"URL: {self.url}\n"
+        if self.parent:
+            string += f"PARENT URL: {self.parent.url}\n"
+        string += f"STATUS: {self.status}\n" \
+                  f"COOKIES: {self.cookies}\n" \
+                  f"CONTENT TYPE: {self.type}\n" \
+                  f"CONTENT LENGTH: {len(self.content)}"
+        return string
 
 
 class PageResult(Page):
-    def __init__(self, page, description=str()):
+    def __init__(self, page, description=""):
         """
         Constructor of the PageResult Class.
         @type page: Page
@@ -82,8 +99,7 @@ class PageResult(Page):
         @type description: str
         @param description: A specific message of the current page.
         """
-        super(PageResult, self).__init__(page.url, page.status, page.type,
-                                         page.content, page.request, list(), page.parent)
+        super(PageResult, self).__init__(page.url)
         self.description = description
 
 
