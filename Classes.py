@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from threading import Lock
+from threading import Lock, Event
 from queue import Queue
 from seleniumwire import request as selenium_request
 
@@ -38,6 +38,7 @@ class Data:
         self.pages = list()  # The pages that were gathered from the website using PageManager.
         self.results = list()  # Results that were harvested by the plugins.
         self.mutex = Lock()  # Mutex
+        self.all_threads_done_event = Event()  # When all the threads have finished their run
         self.results_queue = Queue(20)  # A queue for the check results
 
     def __str__(self):

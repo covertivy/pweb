@@ -33,15 +33,18 @@ def main():
     try:
         # Initiate class instances
         data = Data()
-        fm = FlagManager.FlagManager()
-        am = AddressManager.AddressManager()
+        function_order = [
+            FlagManager.FlagManager().logic,  # Get arguments from command line.
+            AddressManager.AddressManager().logic,  # Check specified address.
+            print_data,  # Print given arguments.
+            PageManager.PageManager().logic,  # Get all the pages from the website.
+            PluginManager.PluginManager().logic,  # Generate the `Check Device` in our directory.
+            VulnerabilityManager.VulnerabilityManager().logic  # Run plugins with the `Check Device`.
+        ]
         # Starting the process
-        fm.logic(data)  # Get arguments from command line.
-        am.logic(data)  # Check specified address.
-        print_data(data)  # Print given arguments.
-        PageManager.logic(data)  # Get all the pages from the website.
-        PluginManager.generate_check_device()  # Generate the `Check Device` in our directory.
-        VulnerabilityManager.logic(data)  # Run plugins with the `Check Device` and `VulnerabilityManager`.
+        for function in function_order:
+            # Activating every function
+            function(data)
         print(COLOR_MANAGER.ENDC)
     except KeyboardInterrupt as e:
         # The user pressed ctrl+c
