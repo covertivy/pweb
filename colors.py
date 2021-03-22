@@ -12,69 +12,56 @@ LOGO = r"                           __" + "\n" \
        r"    \/_/"
 
 
-def rgb(red: int, green: int, blue: int):
+def startup():
     """
-    This function converts RGB values to ANSI color codes.
-    
-    @param red: Red value of RGB 0-255.
-    @type red: int.
-    @param green: Green value of RGB 0-255.
-    @type green: int.
-    @param blue: Blue value of RGB 0-255.
-    @type blue: int.
-    @return: ANSI color code string.
-    @rtype str.
+    This function prints our majestic logo.
+    @return: None.
     """
-    return "\033[38;2;{};{};{}m".format(red, green, blue)
-
-
-def validate_parameter(param: tuple, strlen: int): 
-    if len(param) != 3:
-        return False
-    type_bool: bool = all((type(param[0]) == int, type(param[1]) == int, type(param[2]) == str))
-    size_bool: bool = all((param[0] >= 0, param[1] > 0, param[0] < param[1], param[1] <= strlen))
-    return type_bool and size_bool
-    
+    logo = ""
+    for char in LOGO:
+        logo += COLOR_MANAGER.rand_color() + char
+    logo += COLOR_MANAGER.ENDC + "\n"
+    return logo
 
 
 class Colors:
-    ENDC = "\033[0m"  # Clear all ANSI changes.
-    BOLD = "\033[1m"
-    UNDERLINE = "\033[4m"
-    HEADER = BOLD + UNDERLINE
-
-    RED = rgb(255, 0, 0)
-    GREEN = rgb(0, 255, 0)
-    ORANGE = rgb(255, 128, 0)
-    BLUE = rgb(0, 128, 255)
-    LIGHT_BLUE = rgb(51, 153, 255)
-    LIGHT_GREEN = rgb(0, 255, 128)
-    PURPLE = rgb(128, 0, 255)
-    CYAN = rgb(0, 255, 255)
-    TURQUOISE = rgb(64, 224, 208)
-    WHITE = rgb(255, 255, 255)
-    BLACK = rgb(0, 0, 0)
-    YELLOW = rgb(255, 255, 0)
-    PINK = rgb(255, 0, 255)
-
-    BOLD_RED = RED + BOLD
-    BOLD_GREEN = GREEN + BOLD
-    BOLD_ORANGE = ORANGE + BOLD
-    BOLD_BLUE = BLUE + BOLD
-    BOLD_LIGHT_GREEN = LIGHT_GREEN + BOLD
-    BOLD_PURPLE = PURPLE + BOLD
-    BOLD_CYAN = CYAN + BOLD
-    BOLD_TURQUOISE = TURQUOISE + BOLD
-    BOLD_WHITE = WHITE + BOLD
-    BOLD_BLACK = BLACK + BOLD
-    BOLD_YELLOW = YELLOW + BOLD
-    BOLD_PINK = PINK + BOLD
+    def __init__(self):
+        self.ENDC = "\033[0m"  # Clear all ANSI changes.
+        self.BOLD = "\033[1m"
+        self.UNDERLINE = "\033[4m"
+        self.HEADER = self.BOLD + self.UNDERLINE
+    
+        self.RED = self.rgb(255, 0, 0)
+        self.GREEN = self.rgb(0, 255, 0)
+        self.ORANGE = self.rgb(255, 128, 0)
+        self.BLUE = self.rgb(0, 128, 255)
+        self.LIGHT_BLUE = self.rgb(51, 153, 255)
+        self.LIGHT_GREEN = self.rgb(0, 255, 128)
+        self.PURPLE = self.rgb(128, 0, 255)
+        self.CYAN = self.rgb(0, 255, 255)
+        self.TURQUOISE = self.rgb(64, 224, 208)
+        self.WHITE = self.rgb(255, 255, 255)
+        self.BLACK = self.rgb(0, 0, 0)
+        self.YELLOW = self.rgb(255, 255, 0)
+        self.PINK = self.rgb(255, 0, 255)
+    
+        self.BOLD_RED = self.RED + self.BOLD
+        self.BOLD_GREEN = self.GREEN + self.BOLD
+        self.BOLD_ORANGE = self.ORANGE + self.BOLD
+        self.BOLD_BLUE = self.BLUE + self.BOLD
+        self.BOLD_LIGHT_GREEN = self.LIGHT_GREEN + self.BOLD
+        self.BOLD_PURPLE = self.PURPLE + self.BOLD
+        self.BOLD_CYAN = self.CYAN + self.BOLD
+        self.BOLD_TURQUOISE = self.TURQUOISE + self.BOLD
+        self.BOLD_WHITE = self.WHITE + self.BOLD
+        self.BOLD_BLACK = self.BLACK + self.BOLD
+        self.BOLD_YELLOW = self.YELLOW + self.BOLD
+        self.BOLD_PINK = self.PINK + self.BOLD
 
     @staticmethod
-    def rgb(red: int, green: int, blue: int):
+    def rgb(red, green, blue):
         """
         This function converts RGB values to ANSI color codes.
-    
         @param red: Red value of RGB 0-255.
         @type red: int.
         @param green: Green value of RGB 0-255.
@@ -84,133 +71,168 @@ class Colors:
         @return: ANSI color code string.
         @rtype str.
         """
-        return rgb(red, green, blue)
+        return "\033[38;2;{};{};{}m".format(red, green, blue)
 
-
-    @staticmethod
-    def rand_color():
+    def rand_color(self):
         """
         This function returns a random ANSI color code string.
-
         @return: Random ANSI color value string.
         @rtype str.
         """
-        return rgb(
+        return self.rgb(
             random.choice(range(255)),
             random.choice(range(255)),
             random.choice(range(255)))
 
-
-    @staticmethod
-    def print_success(success: str = "SUCCESS!", begins_with: str = "", ends_with: str = ""):
+    def success_message(self, success, begins_with, ends_with):
         """
-        This function prints a given success message.
-
+        This function create a success message.
         @param success: The specified success message.
         @type success: str.
         @param begins_with: Optional string to start with.
-        @type starts_with: str.
+        @type begins_with: str.
+        @param ends_with: Optional string to end with.
+        @type ends_with: str.
+        @return: success message
+        @rtype: str
+        """
+        return begins_with \
+            + self.ENDC \
+            + "[" \
+            + self.BOLD_GREEN \
+            + "!" \
+            + self.ENDC \
+            + "] " \
+            + self.BOLD_GREEN \
+            + success \
+            + self.ENDC \
+            + ends_with
+
+    def print_success(self, success="SUCCESS!", begins_with="", ends_with=""):
+        """
+        This function prints a given success message.
+        @param success: The specified success message.
+        @type success: str.
+        @param begins_with: Optional string to start with.
+        @type begins_with: str.
         @param ends_with: Optional string to end with.
         @type ends_with: str.
         @return: None.
         """
-        print(
-            begins_with
-            + Colors.ENDC
-            + "["
-            + Colors.BOLD_GREEN
-            + "!"
-            + Colors.ENDC
-            + "] "
-            + Colors.BOLD_GREEN
-            + success
-            + Colors.ENDC
-            + ends_with)
-    
+        print(self.success_message(success, begins_with, ends_with))
 
-    @staticmethod
-    def print_information(info: str, begins_with: str = "", ends_with: str = ""):
+    def information_message(self, info, begins_with, ends_with):
         """
-        This function prints a given information message.
-
+        This function create an information message.
         @param info: The specified information message.
         @type info: str.
         @param begins_with: Optional string to start with.
-        @type starts_with: str.
+        @type begins_with: str.
+        @param ends_with: Optional string to end with.
+        @type ends_with: str.
+        @return: success message
+        @rtype: str
+        """
+        return begins_with \
+            + self.ENDC \
+            + "[" \
+            + self.LIGHT_BLUE \
+            + "?" \
+            + self.ENDC \
+            + "] " \
+            + self.LIGHT_BLUE \
+            + info \
+            + self.ENDC \
+            + ends_with
+
+    def print_information(self, info, begins_with="", ends_with=""):
+        """
+        This function prints a given information message.
+        @param info: The specified information message.
+        @type info: str.
+        @param begins_with: Optional string to start with.
+        @type begins_with: str.
         @param ends_with: Optional string to end with.
         @type ends_with: str.
         @return: None.
         """
-        print(
-            begins_with
-            + Colors.ENDC
-            + "["
-            + Colors.LIGHT_BLUE
-            + "?"
-            + Colors.ENDC
-            + "] "
-            + Colors.LIGHT_BLUE
-            + info
-            + Colors.ENDC
-            + ends_with)
-    
+        print(self.information_message(info, begins_with, ends_with))
 
-    @staticmethod
-    def print_warning(warning: str = "WARNING!", begins_with: str = "", ends_with: str = ""):
+    def warning_message(self, warning, begins_with, ends_with):
+        """
+        This function create an warning message.
+        @param warning: The specified warning message.
+        @type warning: str.
+        @param begins_with: Optional string to start with.
+        @type begins_with: str.
+        @param ends_with: Optional string to end with.
+        @type ends_with: str.
+        @return: success message
+        @rtype: str
+        """
+        return begins_with \
+            + self.ENDC \
+            + "[" \
+            + self.BOLD_YELLOW \
+            + "!" \
+            + self.ENDC \
+            + "] " \
+            + self.BOLD_YELLOW \
+            + warning \
+            + self.ENDC \
+            + ends_with
+
+    def print_warning(self, warning="WARNING!", begins_with="", ends_with=""):
         """
         This function prints a specified warning message.
-
         @param warning: The specified warning.
         @type warning: str.
         @param begins_with: Optional string to start with.
-        @type starts_with: str.
+        @type begins_with: str.
         @param ends_with: Optional string to end with.
         @type ends_with: str.
         @return: None.
         """
-        print(
-            begins_with
-            + Colors.ENDC
-            + "["
-            + Colors.BOLD_YELLOW
-            + "!"
-            + Colors.ENDC
-            + "] "
-            + Colors.BOLD_YELLOW
-            + warning
-            + Colors.ENDC
-            + ends_with)
+        print(self.warning_message(warning, begins_with, ends_with))
 
-
-    @staticmethod
-    def print_error(error: str = "ERROR!", begins_with: str = "", ends_with: str = ""):
+    def error_message(self, error, begins_with, ends_with):
+        """
+        This function create an error message.
+        @param error: The specified error message.
+        @type error: str.
+        @param begins_with: Optional string to start with.
+        @type begins_with: str.
+        @param ends_with: Optional string to end with.
+        @type ends_with: str.
+        @return: success message
+        @rtype: str
+        """
+        return begins_with \
+            + self.ENDC \
+            + "[" \
+            + self.BOLD_RED \
+            + "!" \
+            + self.ENDC \
+            + "] " \
+            + self.BOLD_RED \
+            + error \
+            + self.ENDC \
+            + ends_with
+    
+    def print_error(self, error="ERROR!", begins_with="", ends_with=""):
         """
         This function prints a specified error message.
-
         @param error: The specified error.
         @type error: str
         @param begins_with: Optional string to start with.
-        @type starts_with: str.
+        @type begins_with: str.
         @param ends_with: Optional string to end with.
         @type ends_with: str.
         @return: None.
         """
-        print(
-            begins_with
-            + Colors.ENDC
-            + "["
-            + Colors.BOLD_RED
-            + "!"
-            + Colors.ENDC
-            + "] "
-            + Colors.BOLD_RED
-            + error
-            + Colors.ENDC
-            + ends_with)
+        print(self.error_message(error, begins_with, ends_with))
 
-
-    @staticmethod
-    def modify_string(input_str: str, parameters: list):
+    def modify_string(self, input_str, parameters):
         """
         This function receives a string to modify and the parameters to modify it with.
         Each parameter is a tuple 3 values long, the first two are start and stop indexes for the wanted modification.
@@ -234,6 +256,12 @@ class Colors:
         @return: The modified string with the valid changes made to it, if for some reason there are some missing changes please read the description.
         @rtype str.
         """
+        def validate_parameter(param, str_len):
+            if len(param) != 3:
+                return False
+            type_bool: bool = all((type(param[0]) == int, type(param[1]) == int, type(param[2]) == str))
+            size_bool: bool = all((param[0] >= 0, param[1] > 0, param[0] < param[1], param[1] <= str_len))
+            return type_bool and size_bool
         # Get list of all valid parameters.
         valid_params = [param for param in parameters if validate_parameter(param, len(input_str))]
         if len(valid_params) == 0:
@@ -245,7 +273,7 @@ class Colors:
         mod_indexes = list(set([(param[0], param[2]) for param in valid_params]))
         mod_indexes.sort(key=lambda x: x[0], reverse=True)
         
-        output_str = Colors.ENDC
+        output_str = self.ENDC
         ansi_to_add = ""
 
         prev_index = len(input_str)
@@ -271,13 +299,13 @@ class Colors:
                 elif mod_index[0] < endc_index:
                     if not skip_endc:
                         index = endc_index
-                        ansi_to_add = Colors.ENDC
+                        ansi_to_add = self.ENDC
                         endci += 1
                     skip_endc = False
                 else:
                     # Both need to be used and therefor we must put the endc first so the color will continue.
                     index = endc_index
-                    ansi_to_add = Colors.ENDC + mod_index[1]
+                    ansi_to_add = self.ENDC + mod_index[1]
                     skip_endc = True
                     modi += 1
                     endci += 1
@@ -287,7 +315,7 @@ class Colors:
                 modi += 1
             elif endc_index is not None:
                 index = endc_index
-                ansi_to_add = Colors.ENDC
+                ansi_to_add = self.ENDC
                 endci += 1
             
             # Append the modified text to the output string.
@@ -302,15 +330,3 @@ class Colors:
 
 
 COLOR_MANAGER = Colors()  # Colors Object.
-
-
-def startup():
-    """
-    This function prints our majestic logo.
-    @return: None.
-    """
-    logo = ""
-    for char in LOGO:
-        logo += COLOR_MANAGER.rand_color() + char
-    logo += COLOR_MANAGER.ENDC + "\n"
-    return logo

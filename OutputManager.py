@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import Classes
 from colors import *
-import xml.etree.ElementTree as ET
+import os
 
 
 class OutputManager(Classes.Manager):
@@ -9,7 +9,7 @@ class OutputManager(Classes.Manager):
         pass
 
     @staticmethod
-    def __print_lines(message, color, first_line_start, new_line_start):
+    def __manage_lines(message, color, first_line_start, new_line_start):
         """
         Function separates the lines of the message
         @type message: str
@@ -32,36 +32,37 @@ class OutputManager(Classes.Manager):
                 print(f"{new_line_start}{color}{line}")
             index += 1
 
-    def __print_results(self, check_results):
+    def __manage_check_results(self, check_results, color):
         """
         This function prints the latest check results.
         @type check_results: Classes.CheckResults
         @param check_results: The check results given by the plugins.
-        @return: None
+        @rtype: str
+        @return: The check results output string
         """
-        color = check_results.color
-        print(f"{COLOR_MANAGER.BOLD}{color}- {COLOR_MANAGER.UNDERLINE}"
-              f"{check_results.headline}:{COLOR_MANAGER.ENDC}")
+        output = f"{COLOR_MANAGER.BOLD}{color}- {COLOR_MANAGER.UNDERLINE}" \
+                 f"{check_results.headline}:{COLOR_MANAGER.ENDC}"
         if check_results.warning:
-            COLOR_MANAGER.print_warning(check_results.warning, "\t", "\n")
+            output += COLOR_MANAGER.warning_message(check_results.warning, "\t", "\n")
         if check_results.error:
-            COLOR_MANAGER.print_error(check_results.error, "\t", "\n")
+            output += COLOR_MANAGER.error_message(check_results.error, "\t", "\n")
         if all(not check_result.page_results for check_result in check_results.results):
             if check_results.success:
-                COLOR_MANAGER.print_success(check_results.success, "\t", "\n")
+                output += COLOR_MANAGER.success_message(check_results.success, "\t", "\n")
             if not check_results.error and not check_results.warning:
-                COLOR_MANAGER.print_success("No vulnerabilities were found on the specified website's pages.",
-                                            "\t", "\n")
-            return
+                output += COLOR_MANAGER.success_message("No vulnerabilities were "
+                                                        "found on the specified website's pages.",
+                                                        "\t", "\n")
+            return output
         for check_result in check_results.results:
-            self.__print_check_result(check_result, color)
+            self.__manage_check_result(check_result, color)
         if check_results.conclusion:
-            self.__print_lines(check_results.conclusion, color,
-                               f"\t{COLOR_MANAGER.BOLD_PURPLE}Conclusion: {COLOR_MANAGER.ENDC}",
-                               "\t" + len("Conclusion: ") * " ")
-        print("")
+            self.__manage_lines(check_results.conclusion, color,
+                                f"\t{COLOR_MANAGER.BOLD_PURPLE}Conclusion: {COLOR_MANAGER.ENDC}",
+                                "\t" + len("Conclusion: ") * " ")
+        return output
 
-    def __print_check_result(self, check_result, color):
+    def __manage_check_result(self, check_result, color):
         """
         Function prints a specific check result
         @type check_result: Classes.CheckResult
@@ -76,20 +77,19 @@ class OutputManager(Classes.Manager):
             print(f"\t{COLOR_MANAGER.ENDC}[{color}*{COLOR_MANAGER.ENDC}]"
                   f" {color}{page_result.url}")
             if page_result.description:
-                self.__print_lines(page_result.description, color, "\t\t- ", "\t\t- ")
+                self.__manage_lines(page_result.description, color, "\t\t- ", "\t\t- ")
         if check_result.problem:
-            self.__print_lines(check_result.problem, color,
-                               f"\t{COLOR_MANAGER.BOLD_RED}Problem: {COLOR_MANAGER.ENDC}",
-                               "\t" + len("Problem: ") * " ")
+            self.__manage_lines(check_result.problem, color,
+                                f"\t{COLOR_MANAGER.BOLD_RED}Problem: {COLOR_MANAGER.ENDC}",
+                                "\t" + len("Problem: ") * " ")
         if check_result.solution:
-            self.__print_lines(check_result.solution, color,
-                               f"\t{COLOR_MANAGER.BOLD_GREEN}Solution: {COLOR_MANAGER.ENDC}",
-                               "\t" + len("Solution: ") * " ")
+            self.__manage_lines(check_result.solution, color,
+                                f"\t{COLOR_MANAGER.BOLD_GREEN}Solution: {COLOR_MANAGER.ENDC}",
+                                "\t" + len("Solution: ") * " ")
         if check_result.explanation:
-            self.__print_lines(check_result.explanation, color,
-                               f"\t{COLOR_MANAGER.BOLD_LIGHT_GREEN}Explanation: {COLOR_MANAGER.ENDC}",
-                               "\t" + len("Explanation: ") * " ")
-        print("")
+            self.__manage_lines(check_result.explanation, color,
+                                f"\t{COLOR_MANAGER.BOLD_LIGHT_GREEN}Explanation: {COLOR_MANAGER.ENDC}",
+                                "\t" + len("Explanation: ") * " ")
 
     @staticmethod
     def __save_results(data):
@@ -99,27 +99,10 @@ class OutputManager(Classes.Manager):
         @param data: The data object of the program.
         @return None
         """
-        root = ET.Element("root", name="root")  # Create a root for the element tree.
-        for thread_results in data.results:
-            # Go over each script's findings and summarize them.
-            if len(thread_results.page_results) == 0:
-                continue
-            script_element = ET.SubElement(root, thread_results.headline.replace(" ", "_"))
-            for page_res in thread_results.page_results:
-                # Save each page's data in an xml tree format.
-                page_element = ET.SubElement(script_element, "Page")
-                page_url_element = ET.SubElement(page_element, "url")
-                page_url_element.text = str(page_res.url)
-                page_status_element = ET.SubElement(page_element, "status")
-                page_status_element.text = str(page_res.status)
-                page_result_problem_element = ET.SubElement(page_element, "problem")
-                page_result_problem_element.text = str(page_res.problem)
-                page_result_solution_element = ET.SubElement(page_element, "solution")
-                page_result_solution_element.text = str(page_res.solution)
-        # Create the tree with the `root` element as the root.
-        tree = ET.ElementTree(root)
-        with open(data.output, "w") as f:
-            tree.write(f, encoding="unicode")
+        pass
+
+    def __manage_output(self, data, check_results):
+        pass
 
     def logic(self, data):
         """
@@ -134,7 +117,7 @@ class OutputManager(Classes.Manager):
             data.mutex.acquire()
             while not data.results_queue.empty():
                 # Print the print queue.
-                self.__print_results(data.results_queue.get())
+                self.__manage_output(data, data.results_queue.get())
             data.mutex.release()
 
         print(f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
