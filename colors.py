@@ -84,6 +84,18 @@ class Colors:
             random.choice(range(255)),
             random.choice(range(255)))
 
+    def remove_colors(self, message):
+        """
+        This function removes every color from a message
+        @param message: The specified message.
+        @type message: str
+        @return: The color-removed message
+        @rtype: str
+        """
+        for color in vars(self).keys():
+            message.replace(str(vars(self)[color]), "")
+        return message
+
     def success_message(self, success, begins_with, ends_with):
         """
         This function create a success message.

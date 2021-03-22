@@ -69,7 +69,7 @@ class FlagManager(Manager):
                + SEPARATOR + \
                f"-u http://192.168.56.102:8081/ -n 20 -L admin admin\n" \
                + SEPARATOR + \
-               f"-u http://192.168.56.102:8081/ -c cookies.json -o output.xml\n" \
+               f"-u http://192.168.56.102:8081/ -c cookies.json -o ./output_folder\n" \
                + SEPARATOR + \
                f"-u http://192.168.56.102/ -b blacklist.txt -w whitelist.txt\n"
 
@@ -133,7 +133,7 @@ class FlagManager(Manager):
             "-o",
             default=None,
             type=str,
-            help="Specify a file path in which the outputs will be stored (xml).",
+            help="Specify a folder path in which the outputs will be stored as text files.",
             dest="output")
         parser.add_argument(
             "-b",
