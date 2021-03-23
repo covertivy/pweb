@@ -6,17 +6,16 @@ from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 import json
 
-# ------------- Consts -----------------
+# ------------- {Consts} -----------------
 CHECK_STRING = "Check"
 CHANGING_SIGN = "X1Y"
 WAITING_TIME = 10
 TEXT_TYPES = ["text", "password"]
-# ---------------------------------------
 
-# ------------------------- Browser methods -------------------------
+# ------------------------- {Browser methods} -------------------------
 
 
-def new_browser(data: Classes.Data, page=None,
+def new_browser(data: Classes.Data, page: Classes.Page = None,
                 debug: bool = False, interceptor=None) -> webdriver.Chrome:
     """
     Function creates a new browser instance for new session.
@@ -32,7 +31,7 @@ def new_browser(data: Classes.Data, page=None,
     options = webdriver.ChromeOptions()
     if not debug:
         # If it's not debug, the chromium will be headless.
-        options.add_argument("headless")
+        options.headless = True
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
     try:
         browser = webdriver.Chrome(executable_path=data.driver, options=options)
@@ -40,9 +39,10 @@ def new_browser(data: Classes.Data, page=None,
         # In case of failure, we need to try again
         return new_browser(data, page, debug, interceptor)
 
-    def default_interceptor(request: selenium_request):
+    def default_interceptor(request):
         """
         Inner function acts like proxy, it aborts every requests that we don't want
+        @type request: selenium_request.Request
         @param request: The current request
         @return: None
         """
@@ -59,12 +59,13 @@ def new_browser(data: Classes.Data, page=None,
     browser.set_page_load_timeout(60)
     if page:
         # Only if a page was specified
-        if type(page) is Classes.SessionPage:
-            # In case of session page
-            browser.get(page.parent)  # Getting parent URL
-            for cookie in page.cookies:  # Adding cookies
-                browser.add_cookie(cookie)
-            # Getting the page again, with the cookies
+        if page.parent:
+            browser.get(page.parent.url)  # Getting parent URL
+        else:
+            browser.get(page.url)  # Getting current URL
+        for cookie in page.cookies:  # Adding cookies
+            browser.add_cookie(cookie)
+        # Getting the page again, with the cookies
         browser.get(page.url)
     return browser
 
@@ -83,7 +84,6 @@ def submit_form(inputs: list, browser: webdriver.Chrome, data: Classes.Data) -> 
     start = time.time()  # Getting time of normal input
     # The elements we want to submit
     elements = list()
-    # Maybe check entire legth without destroying everything...
     if browser.requests:
         del browser.requests
     try:
@@ -127,26 +127,40 @@ def enter_cookies(data: Classes.Data, browser: webdriver.Chrome, url: str) -> bo
     @param url: The current URL
     @return: True - The cookies were added, False - The cookies were not added
     """
+    def add_cookie(a_cookie: dict):
+        """
+        Inner function enter one cookie dictionary and checks if it was already in the browser
+        @param a_cookie: Specified cookie
+        @return: None
+        """
+        for b_cookie in browser.get_cookies():
+            if a_cookie["name"] == b_cookie["name"]:
+                # The cookies already in browser
+                for key in a_cookie.keys():
+                    b_cookie[key] = a_cookie[key]
+            else:
+                # The cookie is not in the browser
+                browser.add_cookie(a_cookie)
     browser.get(url)
-    before = browser.get_cookies()
+    before = list(browser.get_cookies())
     if data.cookies:
         try:
             with open(data.cookies) as json_file:
                 cookies = json.load(json_file)
                 if type(cookies) is list:
                     for cookie in cookies:
-                        browser.add_cookie(cookie)
+                        add_cookie(cookie)
                 if type(cookies) is dict:
-                    browser.add_cookie(cookies)
+                    add_cookie(cookies)
         except Exception:
             return False
+        browser.get(url)
         if before != browser.get_cookies():
             # Changed the cookies
-            browser.get(url)
             return True
     return False
 
-# ------------------------------ Helper methods ------------------------------
+# ------------------------------ {Helper methods} ------------------------------
 
 
 def get_random_str(content: str) -> str:

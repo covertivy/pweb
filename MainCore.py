@@ -5,32 +5,18 @@ import PluginManager
 import AddressManager
 import PageManager
 import VulnerabilityManager
-import datetime
-import signal
-import sys
+from colors import COLOR_MANAGER
 import os
-from colors import COLOR_MANAGER, startup
-
-
-def get_data() -> Data:
-    """
-    Function gets the Data object to a initial check stage
-    @return: Data object that ready for the Page manager
-    """
-    data = FlagManager.get_final_args(FlagManager.parse_args())  # Get arguments from command line.
-    if data.verbose:
-        # Print startup logo and current time.
-        print(startup())
-        print(f"{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}")
-    AddressManager.set_target(data)
-    return data
+import psutil
 
 
 def print_data(data: Data):
     """
-    Function prints the inserted data
-    @param data: The data object of the program
-    @return: None
+    This function prints the given data to the console.
+
+    @param data: The data object of the program.
+    @type data: Data.
+    @return: None.
     """
     print(f"\n{COLOR_MANAGER.PINK + COLOR_MANAGER.HEADER}Inserted data:{COLOR_MANAGER.ENDC}")
     for line in str(data).split("\n"):
@@ -38,43 +24,62 @@ def print_data(data: Data):
     print(COLOR_MANAGER.ENDC)
 
 
-def signal_handler(sig, frame):
-    """
-    Function wait for a key iterrupt and killing the process safely
-    @sig: something related to the signal handler
-    @frame: something related to the signal handler
-    @return: None
-    """
-    COLOR_MANAGER.print_warning("You have decided to close the process, please wait few seconds...\n", "\n\t")
-    sys.exit(0)
-
-
 def main():
     """
-    Function connects the different managers together
-    @return: None
+    This function connects the different managers together.
+    @return: None.
     """
-    os.system("color")
-    signal.signal(signal.SIGINT, signal_handler)
+    os.system("color")  # Without it, the COLOR_MANAGER won't work.
     try:
-        data = get_data()  # Get data through flag manager, address manager and page manager.
-        if data.port == 0:
-            # If the user asked for ports scan (-P) there is no need to continue the run
-            exit()
-        print_data(data)
-        PageManager.logic(data)  # Get all pages from website
-        PluginManager.generate_check_device()  # Generate Check Device in our directory.
-        VulnerabilityManager.logic(data)
+        # Initiate class instances
+        data = Data()
+        function_order = [
+            FlagManager.FlagManager().logic,  # Get arguments from command line.
+            AddressManager.AddressManager().logic,  # Check specified address.
+            print_data,  # Print given arguments.
+            PageManager.PageManager().logic,  # Get all the pages from the website.
+            PluginManager.PluginManager().logic,  # Generate the `Check Device` in our directory.
+            VulnerabilityManager.VulnerabilityManager().logic  # Run plugins with the `Check Device`.
+        ]
+        # Starting the process
+        for function in function_order:
+            # Activating every function
+            function(data)
         print(COLOR_MANAGER.ENDC)
+    except KeyboardInterrupt as e:
+        # The user pressed ctrl+c
+        COLOR_MANAGER.print_warning("You have decided to close the process, please wait few seconds...\n", "\n\t")
     except Exception as e:
         if len(e.args) == 2:
             COLOR_MANAGER.print_error(str(e.args[0]), str(e.args[1]))
         else:
             COLOR_MANAGER.print_error(str(e))
     finally:
+        # Every time the program has finished it's run.
+        finishing_up()
+
+
+def finishing_up():
+    """
+    Every time the program has finished we need to remove every instance of ChromeDriver processes from memory.
+    @return: None.
+    """
+    try:
+        # We check if we have deleted every chromedriver instance.
+        for proc in psutil.process_iter():
+            try:
+                if "chrome" in proc.name() and '--test-type=webdriver' in proc.cmdline():
+                    psutil.Process(proc.pid).terminate()  # Deleting chromedriver processes from memory.
+            except Exception as e:
+                # In case of required permission.
+                continue
+        # Deleting the `check device` file after the program has finished it's run.
         if os.path.exists('CheckDevice.py'):
             os.remove('CheckDevice.py')
         exit(code=0)
+    except KeyboardInterrupt as e:
+        # If we are interrupted we must check again to prevent partial deletion of processes.
+        finishing_up()
 
 
 if __name__ == "__main__":
