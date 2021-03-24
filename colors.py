@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import random
+import os
 
 LOGO = r"                           __" + "\n" \
        r"                          /\ \   " + "\n" \
@@ -26,6 +27,8 @@ def startup():
 
 class Colors:
     def __init__(self):
+        os.system("color")  # Without it, the COLOR_MANAGER won't work.
+
         self.ENDC = "\033[0m"  # Clear all ANSI changes.
         self.BOLD = "\033[1m"
         self.UNDERLINE = "\033[4m"
@@ -92,8 +95,9 @@ class Colors:
         @return: The color-removed message
         @rtype: str
         """
-        for color in vars(self).keys():
-            message.replace(str(vars(self)[color]), "")
+        colors = vars(self)  # Dictionary of the class variables
+        for color in colors.keys():
+            message = message.replace(colors[color], "")
         return message
 
     def success_message(self, success, begins_with, ends_with):

@@ -29,7 +29,6 @@ def main():
     This function connects the different managers together.
     @return: None.
     """
-    os.system("color")  # Without it, the COLOR_MANAGER won't work.
     try:
         # Initiate class instances
         data = Data()

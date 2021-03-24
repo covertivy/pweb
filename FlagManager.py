@@ -227,13 +227,7 @@ class FlagManager(Manager):
             data.max_pages = args.number_of_pages
 
         # Set the `output file` name and path.
-        if args.output is not None:
-            if args.output.endswith(".xml"):
-                data.output = args.output
-            else:
-                data.output = args.output + ".xml"
-        else:
-            data.output = args.output
+        data.output = args.output
 
         # Set `blacklist` file path.
         if args.blacklist is not None:
