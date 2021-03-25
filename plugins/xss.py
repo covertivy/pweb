@@ -1,6 +1,5 @@
 import Classes
 import Methods
-from typing import List
 from colors import COLOR_MANAGER
 from bs4 import BeautifulSoup, element
 import re as regex  #? Used `https://regex101.com/` a lot to verify regex string.
@@ -128,7 +127,7 @@ def check(data: Classes.Data):
             continue
         else:
             # Perform payload injection and check for stored xss.
-            allowed_sources: tuple= (True, True)
+            allowed_sources: tuple = (True, True)
             if csp_info is not None:
                 allowed_sources = tuple('*' in allowed_script_sources.keys(),'*' in allowed_image_sources.keys())
                 
@@ -142,7 +141,7 @@ def check(data: Classes.Data):
                 vulnerable_form = vulnerable_forms[vulnerable_form_id][0]
                 successful_payload = vulnerable_forms[vulnerable_form_id][1]
 
-                xss_result.add_page_result(Classes.PageResult(page, f"Found a form that had caused an alert to pop from the following payload: {successful_payload}.\nThe Form is (Form Index [{vulnerable_form_id}]):\n{vulnerable_form}\n"))
+                xss_result.add_page_result(Classes.PageResult(page, f"Found a form that had caused an alert to pop from the following payload: '{successful_payload}'.\nThe Form is (Form Index [{vulnerable_form_id}]):\n{vulnerable_form}\n"))
                 vulnerable_pages.append(page)
     
     vulnerable_stored: list = check_for_stored(data, vulnerable_pages)
@@ -222,7 +221,7 @@ def select_payloads(allowed_sources: tuple):
     return payloads
 
 
-def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: List[str]):
+def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
     """
     This is a function to check every form input for possible stored xss vulnerability.
     A web browser checks for an alert and if it finds one it is vulnerable!
@@ -236,7 +235,7 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: List[str
     vulnerable_forms = {}
     index = 0
     # Create a chrome web browser for current page.
-    browser: webdriver.Chrome = Methods.new_browser(data, page)
+    browser: webdriver.Chrome = Methods.new_browser(data, page, debug=True)
     page_forms: list = Methods.get_forms(page.content)
     if len(page_forms) == 0:
         return None
@@ -248,19 +247,15 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: List[str
         for payload in payloads:
             inputs = list(form_details["inputs"])
             for input_tag in inputs:
-                # Using the specified value
-                input_tag = dict(input_tag)
-                if "name" in input_tag.keys():
-                    # Only if the input has a name
-                    if not input_tag["value"]:
-                        # There is no given value to the input tag
-                        input_tag["value"] = payload
-                elif input_tag.get('name', None):
-                    continue
-
+                form_details = Methods.fill_input(form_details, input_tag, payload)
+            
             try:
                 # Submit the form that was injected with the payload (in `try` because could raise an error).
-                Methods.submit_form(inputs, browser, data)      
+                Methods.submit_form(form_details["inputs"], browser, data)      
+            except:
+                pass
+            
+            try:
                 # Check for alert on page.
                 alert = browser.switch_to.alert
                 alert.accept()
@@ -269,7 +264,7 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: List[str
                 vulnerable_forms[form_id] = (form_details['form'], payload)
                 is_vulnerable = True
             except:
-                pass  # No alert and therefor not vulnerable.
+                pass # No alert and therefor no error.
             finally:
                 if is_vulnerable:
                     break

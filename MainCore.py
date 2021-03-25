@@ -34,7 +34,7 @@ def main():
         data = Data()
         function_order = [
             FlagManager.FlagManager().logic,  # Get arguments from command line.
-            # AddressManager.AddressManager().logic,  # Check specified address.
+            AddressManager.AddressManager().logic,  # Check specified address.
             print_data,  # Print given arguments.
             PageManager.PageManager().logic,  # Get all the pages from the website.
             PluginManager.PluginManager().logic,  # Generate the `Check Device` in our directory.

@@ -128,8 +128,7 @@ def submit_form(inputs, browser, data):
     else:
         data.mutex.release()
     run_time = time.time() - start
-    content = browser.page_source
-    return content, run_time
+    return run_time
 
 
 def enter_cookies(data, browser, url):
