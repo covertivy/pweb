@@ -36,7 +36,6 @@ class Data:
         self.cookies = None
         self.driver = None
         self.pages = list()  # The pages that were gathered from the website using PageManager.
-        self.results = list()  # Results that were harvested by the plugins.
         self.mutex = Lock()  # Mutex
         self.all_threads_done_event = Event()  # When all the threads have finished their run
         self.results_queue = Queue(20)  # A queue for the check results
@@ -55,7 +54,7 @@ class Data:
         output_str += f"PASSWORD: {self.password}\n" if self.password else f"PASSWORD: Not Specified\n"
         output_str += f"WHITELIST: {self.whitelist}\n" if self.whitelist else f"WHITELIST: Not Specified\n"
         output_str += f"BLACKLIST: {self.blacklist}\n" if self.blacklist else f"BLACKLIST: Not Specified\n"
-        output_str += f"OUTPUT FILE: {self.output}\n" if self.output else f"OUTPUT FILE: Not Specified\n"
+        output_str += f"OUTPUT FOLDER: {self.output}\n" if self.output else f"OUTPUT FOLDER: Not Specified\n"
         output_str += f"COOKIES FILE: {self.cookies}\n" if self.cookies else f"COOKIES FILE: Not Specified\n"
         output_str += f"RECURSIVE: {self.recursive}\n"
         output_str += f"VERBOSE: {self.verbose}\n"

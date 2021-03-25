@@ -105,9 +105,9 @@ class OutputManager(Classes.Manager):
         @return None
         """
         if not self.__files:
-            COLOR_MANAGER.print_error("Looks like there is nothing to save to the files, try again.", "\t", "\n")
+            COLOR_MANAGER.print_error("Looks like there is nothing to save to the files, try again.", "\n\t", "\n")
             return
-        COLOR_MANAGER.print_success(f"Saving Results to Output File ({data.output})...", "\t", "\n")
+        COLOR_MANAGER.print_success(f"Saving Results to Output Files in {self.__folder} folder...", "\n\t", "\n")
         for file in self.__files.keys():
             path = os.path.join(self.__folder, file + ".txt")
             with open(path, "w") as f:
