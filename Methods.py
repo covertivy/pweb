@@ -83,8 +83,8 @@ def submit_form(inputs, browser, data):
     @param browser: The webdriver object
     @type data: Classes.Data
     @param data: The data object of the program
-    @rtype: set
-    @return: Set of (The content of the resulted page, The time the action took).
+    @rtype: float
+    @return: The time the action took.
     """
     # In case of multi-threading, we need to make sure that no one is interrupting anyone
     data.mutex.acquire()
@@ -311,7 +311,8 @@ def inject(data, page, form, interceptor=None):
                 inputs[index]["value"] = new_inputs[index]["value"]
         break  # We found the form we were looking for
     # Submitting the new form
-    content, run_time = submit_form(inputs, browser, data)
+    run_time = submit_form(inputs, browser, data)
+    content = browser.page_source
     browser.quit()
     return content, run_time, check_string
 

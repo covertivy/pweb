@@ -190,7 +190,7 @@ def get_response(inputs, referer, data, page):
                     check_string = Methods.get_random_str(browser.page_source)
                     check_strings.append(check_string)
                     input_tag["value"] = check_string
-        content, run_time = Methods.submit_form(inputs, browser, data)
+        Methods.submit_form(inputs, browser, data)
         current_referer = None
         content = browser.page_source
         browser.quit()
