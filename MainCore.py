@@ -75,7 +75,7 @@ def finishing_up():
         # Deleting the `check device` file after the program has finished it's run.
         if os.path.exists('CheckDevice.py'):
             os.remove('CheckDevice.py')
-        exit(code=0)
+        exit()
     except KeyboardInterrupt as e:
         # If we are interrupted we must check again to prevent partial deletion of processes.
         finishing_up()
