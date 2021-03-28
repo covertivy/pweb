@@ -111,6 +111,7 @@ class FlagManager(Manager):
             dest="port")
         parser.add_argument(
             "-c",
+            "--cookies",
             default=None,
             type=str,
             help="Enter the path to a JSON file which have a list of cookies or one cookie, "

@@ -1,7 +1,8 @@
+import bs4
 import Classes
 import Methods
 from colors import COLOR_MANAGER
-from bs4 import BeautifulSoup, element
+from bs4 import BeautifulSoup, element, Tag
 import re as regex  #? Used `https://regex101.com/` a lot to verify regex string.
 from seleniumwire import webdriver
 
@@ -235,7 +236,7 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
     vulnerable_forms = {}
     index = 0
     # Create a chrome web browser for current page.
-    browser: webdriver.Chrome = Methods.new_browser(data, page, debug=True)
+    browser: webdriver.Chrome = Methods.new_browser(data, page)
     page_forms: list = Methods.get_forms(page.content)
     if len(page_forms) == 0:
         return None
@@ -531,7 +532,7 @@ def check_form_inputs(form_inputs: list, suspicious_scripts: dict):
             vuln_raises += script_str.count("FormData")
 
         for form_input in form_inputs:
-            form_object = soup.Tag(form_input.parent)
+            form_object = Tag(form_input.parent)
 
             if (
                 form_object.get("id") is not None
