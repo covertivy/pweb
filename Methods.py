@@ -205,7 +205,7 @@ def get_text_inputs(inputs):
     text_inputs = list()
     for input_tag in inputs:
         # Using the specified value
-        if "name" in input_tag.keys():
+        if "name" and "type" in input_tag.keys():
             # Only if the input has a name
             if input_tag["type"] and \
                     any(input_tag["type"] == input_type for input_type in TEXT_TYPES):

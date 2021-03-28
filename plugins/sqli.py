@@ -7,7 +7,8 @@ import Methods
 COLOR = COLOR_MANAGER.rgb(255, 0, 128)
 MINIMUM_ATTEMPTS = 3
 MAXIMUM_ATTEMPTS = 3
-NON_BLIND_WORDS = ["error", "fail"]
+ERROR_WORDS = ["error", "fail"]
+QUERY_WORDS = ["sleep", "limit"]
 
 # ----------------------- {Global variables} ------------------------------
 comments = {"#": [f"sleep({Methods.WAITING_TIME})"],
@@ -107,9 +108,11 @@ def sql_injection(page, form, data):
     global query
     text_inputs = Methods.get_text_inputs(form["inputs"])  # Getting the text inputs
     words_count = dict()
-    for key in NON_BLIND_WORDS:
+    for key in ERROR_WORDS:
         words_count[key] = 0
-    words_count["sleep"] = 0
+    for key in QUERY_WORDS:
+        words_count[key] = 0
+    input_in_dom = False
     normal_time = 0
     normal_attempts = 0
 
@@ -117,7 +120,9 @@ def sql_injection(page, form, data):
         # Injecting
         temp_form = Methods.fill_input(form, dict(), "")
         fill_temp_form(temp_form)
-        content, run_time, s = Methods.inject(data, page, temp_form)
+        content, run_time, string = Methods.inject(data, page, temp_form)
+        if string in content:
+            input_in_dom = True  # If the form prints the input to the dom
         for key in words_count.keys():
             if content.lower().count(key) > words_count[key]:
                 words_count[key] = content.lower().count(key)
@@ -135,14 +140,23 @@ def sql_injection(page, form, data):
             content, run_time, string = Methods.inject(data, page, temp_form)
             injection_time = run_time  # Injected input run time
             injection_attempts = 1
-            for key in NON_BLIND_WORDS:
-                if content.lower().count(key) > words_count[key] and\
-                        (string in content or content.lower().count("sleep") > words_count["sleep"]):
-                    # The screen printed an error message
-                    page_result.description += f"The text parameter '{text_inputs[0]['name']}'."
-                    non_blind_problem.add_page_result(page_result, "\n")
-                    comments = {comment: [sleep]}  # Found the data base's sleep function and comment
-                    return
+            for key in ERROR_WORDS:
+                if content.lower().count(key) > words_count[key]:
+                    # If there is a error word key in the content
+                    found = False
+                    if input_in_dom and query not in content:
+                        # Normal input printed to the screen, sleep query did not
+                        found = True
+                    elif string not in content and \
+                            any(content.lower().count(word) > words_count[word] for word in QUERY_WORDS):
+                        # The check string was not printed, but the query words were printed.
+                        found = True
+                    if found:
+                        # The screen printed an error message
+                        page_result.description += f"The text parameter '{text_inputs[0]['name']}'."
+                        non_blind_problem.add_page_result(page_result, "\n")
+                        comments = {comment: [sleep]}  # Found the data base's sleep function and comment
+                        return
             while True:
                 difference = injection_time/injection_attempts - normal_time/normal_attempts
                 if difference < Methods.WAITING_TIME + 2:

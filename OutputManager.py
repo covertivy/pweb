@@ -87,7 +87,7 @@ class OutputManager(Classes.Manager):
             if not check_results.error and not check_results.warning:
                 output += COLOR_MANAGER.success_message("No vulnerabilities were "
                                                         "found on the specified website's pages.",
-                                                        "\t", "\n\n")
+                                                        "\t", "\n")
             return output
         for check_result in check_results.results:
             output += self.__manage_check_result(check_result, color)
@@ -95,13 +95,11 @@ class OutputManager(Classes.Manager):
             output += self.__manage_lines(check_results.conclusion, color,
                                           f"\t{COLOR_MANAGER.BOLD_PURPLE}Conclusion: {COLOR_MANAGER.ENDC}",
                                           "\t" + len("Conclusion: ") * " ")
-        return output + "\n"
+        return output
 
-    def __save_results(self, data):
+    def __save_results(self):
         """
         This function saves the results to the xml output file.
-        @type data: Classes.Data
-        @param data: The data object of the program.
         @return None
         """
         if not self.__files:
@@ -168,4 +166,4 @@ class OutputManager(Classes.Manager):
         empty_the_queue()
 
         if self.__folder:
-            self.__save_results(data)  # Saving the results in the output file.
+            self.__save_results()  # Saving the results in the output file.

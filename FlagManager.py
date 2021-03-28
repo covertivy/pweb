@@ -207,8 +207,6 @@ class FlagManager(Manager):
 
         # Set the `Website URL`.
         data.url = args.url
-        if data.url is not None and data.url[-1] != "/":
-            data.url += "/"
 
         # Check if `all_ports` flag is set.
         if args.all_ports:
