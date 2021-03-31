@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from threading import Lock, Event
 from queue import Queue
-from seleniumwire import request as selenium_request
+from seleniumwire import webdriver, request as selenium_request
 
 
 class Manager:
@@ -13,6 +13,41 @@ class Manager:
         @return: None
         """
         pass
+
+
+class Browser(webdriver.Chrome):
+    def __init__(self, executable_path, options, remove_alerts):
+        super(Browser, self).__init__(executable_path=executable_path, options=options)
+        self.__remove_alerts = remove_alerts
+
+    def dump_alerts(self, count=-1):
+        """
+        This function makes sure no alerts are on a page to avoid exceptions.
+        @return: None.
+        """
+        dumped = 0
+        while count == -1 or count > 0:
+            try:
+                # Check for alert on page.
+                alert = self.switch_to.alert
+                alert.accept()
+                count -= 1
+                dumped += 1
+            except:
+                # No more alerts on page.
+                break
+        return dumped
+
+    def get(self, url):
+        super(Browser, self).get(url)
+        if self.__remove_alerts:
+            self.dump_alerts()
+
+    def refresh(self):
+        super(Browser, self).refresh()
+        if self.__remove_alerts:
+            self.dump_alerts()
+
 
 
 class Data:

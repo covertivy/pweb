@@ -15,7 +15,7 @@ TEXT_TYPES = ["text", "password"]
 # ------------------------- {Browser methods} -------------------------
 
 
-def new_browser(data, page=None, debug=False, interceptor=None):
+def new_browser(data, page=None, debug=False, interceptor=None, remove_alerts=True):
     """
     Function creates a new browser instance for new session.
     @type data: Classes.Data
@@ -26,7 +26,9 @@ def new_browser(data, page=None, debug=False, interceptor=None):
     @param debug: In case of debugging, True will make the chromium window appear.
     @type interceptor: def
     @param interceptor: A pointer to an interceptor.
-    @rtype: webdriver.Chrome
+    @type remove_alerts: bool
+    @param remove_alerts: If True, the browser will remove every alert
+    @rtype: Classes.Browser
     @return: Chrome driver object.
     """
     if not data.driver:
@@ -38,7 +40,7 @@ def new_browser(data, page=None, debug=False, interceptor=None):
         options.headless = True
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
     try:
-        browser = webdriver.Chrome(executable_path=data.driver, options=options)
+        browser = Classes.Browser(data.driver, options, remove_alerts)
     except Exception as e:
         # In case of failure, we need to try again
         return new_browser(data, page, debug, interceptor)

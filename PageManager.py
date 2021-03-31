@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from colors import COLOR_MANAGER
-from Classes import Data, Manager, Page
+from Classes import Data, Manager, Page, Browser
 import Methods
 import requests
 from seleniumwire import webdriver
@@ -110,7 +110,6 @@ class PageManager(Manager):
                 # Does not have the same cookies of the other session pages
                 return False
             browser.get(session_page.url)
-            browser.refresh()
             if Methods.remove_forms(browser.page_source) != Methods.remove_forms(session_page.content):
                 # Does not have the same content
                 different_content += 1
@@ -183,7 +182,7 @@ class PageManager(Manager):
         @param data: The data object of the program
         @type curr_url: str
         @param curr_url: The current URL the function checks
-        @type browser: webdriver.Chrome
+        @type browser: Browser
         @param browser: The web driver that gets the rendered content
         @param previous: The previous page
         @type recursive: bool
@@ -222,7 +221,6 @@ class PageManager(Manager):
             if not request or request.response.status_code != 200:
                 # Did not find the request
                 raise Exception()  # The request is not found
-            browser.refresh()
         except Exception:
             self.__troublesome.append(curr_url)
             return
@@ -387,7 +385,7 @@ class PageManager(Manager):
         Function looking for login forms and scraping session pages through them
         @type data: Classes.Data
         @param data: The data object of the program
-        @type browser: webdriver.Chrome
+        @type browser: Browser
         @param browser: The webdriver browser
         @return: None
         """
@@ -397,7 +395,7 @@ class PageManager(Manager):
         if not self.__non_session_browser[0]:
             # If the instance is not already set, set up a new one
             self.__non_session_browser[0] = Methods.new_browser(data)
-    
+        
         non_session_pages = list(data.pages)
         pages_backup = list(data.pages)
         login_pages = list()
