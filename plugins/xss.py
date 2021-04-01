@@ -94,6 +94,9 @@ def check(data: Classes.Data):
         if 'html' not in page.type:
             continue
 
+        browser = Methods.new_browser(data, page)
+        initial_alert_count = browser.dump_alerts()
+
         csp_info: dict= csp_check(page)
 
         if csp_info is not None:
@@ -130,7 +133,8 @@ def check(data: Classes.Data):
             # Perform payload injection and check for stored xss.
             allowed_sources: tuple = (True, True)
             if csp_info is not None:
-                allowed_sources = tuple('*' in allowed_script_sources.keys(),'*' in allowed_image_sources.keys())
+                allowed_sources = tuple('*' in allowed_script_sources.keys(),
+                                        '*' in allowed_image_sources.keys())
                 
             allowed_payloads = select_payloads(allowed_sources)
             vulnerable_forms: dict = brute_force_alert(data, page, allowed_payloads)
@@ -143,7 +147,7 @@ def check(data: Classes.Data):
                 successful_payload = vulnerable_forms[vulnerable_form_id][1]
 
                 xss_result.add_page_result(Classes.PageResult(page, f"Found a form that had caused an alert to pop from the following payload: '{successful_payload}'.\nThe Form is (Form Index [{vulnerable_form_id}]):\n{vulnerable_form}\n"))
-                vulnerable_pages.append(page)
+                vulnerable_pages.append(tuple(page, initial_alert_count))
     
     vulnerable_stored: list = check_for_stored(data, vulnerable_pages)
     if vulnerable_stored is not None and len(vulnerable_stored) != 0:
@@ -208,6 +212,7 @@ def select_payloads(allowed_sources: tuple):
     payloads = list()
     with open(PAYLOADS_PATH, 'r') as file:
         file_read = file.read()
+        file_read = file_read.replace(' ', '')
         payloads = file_read.split('\n')
     
     if not all(allowed_sources):
@@ -236,7 +241,8 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
     vulnerable_forms = {}
     index = 0
     # Create a chrome web browser for current page.
-    browser: webdriver.Chrome = Methods.new_browser(data, page)
+    browser: Classes.Browser = Methods.new_browser(data, page)
+    browser.dump_alerts()
     page_forms: list = Methods.get_forms(page.content)
     if len(page_forms) == 0:
         return None
@@ -283,9 +289,10 @@ def check_for_stored(data: Classes.Data, vulnerable_pages: list):
         return
     
     stored_xss_pages = list()
-    for page in vulnerable_pages:
+    for page, initial_alert_count in vulnerable_pages:
         # Create new browser.
-        browser: webdriver.Chrome = Methods.new_browser(data, page)
+        browser: Classes.Browser = Methods.new_browser(data, page)
+        browser.dump_alerts(initial_alert_count)
         try:
             # Check for alert on already vulnerable page.
             alert = browser.switch_to.alert
@@ -496,7 +503,7 @@ def find_input_fields(html: str):
     all_inputs = soup.find_all(input_filter_function)
     form_inputs = []  # Empty list of inputs that are children of a form.
 
-    # Seperate form inputs.
+    # Separate form inputs.
     for inp in all_inputs:
         # Check if input parent is form.
         if inp.parent.name == "form":
