@@ -1,13 +1,10 @@
 #!/usr/bin/python3
 from colors import COLOR_MANAGER
-import Data
-from bs4 import BeautifulSoup
-import time
-import random
+import Classes
+import Methods
 
 # ----------------- {Consts} ---------------------
 COLOR = COLOR_MANAGER.rgb(255, 0, 128)
-TIME = 10
 MINIMUM_ATTEMPTS = 3
 MAXIMUM_ATTEMPTS = 3
 ERROR_WORDS = ["error", "fail"]
@@ -36,29 +33,17 @@ def check(data):
     @param data: The data object of the program
     @return: None
     """
-    sqli_results = Data.CheckResults("SQL Injection", COLOR)
+    sqli_results = Classes.CheckResults("SQL Injection", COLOR)
 
-    data.mutex.acquire()
-    pages = data.pages  # Achieving the pages
-    aggressive = data.aggressive
-    data.mutex.release()
     try:
-        # Filtering the pages list
-        pages = filter_forms(pages, aggressive)
-        # [(page object, form dict),...]
-        if len(pages):
-            # There are pages with at least one text input
-            if aggressive:
-                # The user specified his agreement
-                for page, form in pages:
-                    try:
-                        result = sql_injection(page, form, data)
-                        if result.problem:
-                            # If there is a problem with the page
-                            sqli_results.page_results.append(result)
-                    except Exception:
-                        continue
-            else:
+        data.mutex.acquire()
+        pages = data.pages  # Achieving the pages
+        aggressive = data.aggressive
+        data.mutex.release()
+        for page in pages:
+            # Getting the forms of each page
+            forms = filter_forms(page)
+            if forms and not aggressive:
                 # The user did not specified his agreement
                 # and there is a vulnerable page
                 sqli_results.warning = "The plugin check routine requires injecting text boxes," \
@@ -96,51 +81,15 @@ def filter_forms(page):
     @rtype: list
     @return: List of forms
     """
-    filtered_pages = list()
-    for page in pages:
-        if "html" not in page.type.lower():
-            # If it is a non-html page we can not check for sql injection
-            continue
-        forms = BeautifulSoup(page.content, "html.parser").find_all("form")  # Getting page forms
+    filtered_forms = list()
+    if "html" in page.type.lower():
+        # We can check only html files
+        forms = Methods.get_forms(page.content)  # Getting page forms
         for form in forms:
-            try:
-                # Get the form action (requested URL)
-                action = form.attrs.get("action").lower()
-                # Get the form method (POST, GET, DELETE, etc)
-                # If not specified, GET is the default in HTML
-                method = form.attrs.get("method", "get").lower()
-                # Get all form inputs
-                inputs = []
-                for input_tag in form.find_all("input"):
-                    # Get type of input form control
-                    input_type = input_tag.attrs.get("type", "text")
-                    # Get name attribute
-                    input_name = input_tag.attrs.get("name")
-                    # Get the default value of that input tag
-                    input_value = input_tag.attrs.get("value", "")
-                    # Add everything to that list
-                    input_dict = dict()
-                    if input_type:
-                        input_dict["type"] = input_type
-                    if input_name:
-                        input_dict["name"] = input_name
-                    input_dict["value"] = input_value
-                    inputs.append(input_dict)
-                # Setting the form dictionary
-                form_details = dict()
-                form_details["action"] = action
-                form_details["method"] = method
-                form_details["inputs"] = inputs
-                # Adding the page and it's form to the list
-                if len(get_text_inputs(form_details)) != 0:
-                    # If there are no text inputs, it can't be sql injection
-                    filtered_pages.append((page, form_details))
-                    if not aggressive:
-                        # The user did not specified his agreement
-                        return filtered_pages
-            except Exception:
-                continue
-    return filtered_pages
+            if len(Methods.get_text_inputs(form["inputs"])) != 0:
+                # If there are no text inputs, it can't be command injection
+                filtered_forms.append(form)
+    return filtered_forms
 
 
 def sql_injection(page, form, data):
@@ -210,9 +159,9 @@ def sql_injection(page, form, data):
                         return
             while True:
                 difference = injection_time/injection_attempts - normal_time/normal_attempts
-                if difference < TIME + 2:
+                if difference < Methods.WAITING_TIME + 2:
                     # It did not took too much time
-                    if difference > TIME - 2:
+                    if difference > Methods.WAITING_TIME - 2:
                         # The injection slowed down the server response
                         page_result.description += f"The text parameter '{text_inputs[0]['name']}'" \
                                                     " slowed down the server by %3.1f seconds." % difference
@@ -248,19 +197,8 @@ def fill_temp_form(form):
     @param form: The temp form
     @return: None
     """
-    # Block PNG, JPEG and GIF images
-    if request.path.endswith(('.png', '.jpg', '.gif')):
-        # Save run time
-        request.abort()
-
-
-def get_text_inputs(form) -> list:
-    """
-    Function gets the text input names from a form
-    @param form: a dictionary of inputs of action form
-    @return: list of text inputs
-    """
-    text_inputs = list()
+    if len(Methods.get_text_inputs(form["inputs"])) < 3:
+        return
     for input_tag in form["inputs"]:
         if input_tag in Methods.get_text_inputs(form["inputs"]):
             # If it is a text input

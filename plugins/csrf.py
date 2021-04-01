@@ -1,12 +1,10 @@
 #!/usr/bin/python3
 from colors import COLOR_MANAGER
-import Data
-from bs4 import BeautifulSoup
-import random
+import Classes
+import Methods
 
 # ---------------------------------- {Consts} --------------------------
 COLOR = COLOR_MANAGER.rgb(0, 255, 200)
-CHECK_STRING = "check"
 OUTSIDE_URL = "https://google.com"
 
 # ---------------------------- {Global variables} ----------------------------
@@ -36,30 +34,16 @@ def check(data):
     @param data: The data object of the program
     @return: None
     """
-    csrf_results = Data.CheckResults("CSRF", COLOR)
-    data.mutex.acquire()
-    pages = list(data.pages)  # Achieving the pages
-    aggressive = data.aggressive
-    data.mutex.release()
+    csrf_results = Classes.CheckResults("CSRF", COLOR)
     try:
-        # Filtering the pages list
-        pages = filter_forms(pages, aggressive)
-        # [(page object, form dict),...]
-        if len(pages):
-            # There are pages with at least one text input
-            if data.aggressive:
-                # The user specified his agreement
-                for page, form in pages:
-                    browser = set_browser(data, page)
-                    try:
-                        result = csrf(page, form, data, browser)
-                        if result.problem:
-                            # If there is a problem with the page
-                            csrf_results.page_results.append(result)
-                    except Exception:
-                        pass
-                    browser.close()
-            else:
+        data.mutex.acquire()
+        pages = data.pages  # Achieving the pages
+        aggressive = data.aggressive
+        data.mutex.release()
+        for page in pages:
+            # Getting the forms of each page
+            forms = filter_forms(page)
+            if forms and not aggressive:
                 # The user did not specified his agreement
                 # and there is a vulnerable page
                 csrf_results.warning = "The plugin check routine requires injecting text boxes," \
@@ -100,11 +84,8 @@ def filter_forms(page):
         # The only thing we need is a HTML session page with a form
         for form in Methods.get_forms(page.content):
             # Adding the page and it's form to the list
-            filtered_pages.append((page, form))
-            if not aggressive:
-                # The user did not specified his agreement
-                return filtered_pages
-    return filtered_pages
+            filtered_forms.append(form)
+    return filtered_forms
 
 
 def csrf(page, form, data):
@@ -130,28 +111,31 @@ def csrf(page, form, data):
         success_message = "The website is using CSRF prevention methods in it's response headers."
         return
     # Setting new browser
+    browser = Methods.new_browser(data, page, interceptor=interceptor)
     token = False
     try:
-        for new_form in get_forms(browser.page_source):
-            if new_form["action"] == form["action"]:
-                # Same form
-                for input_tag in form["inputs"]:
-                    # Using the specified value
-                    if "name" in input_tag.keys() and input_tag["value"]:
-                        # Only if the input has a name and a value
-                        for new_input_tag in new_form["inputs"]:
-                            if "name" in new_input_tag.keys() and new_input_tag["name"] == input_tag["name"]:
-                                # If the input tags have the same name
-                                if new_input_tag["value"] != input_tag["value"]:
-                                    # If the input tags have different values
-                                    token = True
-                                    break
-                        if token:
-                            # No need to look for another input tag
-                            break
+        for new_form in Methods.get_forms(browser.page_source):
+            if new_form["action"] != form["action"]:
+                # Not the same form
+                continue
+            for input_tag in form["inputs"]:
+                # Using the specified value
+                if "name" in input_tag.keys() and input_tag["value"]:
+                    # Only if the input has a name and a value
+                    for new_input_tag in new_form["inputs"]:
+                        if "name" in new_input_tag.keys() and new_input_tag["name"] == input_tag["name"]:
+                            # If the input tags have the same name
+                            if new_input_tag["value"] != input_tag["value"]:
+                                # If the input tags have different values
+                                token = True
+                                break
+                    if token:
+                        # No need to look for another input tag
+                        break
                 break  # There is only one fitting form
     except Exception:
         pass
+    browser.quit()
     if token:
         # Found a csrf token
         success_message = "The website is using the CSRF Tokens method in it's forms."
@@ -161,12 +145,9 @@ def csrf(page, form, data):
         # Dangerous by itself
         problem_get.add_page_result(page_result, ", ")
     # Getting normal content
-    normal_content = get_response(form, page.url, data, browser)\
-        .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent.url, "")
+    normal_content = get_response(form["inputs"], page.url, data, page)
     # Getting redirected content
-    browser.get(page.url)
-    referer_content = get_response(form, OUTSIDE_URL, data, browser)\
-        .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent.url, "")
+    referer_content = get_response(form["inputs"], OUTSIDE_URL, data, page)
     if normal_content == referer_content:
         # Does not filter referer header
         problem_referer.add_page_result(page_result, ", ")
@@ -194,25 +175,25 @@ def get_response(inputs, referer, data, page):
     """
     content = ""
     try:
-        inputs = list()
+        # Sending the request
+        global current_referer
+        current_referer = referer
+        browser = Methods.new_browser(data, page, interceptor=interceptor)
         check_strings = list()
-        for input_tag in form["inputs"]:
+        inputs = [dict(input_tag) for input_tag in inputs]
+        for input_tag in inputs:
             # Using the specified value
-            new_input_tag = dict(input_tag)
-            if "name" in new_input_tag.keys():
+            if input_tag in Methods.get_text_inputs(inputs):
                 # Only if the input has a name
-                if not new_input_tag["value"]:
+                if not input_tag["value"]:
                     # There is no value to the input tag
-                    while True:
-                        # While the random string in the list
-                        check_string = CHECK_STRING + str(random.randint(1, 200))
-                        if check_string not in check_strings:
-                            break
+                    check_string = Methods.get_random_str(browser.page_source)
                     check_strings.append(check_string)
                     input_tag["value"] = check_string
-        Methods.submit_form(inputs, browser, data)
+        Methods.submit_form(data, browser, inputs)
         current_referer = None
         content = browser.page_source
+        browser.quit()
         for string in check_strings:
             # In case that the random string is in the content
             content = content.replace(string, "")
@@ -224,28 +205,6 @@ def get_response(inputs, referer, data, page):
         pass
     finally:
         return Methods.remove_forms(content)
-
-
-def set_browser(data: Data.Data, page: Data.SessionPage):
-    """
-    Function Sets up a new browser, sets its cookies and checks if the cookies are valid
-    @param data: The data object of the program
-    @param page: The current page
-    @return: The browser object
-    """
-    url = page.url
-    if page.parent:
-        # If the page is not first
-        url = page.parent.url
-    browser = data.new_browser()  # Getting new browser
-    browser.request_interceptor = interceptor  # Setting request interceptor
-    browser.set_page_load_timeout(60)  # Setting long timeout
-    browser.get(url)  # Getting parent URL
-    for cookie in page.cookies:  # Adding cookies
-        browser.add_cookie(cookie)
-    # Getting the page again, with the cookies
-    browser.get(page.url)
-    return browser
 
 
 def interceptor(request):
