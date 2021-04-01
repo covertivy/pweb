@@ -15,7 +15,7 @@ TEXT_TYPES = ["text", "password"]
 
 
 # ------------------------- Webdriver methods -------------------------
-def new_browser(data: Classes.Data, page: Classes.Page=None, debug: bool=False, interceptor: function=None, remove_alerts: bool=True):
+def new_browser(data: Classes.Data, page: Classes.Page=None, debug: bool=False, interceptor=None, remove_alerts: bool=True):
     """
     This function creates a new browser instance with a new session.
 
@@ -295,7 +295,7 @@ def remove_forms(content: str):
     return content
 
 
-def inject(data: Classes.Data, page: Classes.Page, form: dict, interceptor: function=None):
+def inject(data: Classes.Data, page: Classes.Page, form: dict, interceptor=None):
     """
     This function injects a string into a text box and submits the form.
 
