@@ -194,16 +194,6 @@ class PageManager(Manager):
         if len(data.pages) == data.max_pages:
             # In case of specified amount of pages, the function will stop
             return
-    else:
-        # Non-Session page
-        page = Page(
-            browser.current_url,
-            request.response.status_code,
-            request.response.headers.get("Content-Type").split(";")[0],
-            browser.page_source,
-            request,
-            previous)
-        color = COLOR_MANAGER.BLUE
 
         if curr_url in self.__logout_list:
             # Do not open logout pages
