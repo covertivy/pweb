@@ -4,15 +4,35 @@ import Data
 from bs4 import BeautifulSoup
 import random
 
+# ---------------------------------- {Consts} --------------------------
 COLOR = COLOR_MANAGER.rgb(0, 255, 200)
 CHECK_STRING = "check"
 OUTSIDE_URL = "https://google.com"
+
+# ---------------------------- {Global variables} ----------------------------
 current_referer = None
+problem_get = Classes.CheckResult("The use of GET request when submitting the form might be vulnerable.",
+                                  "You can change the method of the request to POST.",
+                                  "The plugin checks the DOM of the action form,\n"
+                                  "in case of GET method, we recommend to change it or make sure it is secure.\n"
+                                  "For a CSRF attacker it will be much harder to use this form for his attack"
+                                  " if the form uses POST method.")
+problem_referer = Classes.CheckResult("The form submission did not detect the 'Referer' header,"
+                                      " which was not the same page that has the vulnerable form.",
+                                      "You can validate the 'Referer' header of the request,"
+                                      " so it will perform only actions from the current page.",
+                                      "The plugin submits the action form with 3 different referer header values,\n"
+                                      "first one is the URL of the page, the second one is https://google.com, "
+                                      "and the third one is another page from the session, with the same domain.\n"
+                                      "If the first result is the same as the other results, "
+                                      "it might point out that the action form is letting other sources to use it.")
+success_message = ""
 
 
-def check(data: Data.Data):
+def check(data):
     """
     Function checks the website for CSRF
+    @type data: Classes.Data
     @param data: The data object of the program
     @return: None
     """
@@ -42,69 +62,43 @@ def check(data: Data.Data):
             else:
                 # The user did not specified his agreement
                 # and there is a vulnerable page
-                csrf_results.page_results = "The plugin check routine requires submitting web forms," \
+                csrf_results.warning = "The plugin check routine requires injecting text boxes," \
                                             " read about (-A) in our manual and try again."
-    except Exception:
-        csrf_results.page_results = "Something went wrong..."
+                break
+            for form in forms:
+                try:
+                    csrf(page, form, data)
+                except Exception:
+                    continue
+    except Exception as e:
+        csrf_results.error = "Something went wrong..."
+
+    if problem_get.page_results or problem_referer.page_results:
+        # Found a vulnerability
+        csrf_results.warning = "WARNING: The CSRF vulnerability is relevant only for action" \
+                               " forms that involve the user's data."
+    csrf_results.success = success_message
+    csrf_results.results.append(problem_get)
+    csrf_results.results.append(problem_referer)
+    csrf_results.conclusion = "The best way to prevent CSRF vulnerability is to use CSRF Tokens, " \
+                              "read more about it in: 'https://portswigger.net/web-security/csrf/tokens'."
     data.mutex.acquire()
-    data.results.append(csrf_results)  # Adding the results to the data object
+    data.results_queue.put(csrf_results)  # Adding the results to the queue
     data.mutex.release()
 
 
-def get_forms(content: str):
-    form_dict = list()
-    forms = BeautifulSoup(content, "html.parser").find_all("form")  # Getting page forms
-    for form in forms:
-        try:
-            # Get the form action (requested URL)
-            action = form.attrs.get("action").lower()
-            # Get the form method (POST, GET, DELETE, etc)
-            # If not specified, GET is the default in HTML
-            method = form.attrs.get("method", "get").lower()
-            # Get all form inputs
-            inputs = []
-            for input_tag in form.find_all("input"):
-                # Get type of input form control
-                input_type = input_tag.attrs.get("type", "text")
-                # Get name attribute
-                input_name = input_tag.attrs.get("name")
-                # Get the default value of that input tag
-                input_value = input_tag.attrs.get("value", "")
-                # Add everything to that list
-                input_dict = dict()
-                if input_type:
-                    input_dict["type"] = input_type
-                if input_name:
-                    input_dict["name"] = input_name
-                input_dict["value"] = input_value
-                inputs.append(input_dict)
-            # Setting the form dictionary
-            form_details = dict()
-            form_details["action"] = action
-            form_details["method"] = method
-            form_details["inputs"] = inputs
-            form_dict.append(form_details)
-        except Exception:
-            continue
-    return form_dict
-
-
-def filter_forms(pages: list, aggressive: bool) -> list:
+def filter_forms(page):
     """
     Function filters the pages that has an action form
-    @param pages:List of pages
-    @param aggressive: The specified user's agreement
-    @return: List of pages that has an action form
+    @type page: Classes.Page
+    @param page: The current page
+    @rtype: list
+    @return: List of forms
     """
-    filtered_pages = list()
-    for page in pages:
-        if "html" not in page.type.lower():
-            # If it is a non-html page we can not check for command injection
-            continue
-        if type(page) is not Data.SessionPage:
-            # If the page is not a session page
-            continue
-        for form in get_forms(page.content):
+    filtered_forms = list()
+    if "html" in page.type.lower() and page.is_session:
+        # The only thing we need is a HTML session page with a form
+        for form in Methods.get_forms(page.content):
             # Adding the page and it's form to the list
             filtered_pages.append((page, form))
             if not aggressive:
@@ -113,17 +107,19 @@ def filter_forms(pages: list, aggressive: bool) -> list:
     return filtered_pages
 
 
-def csrf(page: Data.SessionPage, form: dict, data: Data.Data, browser) -> Data.PageResult:
+def csrf(page, form, data):
     """
     Function checks the page for csrf
+    @type page: : Classes.SessionPage
     @param page: The current page
+    @type form: dict
     @param form: The page's action form
+    @type data: Classes.Data
     @param data: The data object of the program
-    @param browser: The Chrome browser object
-    @return: Page result object
+    @return: None
     """
-    page_result = Data.PageResult(page, "", "")
-    vulnerability = [False, False, False]
+    page_result = Classes.PageResult(page, f"Action form: '{form['action']}'")
+    global success_message
     # Checking for csrf tokens
     request_headers = page.request.headers
     response_headers = page.request.response.headers
@@ -131,7 +127,8 @@ def csrf(page: Data.SessionPage, form: dict, data: Data.Data, browser) -> Data.P
             ("SameSite=Strict" in response_headers.get("Set-Cookie") or
              "csrf" in response_headers.get("Set-Cookie")) or request_headers.get("X-Csrf-Token"):
         # Found a SameSite or csrf token in response header
-        return page_result
+        success_message = "The website is using CSRF prevention methods in it's response headers."
+        return
     # Setting new browser
     token = False
     try:
@@ -157,11 +154,12 @@ def csrf(page: Data.SessionPage, form: dict, data: Data.Data, browser) -> Data.P
         pass
     if token:
         # Found a csrf token
-        return page_result
+        success_message = "The website is using the CSRF Tokens method in it's forms."
+        return
     # Join the url with the action (form request URL)
     if form["method"] == "get":
         # Dangerous by itself
-        vulnerability[0] = True
+        problem_get.add_page_result(page_result, ", ")
     # Getting normal content
     normal_content = get_response(form, page.url, data, browser)\
         .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent.url, "")
@@ -171,28 +169,27 @@ def csrf(page: Data.SessionPage, form: dict, data: Data.Data, browser) -> Data.P
         .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent.url, "")
     if normal_content == referer_content:
         # Does not filter referer header
-        vulnerability[1] = True
-    else:
+        problem_referer.add_page_result(page_result, ", ")
+    elif page.parent:
         # Getting local redirected content
-        browser.get(page.url)
-        referer_content = get_response(form, page.parent.url, data, browser)\
-            .replace(page.url, "").replace(OUTSIDE_URL, "").replace(page.parent.url, "")
+        referer_content = get_response(form["inputs"], page.parent.url, data, page)
         if normal_content == referer_content:
             # Does not filter referer header
-            vulnerability[2] = True
-    if sum(vulnerability):
-        # If there is a vulnerability
-        write_vulnerability(vulnerability, page_result)
-    return page_result
+            problem_referer.add_page_result(page_result, ", ")
 
 
-def get_response(form: dict, referer: str, data: Data.Data, browser) -> str:
+def get_response(inputs, referer, data, page):
     """
     Function submits a specified form and gets the result content
-    @param form: A dictionary of inputs of action form
+    @type inputs: list
+    @param inputs: A list of inputs of action form
+    @type referer: str
     @param referer: A specified referer address
+    @type data: Classes.Data
     @param data: The data object of the program
-    @param browser: The browser object
+    @type page: Classes.SessionPage
+    @param page: The current page
+    @rtype: str
     @return: The content of the resulted page
     """
     content = ""
@@ -212,21 +209,21 @@ def get_response(form: dict, referer: str, data: Data.Data, browser) -> str:
                         if check_string not in check_strings:
                             break
                     check_strings.append(check_string)
-                    new_input_tag["value"] = check_string
-            inputs.append(new_input_tag)
-        # Sending the request
-        global current_referer
-        current_referer = referer
-        data.submit_form(inputs, browser)
+                    input_tag["value"] = check_string
+        Methods.submit_form(inputs, browser, data)
         current_referer = None
         content = browser.page_source
         for string in check_strings:
             # In case that the random string is in the content
             content = content.replace(string, "")
+        # In case of referrers in content
+        content = content.replace(page.url, "").replace(OUTSIDE_URL, "")
+        if page.parent:
+            content = content.replace(page.parent.url, "")
     except Exception as e:
         pass
     finally:
-        return content
+        return Methods.remove_forms(content)
 
 
 def set_browser(data: Data.Data, page: Data.SessionPage):
@@ -254,6 +251,7 @@ def set_browser(data: Data.Data, page: Data.SessionPage):
 def interceptor(request):
     """
     Function acts like proxy, it changes the requests header
+    @type request: Methods.selenium_request.Request
     @param request: The current request
     @return: None
     """
@@ -266,34 +264,3 @@ def interceptor(request):
         # In case of referer specified
         del request.headers['Referer']  # Remember to delete the header first
         request.headers['Referer'] = current_referer  # Spoof the referer
-
-
-def write_vulnerability(results: list, page_result: Data.PageResult):
-    """
-    Function writes the problem and the solution of every problem that is found for a page
-    @param results: a dictionary of text input and list of chars it didn't filter
-    @param page_result: page result object of the current page
-    @return: None
-    """
-    lines = sum(results)
-    padding = " " * 25
-    if results[0]:
-        # GET problem
-        page_result.problem += f"The use of GET request when submitting the form might be vulnerable."
-        page_result.solution += f"You can change the method of the request to POST.\n{padding} "
-        if lines > 1:
-            # More than one line
-            page_result.problem += "\n" + padding
-    if results[1] or results[2]:
-        # Referer problem
-        page_result.solution += "You can validate the 'Referer' header of the request," \
-                                f" so it will perform only actions from the current page.\n{padding} "
-        if results[1]:
-            # Referer to outside of the domain
-            page_result.problem += "The page did not detect the 'Referer' header, which was outside of your domain."
-        else:
-            # Referer to inside of the domain
-            page_result.problem += "The page did not detect the 'Referer' header," \
-                                   f" which was not the same page that has the vulnerable form."
-    page_result.solution += "The best way to prevent CSRF vulnerability is to use CSRF Tokens, " \
-                            f"\n{padding} read more about it in: 'https://portswigger.net/web-security/csrf/tokens'."

