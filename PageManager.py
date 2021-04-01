@@ -15,7 +15,8 @@ class PageManager(Manager):
     def __init__(self):
         # ----------------------------- {Global variables} -----------------------------
         self.__type_colors = {
-            "HTML": None,  # The session is the one that decides
+            "HTML": COLOR_MANAGER.BLUE,  # The session is the one that decides
+            "Session_HTML": COLOR_MANAGER.ORANGE,
             "Javascript": COLOR_MANAGER.GREEN,
             "CSS": COLOR_MANAGER.PINK,
             "XML": COLOR_MANAGER.YELLOW,
@@ -110,6 +111,7 @@ class PageManager(Manager):
                 # Does not have the same cookies of the other session pages
                 return False
             browser.get(session_page.url)
+            browser.refresh()
             if Methods.remove_forms(browser.page_source) != Methods.remove_forms(session_page.content):
                 # Does not have the same content
                 different_content += 1
@@ -416,20 +418,20 @@ class PageManager(Manager):
                 continue
             new_url = browser.current_url
             content = browser.page_source
-            if any(new_url == url for origin, url, form in login_pages):
+            if new_url in login_pages:
                 # The new url is already in the list
                 continue
+            login_pages.append(new_url)
             login = True
             for p in data.pages:
                 if new_url == p.url:
                     # Have the same URL
-                    if Methods.remove_forms(content) != Methods.remove_forms(p.content):
-                        # Different content
-                        login_pages.append((page.url, new_url, form_details))
-                    else:
-                        login = False  # Same URL and content
+                    if Methods.remove_forms(content) == Methods.remove_forms(p.content):
+                        # Same URL and content
+                        login = False  
                     break  # We do not need to check anymore
             if not login:
+                # Login attempt failed.
                 continue
     
             # Setting login flags
@@ -458,6 +460,14 @@ class PageManager(Manager):
             break
         # Closing the non session browser
         self.__non_session_browser[0].quit()
+        if len(data.pages) == len(non_session_pages):
+            # Session never append
+            if login_pages:
+                # Found at least one login page
+                raise Exception("The login attempt failed, your username or password might be invalid.\n", "\n\t")
+            else:
+                # No login pages were found.
+                raise Exception("The program did not find any login form in the listed pages.\n", "\n\t")
 
     def __set_lists(self, data):
         """
@@ -506,7 +516,6 @@ class PageManager(Manager):
             # The user specified valid data for both
             COLOR_MANAGER.print_warning("The process will filter"
                                         " the pages only by the white list.", "\t")
-            black_list = list()  # Setting the black list to default
         print(COLOR_MANAGER.ENDC)
 
     def __set_cookies(self, data, browser):
@@ -514,7 +523,7 @@ class PageManager(Manager):
         Function sets the specified cookies
         @type data: Classes.Data
         @param data: The data object of the program
-        @type browser: webdriver.Chrome
+        @type browser: Browser
         @param browser: The webdriver browser
         @return: None
         """
@@ -554,18 +563,22 @@ class PageManager(Manager):
             self.__get_pages(data, data.url, browser, None)
             # We need to clear them in case of session pages
             self.__already_checked.clear()
-        except Exception as e:
+        except Exception:
             raise Exception("Unknown problem occurred.", "\t")
         # In case of empty website
         if len(data.pages) == 0:
-            raise Exception("Your website doesn't have any valid web pages", "\t")
-        # Getting the session pages
-        self.__get_session_pages(data, browser)
+            raise Exception("Your website doesn't have any valid web pages.", "\t")
+        if len(data.pages) != data.max_pages:
+            # Getting the session pages.
+            self.__get_session_pages(data, browser)
         # Printing the results
         self.__print_result(data)
         # Transferring only the valid pages
         data.pages = [page for page in data.pages if self.__valid_in_list(page)]
         browser.quit()
+        # In case of empty website
+        if len(data.pages) == 0:
+            raise Exception("Your website doesn't have any web pages that fit your requirements.\n", "\t")
 
     def __print_result(self, data):
         """
@@ -582,7 +595,10 @@ class PageManager(Manager):
                 found = False
                 for key in type_count.keys():
                     if str(key).lower() in page.type:
-                        type_count[key] += 1
+                        if key == "HTML" and page.is_session:
+                            type_count["Session_HTML"] += 1
+                        else:
+                            type_count[key] += 1
                         found = True
                 if not found:
                     type_count["Other"] += 1
@@ -597,14 +613,12 @@ class PageManager(Manager):
                              if self.__valid_in_list(page) and not page.is_session]
         if non_session_pages:
             print(f"\t{COLOR_MANAGER.BLUE}Pages that does not require login authorization:{COLOR_MANAGER.ENDC}")
-            self.__type_colors["HTML"] = COLOR_MANAGER.BLUE
             print_type(non_session_pages, "+")
         session_pages = [page for page in data.pages
                          if self.__valid_in_list(page) and page.is_session]
         if session_pages:
             # If there are session pages
             print(f"\t{COLOR_MANAGER.ORANGE}Pages that requires login authorization:{COLOR_MANAGER.ENDC}")
-            self.__type_colors["HTML"] = COLOR_MANAGER.ORANGE
             print_type(session_pages, "+")
         not_included = [page for page in data.pages if not self.__valid_in_list(page)]
         if not_included:

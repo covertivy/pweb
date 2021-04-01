@@ -16,7 +16,7 @@ class Manager:
 
 
 class Browser(webdriver.Chrome):
-    def __init__(self, executable_path, options, remove_alerts):
+    def __init__(self, executable_path, options, remove_alerts=True):
         super(Browser, self).__init__(executable_path=executable_path, options=options)
         self.__remove_alerts = remove_alerts
 
@@ -26,14 +26,14 @@ class Browser(webdriver.Chrome):
         @return: None.
         """
         dumped = 0
-        while count == -1 or count > 0:
+        while count == -1 or count:
             try:
                 # Check for alert on page.
                 alert = self.switch_to.alert
                 alert.accept()
                 count -= 1
                 dumped += 1
-            except:
+            except Exception:
                 # No more alerts on page.
                 break
         return dumped
