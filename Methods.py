@@ -26,7 +26,7 @@ def new_browser(data: Classes.Data, page: Classes.Page=None, debug: bool=False, 
     @param debug: In case of debugging, in case of True the chrome window will appear.
     @type debug: bool
     @param interceptor: A pointer to an interceptor function.
-    @type interceptor: function
+    @type interceptor: a function
     @param remove_alerts: If True, the browser will remove every alert on `get` and `refresh` methods.
     @type remove_alerts: bool
     @return: Chrome web driver object.
@@ -142,14 +142,14 @@ def submit_form(data: Classes.Data, browser: Classes.Browser, inputs: list):
     return run_time
 
 
-def enter_cookies(data: Classes.Data, browser: Classes.Data, url: str):
+def enter_cookies(data: Classes.Data, browser: Classes.Browser, url: str):
     """
     This function adds the specified cookies to the browser instance.
     
     @param data: The data object of the program.
     @type data: Classes.Data
     @param browser: The webdriver object.
-    @type browser: webdriver.Chrome
+    @type browser: Classes.Browser
     @param url: The URL to get after inserting the cookies.
     @type url: str
     @return: True - The cookies were added, False - The cookies were not added.
@@ -173,12 +173,12 @@ def enter_cookies(data: Classes.Data, browser: Classes.Data, url: str):
                 browser.add_cookie(cookie)
 
     browser.get(url)
-    before = list(browser.get_cookies()) # Cookies before adding our cookies.
+    before = list(browser.get_cookies())  # Cookies before adding our cookies.
     if data.cookies:
         # If a cookies file was specified.
         try:
             with open(data.cookies) as json_file:
-                cookies = json.load(json_file) # Load cookies json as a python object.
+                cookies = json.load(json_file)  # Load cookies json as a python object.
 
                 # Try to add every cookie that was found.
                 if type(cookies) is list:
@@ -340,7 +340,7 @@ def inject(data: Classes.Data, page: Classes.Page, form: dict, interceptor=None)
                 inputs[index]["value"] = new_inputs[index]["value"]
         break  # We found the form we were looking for.
     # Submitting the new form.
-    run_time = submit_form(inputs, browser, data)
+    run_time = submit_form(data, browser, inputs)
     content = browser.page_source
     browser.quit()
     return content, run_time, check_string
