@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from Classes import Data
+from Data import Data
 import FlagManager
 import PluginManager
 import AddressManager
