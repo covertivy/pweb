@@ -8,6 +8,7 @@ from seleniumwire import webdriver
 
 COLOR = COLOR_MANAGER.TURQUOISE
 PAYLOADS_PATH = "./plugins/xsspayloads.txt" # Assuming the payloads are in the same directory as this script file.
+INJECTION_IDENTIFIER = "##~##"
 
 #*-------------------------------------------------------------------
 # >                XSS CONSTANT OUTPUT STRINGS                      |
@@ -94,9 +95,6 @@ def check(data: Classes.Data):
         if 'html' not in page.type:
             continue
 
-        browser = Methods.new_browser(data, page)
-        initial_alert_count = browser.dump_alerts()
-
         csp_info: dict= csp_check(page)
 
         if csp_info is not None:
@@ -144,10 +142,12 @@ def check(data: Classes.Data):
             
             for vulnerable_form_id in vulnerable_forms.keys():
                 vulnerable_form = vulnerable_forms[vulnerable_form_id][0]
-                successful_payload = vulnerable_forms[vulnerable_form_id][1]
+                vulnerable_input = vulnerable_forms[vulnerable_form_id][1]
+                successful_payload = vulnerable_forms[vulnerable_form_id][2]
+                special_string = vulnerable_forms[vulnerable_form_id][3]
 
-                xss_result.add_page_result(Classes.PageResult(page, f"Found a form that had caused an alert to pop from the following payload: '{successful_payload}'.\nThe Form is (Form Index [{vulnerable_form_id}]):\n{vulnerable_form}\n"))
-                vulnerable_pages.append(tuple(page, initial_alert_count))
+                xss_result.add_page_result(Classes.PageResult(page, f"Found a form that had caused an alert to pop from the following payload: '{successful_payload}'.\nThe Vulnerable Form is (Form Index [{vulnerable_form_id}]):\n{vulnerable_form}\nThe Vulnerable Input is:\n{vulnerable_input}\n"))
+                vulnerable_pages.append(tuple(page, special_string))
     
     vulnerable_stored: list = check_for_stored(data, vulnerable_pages)
     if vulnerable_stored is not None and len(vulnerable_stored) != 0:
@@ -213,7 +213,7 @@ def select_payloads(allowed_sources: tuple):
     with open(PAYLOADS_PATH, 'r') as file:
         file_read = file.read()
         file_read = file_read.replace(' ', '')
-        payloads = file_read.split('\n')
+        payloads = file_read.split()
     
     if not all(allowed_sources):
         for payload in payloads:
@@ -242,20 +242,26 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
     index = 0
     # Create a chrome web browser for current page.
     browser: Classes.Browser = Methods.new_browser(data, page)
-    browser.dump_alerts()
     page_forms: list = Methods.get_forms(page.content)
     if len(page_forms) == 0:
         return None
+    
+    content: str = page.content
     for form_details in page_forms:
         is_vulnerable = False # A boolean indicating whether the current form was vulnerable or not.
         form_id = index
         index += 1
         # Check each known xss payload against input from $PAYLOADS_PATH text file. (more can be added if needed).
         for payload in payloads:
+            input_ids = {}
             inputs = list(form_details["inputs"])
             for input_tag in inputs:
-                form_details = Methods.fill_input(form_details, input_tag, payload)
-            
+                special_str = Methods.get_random_str(content)
+                content += f"\n{special_str}"
+                curr_payload = payload.replace(INJECTION_IDENTIFIER, special_str)
+                input_ids[special_str] = input_tag
+                form_details = Methods.fill_input(form_details, input_tag, curr_payload)
+
             try:
                 # Submit the form that was injected with the payload (in `try` because could raise an error).
                 Methods.submit_form(form_details["inputs"], browser, data)      
@@ -263,13 +269,18 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
                 pass
             
             try:
-                # Check for alert on page.
-                alert = browser.switch_to.alert
-                alert.accept()
-                # If did not catch an error then page has popped an alert.
-                # Add to vulnerable forms dictionary.
-                vulnerable_forms[form_id] = (form_details['form'], payload)
-                is_vulnerable = True
+                while not is_vulnerable:
+                    # Check for alert on page.
+                    alert = browser.switch_to.alert
+                    # If did not catch an error then page has popped an alert.
+                    # Add to vulnerable forms dictionary.
+                    if alert.text in input_ids.keys():
+                        vulnerable_form = form_details['form']
+                        soup = BeautifulSoup(vulnerable_form, "html.parser")
+                        vulnerable_input = soup.find("input", {"name": input_ids[alert.text]["name"]})
+                        vulnerable_forms[form_id] = (vulnerable_form, vulnerable_input, payload, alert.text)
+                        is_vulnerable = True
+                    alert.accept()
             except:
                 pass # No alert and therefor no error.
             finally:
@@ -289,17 +300,20 @@ def check_for_stored(data: Classes.Data, vulnerable_pages: list):
         return
     
     stored_xss_pages = list()
-    for page, initial_alert_count in vulnerable_pages:
+    for page, special_string in vulnerable_pages:
         # Create new browser.
         browser: Classes.Browser = Methods.new_browser(data, page)
-        browser.dump_alerts(initial_alert_count)
+        found = False
         try:
-            # Check for alert on already vulnerable page.
-            alert = browser.switch_to.alert
-            alert.accept()
-            # If did not catch an error then page has popped an alert.
-            # Page is vulnerable to stored xss.
-            stored_xss_pages.append(page)
+            while not found:
+                # Check for alert on page.
+                alert = browser.switch_to.alert
+                # If did not catch an error then page has popped an alert.
+                # Add to vulnerable forms dictionary.
+                if alert.text == special_string:
+                    stored_xss_pages.append(page)
+                    found = True
+                alert.accept()
         except:
             pass # No alert and therefor not vulnerable.
         finally:

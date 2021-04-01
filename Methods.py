@@ -190,8 +190,9 @@ def get_random_str(content):
     @rtype: str
     @return: random string
     """
+    string = CHECK_STRING
     while True:
-        string = CHECK_STRING + str(random.randint(0, 1000))
+        string += str(random.randint(0, 10))
         if string not in content:
             return string
 
