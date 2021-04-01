@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from Data import Data
+from Classes import Data
 import FlagManager
 import PluginManager
 import AddressManager
@@ -12,7 +12,7 @@ import psutil
 
 def print_data(data: Data):
     """
-    This function prints the given data to the console.
+    This function prints the given data object to the console in a nice format.
 
     @param data: The data object of the program.
     @type data: Data.
@@ -27,10 +27,11 @@ def print_data(data: Data):
 def main():
     """
     This function connects the different managers together.
+    
     @return: None.
     """
     try:
-        # Initiate class instances
+        # Initiate manager classes instances.
         data = Data()
         function_order = [
             FlagManager.FlagManager().logic,  # Get arguments from command line.
@@ -40,13 +41,13 @@ def main():
             PluginManager.PluginManager().logic,  # Generate the `Check Device` in our directory.
             VulnerabilityManager.VulnerabilityManager().logic  # Run plugins with the `Check Device`.
         ]
-        # Starting the process
+        # Starting the process.
         for function in function_order:
-            # Activating every function
+            # Executing every function.
             function(data)
         print(COLOR_MANAGER.ENDC)
     except KeyboardInterrupt as e:
-        # The user pressed ctrl+c
+        # The user pressed ctrl+c.
         COLOR_MANAGER.print_warning("You have decided to close the process, please wait few seconds...\n", "\n\t")
     except Exception as e:
         if len(e.args) == 2:
@@ -54,13 +55,14 @@ def main():
         else:
             COLOR_MANAGER.print_error(str(e))
     finally:
-        # Every time the program has finished it's run.
+        # Every time the program has finished it's run we clean up.
         finishing_up()
 
 
 def finishing_up():
     """
     Every time the program has finished we need to remove every instance of ChromeDriver processes from memory.
+
     @return: None.
     """
     try:

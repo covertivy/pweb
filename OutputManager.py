@@ -6,23 +6,24 @@ import os
 
 class OutputManager(Classes.Manager):
     def __init__(self):
-        self.__folder = str()
+        self.__folder = str() # Output folder path.
         self.__files = dict()
 
     @staticmethod
-    def __manage_lines(message, color, first_line_start, new_line_start):
+    def __manage_lines(message: str, color: str, first_line_start: str, new_line_start: str):
         """
-        Function separates the lines of the message
+        This function formats the lines of the message.
+
+        @param message: The message to print.
         @type message: str
-        @param message: The message to print
+        @param color: The color to print the message in.
         @type color: str
-        @param color: The color of the printed message.
+        @param first_line_start: First line begins with this string.
         @type first_line_start: str
-        @param first_line_start: First line begins with this string
+        @param new_line_start: Every new line begins with this string.
         @type new_line_start: str
-        @param new_line_start: Every new line begins with this string
+        @return: The reformatted output string.
         @rtype: str
-        @return: A line output string
         """
         index = 0
         output = str()
@@ -31,20 +32,21 @@ class OutputManager(Classes.Manager):
                 # First line.
                 output += f"{first_line_start}{color}{line}\n"
             else:
-                # Any other line
+                # Any other line.
                 output += f"{new_line_start}{color}{line}\n"
             index += 1
         return output
 
-    def __manage_check_result(self, check_result, color):
+    def __manage_check_result(self, check_result: Classes.CheckResult, color: str):
         """
-        Function prints a specific check result
+        This function formats a specific check result to a string.
+
+        @param check_result: The check result to be printed.
         @type check_result: Classes.CheckResult
-        @param check_result: The printed check result
+        @param color: The color to print the text in.
         @type color: str
-        @param color: The color of the text
+        @return: The check result output string.
         @rtype: str
-        @return: The check result output string
         """
         output = str()
         if not check_result.page_results:
@@ -54,29 +56,23 @@ class OutputManager(Classes.Manager):
             if page_result.description:
                 output += self.__manage_lines(page_result.description, color, "\t\t- ", "\t\t  ")
         if check_result.problem:
-            output += self.__manage_lines(check_result.problem, color,
-                                          f"\t{COLOR_MANAGER.BOLD_RED}Problem: {COLOR_MANAGER.ENDC}",
-                                          "\t" + len("Problem: ") * " ")
+            output += self.__manage_lines(check_result.problem, color, f"\t{COLOR_MANAGER.BOLD_RED}Problem: {COLOR_MANAGER.ENDC}", "\t" + len("Problem: ") * " ")
         if check_result.solution:
-            output += self.__manage_lines(check_result.solution, color,
-                                          f"\t{COLOR_MANAGER.BOLD_GREEN}Solution: {COLOR_MANAGER.ENDC}",
-                                          "\t" + len("Solution: ") * " ")
+            output += self.__manage_lines(check_result.solution, color, f"\t{COLOR_MANAGER.BOLD_GREEN}Solution: {COLOR_MANAGER.ENDC}", "\t" + len("Solution: ") * " ")
         if check_result.explanation:
-            output += self.__manage_lines(check_result.explanation, color,
-                                          f"\t{COLOR_MANAGER.BOLD_LIGHT_GREEN}Explanation: {COLOR_MANAGER.ENDC}",
-                                          "\t" + len("Explanation: ") * " ")
+            output += self.__manage_lines(check_result.explanation, color, f"\t{COLOR_MANAGER.BOLD_LIGHT_GREEN}Explanation: {COLOR_MANAGER.ENDC}", "\t" + len("Explanation: ") * " ")
         return output + "\n"
 
-    def __manage_check_results(self, check_results, color):
+    def __manage_check_results(self, check_results: Classes.CheckResults, color: str):
         """
-        This function prints the latest check results.
-        @type check_results: Classes.CheckResults
+        This function formats the latest check results to a string.
+        
         @param check_results: The check results given by the plugins.
+        @type check_results: Classes.CheckResults
+        @return: The check results output string.
         @rtype: str
-        @return: The check results output string
         """
-        output = f"{COLOR_MANAGER.BOLD}{color}- {COLOR_MANAGER.UNDERLINE}" \
-                 f"{check_results.headline}:{COLOR_MANAGER.ENDC}\n"
+        output = f"{COLOR_MANAGER.BOLD}{color}- {COLOR_MANAGER.UNDERLINE}{check_results.headline}:{COLOR_MANAGER.ENDC}\n"
         if check_results.warning:
             output += COLOR_MANAGER.warning_message(check_results.warning, "\t", "\n\n")
         if check_results.error:
@@ -85,22 +81,18 @@ class OutputManager(Classes.Manager):
             if check_results.success:
                 output += COLOR_MANAGER.success_message(check_results.success, "\t", "\n\n")
             if not check_results.error and not check_results.warning:
-                output += COLOR_MANAGER.success_message("No vulnerabilities were "
-                                                        "found on the specified website's pages.",
-                                                        "\t", "\n")
+                output += COLOR_MANAGER.success_message("No vulnerabilities were found on the specified website's pages.", "\t", "\n")
             return output
         for check_result in check_results.results:
             output += self.__manage_check_result(check_result, color)
         if check_results.conclusion:
-            output += self.__manage_lines(check_results.conclusion, color,
-                                          f"\t{COLOR_MANAGER.BOLD_PURPLE}Conclusion: {COLOR_MANAGER.ENDC}",
-                                          "\t" + len("Conclusion: ") * " ")
+            output += self.__manage_lines(check_results.conclusion, color, f"\t{COLOR_MANAGER.BOLD_PURPLE}Conclusion: {COLOR_MANAGER.ENDC}", "\t" + len("Conclusion: ") * " ")
         return output
 
     def __save_results(self):
         """
-        This function saves the results to the xml output file.
-        @return None
+        This function saves the results to the output folder.
+        @return None.
         """
         if not self.__files:
             COLOR_MANAGER.print_error("Looks like there is nothing to save to the files, try again.", "\n\t", "\n")
@@ -111,29 +103,31 @@ class OutputManager(Classes.Manager):
             with open(path, "w") as f:
                 f.write(self.__files[file])
 
-    def __manage_output(self, check_results):
+    def __manage_output(self, check_results: Classes.CheckResults):
         """
-        Function take the current check results, generate its output and print or save it to a file.
-        @type check_results: Classes.CheckResults
+        This function takes the current check results, generates its output string and prints it or saves it to a file.
+        
         @param check_results: The check results given by the plugins.
-        @return: None
+        @type check_results: Classes.CheckResults
+        @return: None.
         """
         color = "" if self.__folder else check_results.color
         output = self.__manage_check_results(check_results, color)
         if not self.__folder:
-            # Printing the message to the screen
+            # Printing the message to the screen.
             print(output)
         else:
-            # Adding the file name and it's content to the dictionary
+            # Adding the file name and it's content to the dictionary.
             self.__files[check_results.headline] = COLOR_MANAGER.remove_colors(output)
 
     def logic(self, data):
         """
         This function controls the general output of the plugins to the screen,
-        prints the check results to the screen or to a xml file and prints the print queue.
-        @type data: Classes.Data
+        prints the check results to the screen or to an output folder.
+        
         @param data: The data object of the program.
-        @return None
+        @type data: Classes.Data
+        @return None.
         """
         if data.output:
             # The user specified a directory path.
@@ -153,10 +147,10 @@ class OutputManager(Classes.Manager):
         print(f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
 
         def empty_the_queue():
-            # Check if there is anything to print.
+            # Check if there are any check results to print.
             data.mutex.acquire()
             while not data.results_queue.empty():
-                # Print the print queue.
+                # Print the check results queue.
                 self.__manage_output(data.results_queue.get())
             data.mutex.release()
 
@@ -166,4 +160,4 @@ class OutputManager(Classes.Manager):
         empty_the_queue()
 
         if self.__folder:
-            self.__save_results()  # Saving the results in the output file.
+            self.__save_results()  # Saving the results in the output folder.
