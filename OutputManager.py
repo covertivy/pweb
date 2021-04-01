@@ -65,7 +65,7 @@ class OutputManager(Classes.Manager):
             output += self.__manage_lines(check_result.explanation, color,
                                           f"\t{COLOR_MANAGER.BOLD_LIGHT_GREEN}Explanation: {COLOR_MANAGER.ENDC}",
                                           "\t" + len("Explanation: ") * " ")
-        return output
+        return output + "\n"
 
     def __manage_check_results(self, check_results, color):
         """

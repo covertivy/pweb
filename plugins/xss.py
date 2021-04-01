@@ -147,7 +147,7 @@ def check(data: Classes.Data):
                 special_string = vulnerable_forms[vulnerable_form_id][3]
 
                 xss_result.add_page_result(Classes.PageResult(page, f"Found a form that had caused an alert to pop from the following payload: '{successful_payload}'.\nThe Vulnerable Form is (Form Index [{vulnerable_form_id}]):\n{vulnerable_form}\nThe Vulnerable Input is:\n{vulnerable_input}\n"))
-                vulnerable_pages.append(tuple(page, special_string))
+                vulnerable_pages.append((page, special_string))
     
     vulnerable_stored: list = check_for_stored(data, vulnerable_pages)
     if vulnerable_stored is not None and len(vulnerable_stored) != 0:
@@ -212,8 +212,14 @@ def select_payloads(allowed_sources: tuple):
     payloads = list()
     with open(PAYLOADS_PATH, 'r') as file:
         file_read = file.read()
-        file_read = file_read.replace(' ', '')
-        payloads = file_read.split()
+        payloads = file_read.split("\n")
+    
+    # Strip redundant spaces.
+    for i in range(len(payloads)):
+        payloads[i] = payloads[i].lstrip().rstrip()
+        if payloads[i] == "":
+            payloads.remove(payloads[i])
+
     
     if not all(allowed_sources):
         for payload in payloads:
@@ -241,7 +247,7 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
     vulnerable_forms = {}
     index = 0
     # Create a chrome web browser for current page.
-    browser: Classes.Browser = Methods.new_browser(data, page)
+    browser: Classes.Browser = Methods.new_browser(data, page, remove_alerts=False)
     page_forms: list = Methods.get_forms(page.content)
     if len(page_forms) == 0:
         return None
@@ -250,15 +256,15 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
     for form_details in page_forms:
         is_vulnerable = False # A boolean indicating whether the current form was vulnerable or not.
         form_id = index
-        index += 1
         # Check each known xss payload against input from $PAYLOADS_PATH text file. (more can be added if needed).
         for payload in payloads:
+            browser.dump_alerts()
             input_ids = {}
-            inputs = list(form_details["inputs"])
+            inputs = Methods.get_text_inputs(form_details["inputs"])
             for input_tag in inputs:
                 special_str = Methods.get_random_str(content)
                 content += f"\n{special_str}"
-                curr_payload = payload.replace(INJECTION_IDENTIFIER, special_str)
+                curr_payload = payload.replace(INJECTION_IDENTIFIER, f"\"{special_str}\"")
                 input_ids[special_str] = input_tag
                 form_details = Methods.fill_input(form_details, input_tag, curr_payload)
 
@@ -275,20 +281,19 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
                     # If did not catch an error then page has popped an alert.
                     # Add to vulnerable forms dictionary.
                     if alert.text in input_ids.keys():
-                        vulnerable_form = form_details['form']
-                        soup = BeautifulSoup(vulnerable_form, "html.parser")
-                        vulnerable_input = soup.find("input", {"name": input_ids[alert.text]["name"]})
-                        vulnerable_forms[form_id] = (vulnerable_form, vulnerable_input, payload, alert.text)
+                        vulnerable_form: Tag = form_details['form']
+                        vulnerable_input = vulnerable_form.findChild("input", {"name": input_ids[alert.text]["name"]})
+                        vulnerable_forms[form_id] = (str(vulnerable_form), str(vulnerable_input), payload, alert.text)
                         is_vulnerable = True
                     alert.accept()
             except:
                 pass # No alert and therefor no error.
             finally:
+                index += 1
                 if is_vulnerable:
                     break
                 # Refresh current page to prepare for next iteration.
                 browser.refresh()
-    
     # Close the webdriver and return results.
     browser.quit()
     return vulnerable_forms
@@ -302,7 +307,7 @@ def check_for_stored(data: Classes.Data, vulnerable_pages: list):
     stored_xss_pages = list()
     for page, special_string in vulnerable_pages:
         # Create new browser.
-        browser: Classes.Browser = Methods.new_browser(data, page)
+        browser: Classes.Browser = Methods.new_browser(data, page, remove_alerts=False)
         found = False
         try:
             while not found:

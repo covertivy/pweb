@@ -119,6 +119,12 @@ def submit_form(inputs, browser, data):
                 element["element"].send_keys(Keys.ENTER)  # Sending the form
             else:
                 element["element"].click()
+            try:
+                browser.switch_to.alert
+            except:
+                continue
+            else:
+                break
         if not len(browser.requests):
             # Did not do anything
             elements[0]["element"].submit()  # Sending the form
@@ -229,7 +235,7 @@ def get_forms(content):
     for form in BeautifulSoup(content, "html.parser").find_all("form"):
         try:
             # Get the form action (requested URL)
-            action = form.attrs.get("action").lower()
+            action = form.attrs.get("action", "").lower()
             # Get the form method (POST, GET, DELETE, etc)
             # If not specified, GET is the default in HTML
             method = form.attrs.get("method", "get").lower()
@@ -252,7 +258,7 @@ def get_forms(content):
             # Adding the form to the list
             forms.append({"action": action, "method": method,
                           "inputs": inputs, "form": form})
-        except Exception:
+        except Exception as e:
             continue
     return forms
 

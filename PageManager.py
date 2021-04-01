@@ -16,7 +16,7 @@ class PageManager(Manager):
         # ----------------------------- {Global variables} -----------------------------
         self.__type_colors = {
             "HTML": COLOR_MANAGER.BLUE,  # The session is the one that decides
-            "Session_HTML": COLOR_MANAGER.ORANGE,
+            COLOR_MANAGER.ORANGE + "HTML": COLOR_MANAGER.ORANGE,
             "Javascript": COLOR_MANAGER.GREEN,
             "CSS": COLOR_MANAGER.PINK,
             "XML": COLOR_MANAGER.YELLOW,
@@ -596,7 +596,7 @@ class PageManager(Manager):
                 for key in type_count.keys():
                     if str(key).lower() in page.type:
                         if key == "HTML" and page.is_session:
-                            type_count["Session_HTML"] += 1
+                            type_count[COLOR_MANAGER.ORANGE + "HTML"] += 1
                         else:
                             type_count[key] += 1
                         found = True

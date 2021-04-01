@@ -44,6 +44,7 @@ class Browser(webdriver.Chrome):
             self.dump_alerts()
 
     def refresh(self):
+        self.dump_alerts()
         super(Browser, self).refresh()
         if self.__remove_alerts:
             self.dump_alerts()
