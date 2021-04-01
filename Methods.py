@@ -6,37 +6,38 @@ from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 import json
 
-# ------------- {Consts} -----------------
+
+# ------------- Constants -----------------
 CHECK_STRING = "Check"
 CHANGING_SIGN = "X1Y"
 WAITING_TIME = 10
 TEXT_TYPES = ["text", "password"]
 
-# ------------------------- {Browser methods} -------------------------
 
-
-def new_browser(data, page=None, debug=False, interceptor=None, remove_alerts=True):
+# ------------------------- Webdriver methods -------------------------
+def new_browser(data: Classes.Data, page: Classes.Page=None, debug: bool=False, interceptor: function=None, remove_alerts: bool=True):
     """
-    Function creates a new browser instance for new session.
-    @type data: Classes.Data
+    This function creates a new browser instance with a new session.
+
     @param data: The data object of the program.
+    @type data: Classes.Data
+    @param page: The page to be opened with the new browser to initialize cookies and get page (optional).
     @type page: Classes.Page
-    @param page: The browser needs the cookies and URL.
+    @param debug: In case of debugging, in case of True the chrome window will appear.
     @type debug: bool
-    @param debug: In case of debugging, True will make the chromium window appear.
-    @type interceptor: def
-    @param interceptor: A pointer to an interceptor.
+    @param interceptor: A pointer to an interceptor function.
+    @type interceptor: function
+    @param remove_alerts: If True, the browser will remove every alert on `get` and `refresh` methods.
     @type remove_alerts: bool
-    @param remove_alerts: If True, the browser will remove every alert
+    @return: Chrome web driver object.
     @rtype: Classes.Browser
-    @return: Chrome driver object.
     """
     if not data.driver:
         # There is no driver file path.
         raise Exception("There is no driver file path", "\t")
     options = webdriver.ChromeOptions()
     if not debug:
-        # If it's not debug, the chromium will be headless.
+        # If it's not debug, the browser will be headless.
         options.headless = True
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
     try:
@@ -45,156 +46,170 @@ def new_browser(data, page=None, debug=False, interceptor=None, remove_alerts=Tr
         # In case of failure, we need to try again
         return new_browser(data, page, debug, interceptor)
 
-    def default_interceptor(request):
+    def default_interceptor(request: selenium_request.Request):
         """
-        Inner function acts like proxy, it aborts every requests that we don't want
-        @type request: selenium_request.Request
+        Inner function that acts like a proxy, it removes any requests we don't want.
+
         @param request: The current request
+        @type request: selenium_request.Request
         @return: None
         """
-        # Block PNG, JPEG and GIF images
+        # Block PNG, JPEG and GIF images.
         if request.path.endswith(('.png', '.jpg', '.gif')):
-            # Save run time
-            request.abort()
-    # Setting request interceptor
+            request.abort() # Abort the unwanted request.
+    
+    # Setting up request interceptor.
     if interceptor:
         browser.request_interceptor = interceptor
     else:
         browser.request_interceptor = default_interceptor
-    # Setting long timeout
+    # Setting long timeout.
     browser.set_page_load_timeout(60)
     if page:
-        # Only if a page was specified
+        # If a page was specified.
         if page.parent:
-            browser.get(page.parent.url)  # Getting parent URL
+            browser.get(page.parent.url)  # Getting parent URL.
         else:
-            browser.get(page.url)  # Getting current URL
-        for cookie in page.cookies:  # Adding cookies
+            browser.get(page.url)  # Getting current URL.
+        for cookie in page.cookies:  # Adding cookies.
             browser.add_cookie(cookie)
-        # Getting the page again, with the cookies
+        # Getting the page again, with the loaded cookies.
         browser.get(page.url)
     return browser
 
 
-def submit_form(inputs, browser, data):
+def submit_form(data: Classes.Data, browser: Classes.Browser, inputs: list):
     """
-    Function submits a specified form
-    @type inputs: list
-    @param inputs: A list of inputs of action form, already full with values
-    @type browser: webdriver.Chrome
-    @param browser: The webdriver object
+    Function submits the specified form.
+    
+    @param data: The data object of the program.
     @type data: Classes.Data
-    @param data: The data object of the program
-    @rtype: float
+    @param browser: The webdriver object.
+    @type browser: Classes.Browser
+    @param inputs: A list of inputs that belong to a form, already filled with their desired values to submit.
+    @type inputs: list
     @return: The time the action took.
+    @rtype: float
     """
-    # In case of multi-threading, we need to make sure that no one is interrupting anyone
+    # In case of multi-threading, we need to make sure that no one is interrupting anyone.
     data.mutex.acquire()
-    # Sending the request
-    start = time.time()  # Getting time of normal input
-    # The elements we want to submit
+    # Sending the request.
+    start = time.time()  # Getting time of normal input.
+    # The elements we want to submit.
     elements = list()
     if browser.requests:
         del browser.requests
     for input_tag in inputs:
         if "type" in input_tag.keys() and input_tag['type'] == "hidden":
             continue
-        # Using the specified value
+        # Using the inserted value.
         if "name" in input_tag.keys():
-            # Only if the input has a name
+            # Only if the input has a name attribute.
             element = browser.find_element_by_name(input_tag["name"])
             try:
                 if input_tag in get_text_inputs(inputs):
-                    # You can send key only to text inputs
+                    # You can only send a key to text inputs.
                     element.send_keys(input_tag["value"])
                 elements.append({"element": element,
                                  "name": input_tag["name"],
                                  "type": input_tag["type"]})
-            except Exception as e:
-                # Could not send key to the form for some reason
+            except:
+                # Could not send keys to the form for some reason.
                 continue
     try:
         for element in elements[::-1]:
             if element["type"] in TEXT_TYPES:
-                element["element"].send_keys(Keys.ENTER)  # Sending the form
+                element["element"].send_keys(Keys.ENTER)  # Sending the form.
             else:
                 element["element"].click()
             try:
+                # Check if page has somehow loaded an alert, if so we know the form was submitted.
                 browser.switch_to.alert
             except:
                 continue
             else:
                 break
         if not len(browser.requests):
-            # Did not do anything
-            elements[0]["element"].submit()  # Sending the form
+            # Did not do anything.
+            elements[0]["element"].submit()  # Sending the form.
     except Exception as e:
-        data.mutex.release()
         if not len(browser.requests):
-            # Did not do anything
+            # Did not do anything.
             raise e
-    else:
+    finally:
         data.mutex.release()
     run_time = time.time() - start
     return run_time
 
 
-def enter_cookies(data, browser, url):
+def enter_cookies(data: Classes.Data, browser: Classes.Data, url: str):
     """
-    Function adds the specified cookie to the browser.
-    @type data: Classes.Data
+    This function adds the specified cookies to the browser instance.
+    
     @param data: The data object of the program.
+    @type data: Classes.Data
+    @param browser: The webdriver object.
     @type browser: webdriver.Chrome
-    @param browser: The webdriver object
+    @param url: The URL to get after inserting the cookies.
     @type url: str
-    @param url: The current URL
+    @return: True - The cookies were added, False - The cookies were not added.
     @rtype: bool
-    @return: True - The cookies were added, False - The cookies were not added
     """
-    def add_cookie(a_cookie):
+    def add_cookie(cookie: dict):
         """
-        Inner function enter one cookie dictionary and checks if it was already in the browser
-        @type a_cookie: dict
-        @param a_cookie: Specified cookie
-        @return: None
+        Inner function that receives one cookie dictionary and checks if it already exists in the browser, if not it adds it.
+       
+        @param cookie: The cookie to check.
+        @type cookie: dict
+        @return: None.
         """
-        for b_cookie in browser.get_cookies():
-            if a_cookie["name"] == b_cookie["name"]:
-                # The cookies already in browser
-                for key in a_cookie.keys():
-                    b_cookie[key] = a_cookie[key]
+        for existing_cookie in browser.get_cookies():
+            if cookie["name"] == existing_cookie["name"]:
+                # The cookie is already in the browser.
+                for key in cookie.keys():
+                    existing_cookie[key] = cookie[key]
             else:
-                # The cookie is not in the browser
-                browser.add_cookie(a_cookie)
+                # The cookie is not in the browser.
+                browser.add_cookie(cookie)
+
     browser.get(url)
-    before = list(browser.get_cookies())
+    before = list(browser.get_cookies()) # Cookies before adding our cookies.
     if data.cookies:
+        # If a cookies file was specified.
         try:
             with open(data.cookies) as json_file:
-                cookies = json.load(json_file)
+                cookies = json.load(json_file) # Load cookies json as a python object.
+
+                # Try to add every cookie that was found.
                 if type(cookies) is list:
                     for cookie in cookies:
                         add_cookie(cookie)
                 if type(cookies) is dict:
                     add_cookie(cookies)
+                
         except Exception:
+            # We could not add the cookies.
             return False
+        
+        # Get page with new cookies.
         browser.get(url)
         if before != browser.get_cookies():
-            # Changed the cookies
+            # The cookies were modified.
             return True
+    
+    # No changes were made to the cookies.
     return False
 
-# ------------------------------ {Helper methods} ------------------------------
 
-
-def get_random_str(content):
+# ------------------------------ Helper methods ------------------------------
+def get_random_str(content: str):
     """
-    Function generates a random string which is not in the current page
+    This function generates a random string and ensures does not exist in the current page source.
+    
+    @param content: The content of the current page.
     @type content: str
-    @param content: The content of the current page
+    @return: The random string.
     @rtype: str
-    @return: random string
     """
     string = CHECK_STRING
     while True:
@@ -203,73 +218,76 @@ def get_random_str(content):
             return string
 
 
-def get_text_inputs(inputs):
+def get_text_inputs(inputs: list):
     """
-    Function gets the text input names from a form
+    This function receives a list of form inputs and extracts all the text inputs from them.
+    
+    @param inputs: A list of inputs from a form.
     @type inputs: list
-    @param inputs: A list of inputs of action form
+    @return: The list of all the text inputs.
     @rtype: list
-    @return: list of text inputs
     """
     text_inputs = list()
     for input_tag in inputs:
-        # Using the specified value
+        # Using the specified value.
         if "name" and "type" in input_tag.keys():
-            # Only if the input has a name
-            if input_tag["type"] and \
-                    any(input_tag["type"] == input_type for input_type in TEXT_TYPES):
-                # It is a text input tag
+            # Only if the input has a name.
+            if input_tag["type"] and any(input_tag["type"] == input_type for input_type in TEXT_TYPES):
+                # It is a text input tag.
                 text_inputs.append(input_tag)
     return text_inputs
 
 
-def get_forms(content):
+def get_forms(content: str):
     """
-    Function gets the forms of a page
+    This function gets all the forms from a page source html.
+
+    @param content: The page content.
     @type content: str
-    @param content: The page content
+    @return: List of all the forms.
     @rtype: list
-    @return: List of the forms
     """
     forms = list()
     for form in BeautifulSoup(content, "html.parser").find_all("form"):
         try:
-            # Get the form action (requested URL)
+            # Get the form action (requested URL).
             action = form.attrs.get("action", "").lower()
-            # Get the form method (POST, GET, DELETE, etc)
-            # If not specified, GET is the default in HTML
+            # Get the form method (POST, GET, DELETE, etc).
+            # If not specified, GET is the default in HTML.
             method = form.attrs.get("method", "get").lower()
-            # Get all form inputs
+            # Get all form inputs.
             inputs = []
             for input_tag in form.find_all("input"):
                 input_dict = dict()
-                # Get type of input form control
+                # Get type of input form control.
                 input_type = input_tag.attrs.get("type")
-                # Get name attribute
+                # Get name attribute.
                 input_name = input_tag.attrs.get("name")
-                # Get the default value of that input tag
+                # Get the default value of that input tag.
                 input_dict["value"] = input_tag.attrs.get("value", "")
-                # Add everything to that list
+                # Add all the attributes to the input dictionary.
                 if input_type:
                     input_dict["type"] = input_type
                 if input_name:
                     input_dict["name"] = input_name
+                
+                # Add the input dictionary object to the list of inputs.
                 inputs.append(input_dict)
-            # Adding the form to the list
-            forms.append({"action": action, "method": method,
-                          "inputs": inputs, "form": form})
-        except Exception as e:
+            # Adding the form to the list.
+            forms.append({"action": action, "method": method, "inputs": inputs, "form": form})
+        except:
             continue
     return forms
 
 
-def remove_forms(content):
+def remove_forms(content: str):
     """
-    Function removes the form code blocks from the HTML content
+    This function removes all the form tag blocks from the HTML content.
+
+    @param content: The HTML page content.
     @type content: str
-    @param content: The HTML page content
+    @return: The content without the forms.
     @rtype: str
-    @return: The content without the forms
     """
     content = str(BeautifulSoup(content, "html.parser"))  # The bs4 object changes the HTML tags.
     for form in get_forms(content):
@@ -277,76 +295,79 @@ def remove_forms(content):
     return content
 
 
-def inject(data, page, form, interceptor=None):
+def inject(data: Classes.Data, page: Classes.Page, form: dict, interceptor: function=None):
     """
-    Function inject a string into a text box and submit the form
+    This function injects a string into a text box and submits the form.
+
+    @param data: The data object of the program.
     @type data: Classes.Data
-    @param data: The data object of the program
+    @param page: The current page.
     @type page: Classes.Page
-    @param page: The current page
+    @param form: A dictionary of inputs of action form.
     @type form: dict
-    @param form: A dictionary of inputs of action form
-    @param interceptor: A pointer to an interceptor
-    @rtype: set
+    @param interceptor: A function pointer to an interceptor function.
+    @type interceptor: function
     @return: Set of (The content of the page, The time it took submit the form, The random string that was used)
+    @rtype: set
     """
     check_string = ""
-    # Creating new browser
+    # Creating new browser.
     browser = new_browser(data, page, interceptor=interceptor)
-    # The arguments body we want to submit
+    # The arguments body we want to submit.
     inputs = list()
     for new_form in get_forms(browser.page_source):
-        # Getting the updated forms, in case of CSRF tokens
+        # Getting the updated forms, in case of CSRF tokens.
         if new_form["action"] != form["action"] or new_form["method"] != form["method"]:
-            # It is not the right form
+            # It is not the right form.
             continue
         new_inputs = new_form["inputs"]
         inputs = form["inputs"]
         check_string = get_random_str(browser.page_source)
         for index in range(len(new_inputs)):
             if not new_inputs[index]["value"]:
-                # If there is no string specified
+                # If there is no string specified.
                 if inputs[index]["value"]:
-                    # If there is a value in the old input tag
+                    # If there is a value in the old input tag.
                     if CHANGING_SIGN in inputs[index]["value"]:
-                        # If there is a changing sign in the string
-                        # Replacing the CHANGING SIGN
+                        # If there is a changing sign in the string.
+                        # Replacing the CHANGING SIGN.
                         inputs[index]["value"] = inputs[index]["value"].replace(CHANGING_SIGN, check_string)
                 else:
-                    # If there is not, generate a random value
+                    # If there is not, generate a random value.
                     inputs[index]["value"] = get_random_str(browser.page_source)
             else:
-                # There is a specified value, may be a CSRF token
+                # There is a specified value, may be a CSRF token.
                 inputs[index]["value"] = new_inputs[index]["value"]
-        break  # We found the form we were looking for
-    # Submitting the new form
+        break  # We found the form we were looking for.
+    # Submitting the new form.
     run_time = submit_form(inputs, browser, data)
     content = browser.page_source
     browser.quit()
     return content, run_time, check_string
 
 
-def fill_input(form, curr_text_input, string):
+def fill_input(form: dict, curr_text_input: dict, string: str):
     """
-    Function make a deep copy of a form and fill the specified text input with the string
+    This function makes a deep copy of a form and fills the specified text input with the specified string.
+    
+    @param form: The current form.
     @type form: dict
-    @param form: The current form
+    @param curr_text_input: The current text input tag.
     @type curr_text_input: dict
-    @param curr_text_input: The current text input tag
+    @param string: the string we want to use.
     @type string: str
-    @param string: the string we want to use
+    @return: A deep copy of the form.
     @rtype: dict
-    @return: A deep copy of the form
     """
     new_form = dict()
-    new_form["action"] = str(form["action"])  # Same action
-    new_form["method"] = str(form["method"])  # Same method
-    new_form["form"] = form["form"]  # Same form
+    new_form["action"] = str(form["action"])  # Same action.
+    new_form["method"] = str(form["method"])  # Same method.
+    new_form["form"] = form["form"]  # Same form.
     new_form["inputs"] = list()
     for input_tag in form["inputs"]:
-        new_input_tag = dict(input_tag)  # Deep copy to the input tag
+        new_input_tag = dict(input_tag)  # Deep copy to the input tag.
         if curr_text_input == new_input_tag:
-            # This is the input we are looking for
+            # This is the input we are looking for.
             new_input_tag["value"] = string
         new_form["inputs"].append(new_input_tag)
     return new_form

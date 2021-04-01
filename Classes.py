@@ -4,53 +4,6 @@ from queue import Queue
 from seleniumwire import webdriver, request as selenium_request
 
 
-class Manager:
-    def logic(self, data):
-        """
-        Abstract function, every manager must have a logic function
-        @type data: Classes.Data
-        @param data: The data object of the program
-        @return: None
-        """
-        pass
-
-
-class Browser(webdriver.Chrome):
-    def __init__(self, executable_path, options, remove_alerts=True):
-        super(Browser, self).__init__(executable_path=executable_path, options=options)
-        self.__remove_alerts = remove_alerts
-
-    def dump_alerts(self, count=-1):
-        """
-        This function makes sure no alerts are on a page to avoid exceptions.
-        @return: None.
-        """
-        dumped = 0
-        while count == -1 or count:
-            try:
-                # Check for alert on page.
-                alert = self.switch_to.alert
-                alert.accept()
-                count -= 1
-                dumped += 1
-            except Exception:
-                # No more alerts on page.
-                break
-        return dumped
-
-    def get(self, url):
-        super(Browser, self).get(url)
-        if self.__remove_alerts:
-            self.dump_alerts()
-
-    def refresh(self):
-        self.dump_alerts()
-        super(Browser, self).refresh()
-        if self.__remove_alerts:
-            self.dump_alerts()
-
-
-
 class Data:
     def __init__(self):
         """
@@ -72,15 +25,16 @@ class Data:
         self.cookies = None
         self.driver = None
         self.pages = list()  # The pages that were gathered from the website using PageManager.
-        self.mutex = Lock()  # Mutex
-        self.all_threads_done_event = Event()  # When all the threads have finished their run
-        self.results_queue = Queue(20)  # A queue for the check results
+        self.mutex = Lock()  # Mutex.
+        self.all_threads_done_event = Event()  # Event indicating when all the threads have finished their run.
+        self.results_queue = Queue(20)  # A queue for the check results.
 
     def __str__(self):
         """
-        Function makes a string of the Data instance
+        Function makes a string representation of the Data instance.
+        
+        @return: The object string.
         @rtype: str
-        @return: The object string
         """
         output_str = f"IP: {self.ip}\n" if self.ip else f"IP: Not Specified\n"
         output_str += f"PORT: {self.port}\n" if self.port else f"PORT: Not Specified\n"
@@ -99,26 +53,27 @@ class Data:
 
 
 class Page:
-    def __init__(self, url, status=200, mime_type="html/text",
-                 content="", request=None, cookies=None, parent=None, is_session=False):
+    def __init__(self, url: str, status: int=200, mime_type: str="html/text",
+                 content: str="", request: selenium_request.Request=None, cookies: list=None, parent=None, is_session: bool=False):
         """
         Constructor of the Page class.
-        @type url: str
+
         @param url: The URL of the page.
-        @type status: int
+        @type url: str
         @param status: The status code of the response (200, 300, 400, etc).
-        @type mime_type: str
+        @type status: int
         @param mime_type: The MIME type of the page.
-        @type content: str
+        @type mime_type: str
         @param content: The HTML content of the page.
-        @type request: selenium_request.Request
+        @type content: str
         @param request: The request that fetched this page.
+        @type request: selenium_request.Request
+        @param cookies: List of dictionaries that represent cookies that the webdriver can use.
         @type cookies: list
-        @param cookies: List of dictionaries that are cookies that the webdriver can use.
+        @param parent: The parent page of this current page, If has no parent this will be None.
         @type parent: Page
-        @param parent: The parent page of this current page, If this is the base page this will be None.
+        @param is_session: If the page requires a session.
         @type is_session: bool
-        @param is_session: If the page is inside of a session.
         """
         self.url = url
         self.status = status
@@ -132,8 +87,9 @@ class Page:
     def __str__(self):
         """
         Function makes a string of the Page instance
+
+        @return: The string representation of the page object.
         @rtype: str
-        @return: The object string
         """
         string = f"URL: {self.url}\n"
         if self.parent:
@@ -146,42 +102,47 @@ class Page:
 
 
 class PageResult(Page):
-    def __init__(self, page, description=""):
+    def __init__(self, page: Page, description: str=""):
         """
         Constructor of the PageResult Class.
+        This is the simpelest result class, this will usually be appended to the `page_results` list within the `CheckResult` class.
+
+        @param page: The problematic page that yielded a result.
         @type page: Page
-        @param page: The problematic page.
+        @param description: A description of the problem on the current page.
         @type description: str
-        @param description: A specific message of the current page.
         """
         super(PageResult, self).__init__(page.url)
         self.description = description
 
 
 class CheckResult:
-    def __init__(self, problem, solution, explanation):
+    def __init__(self, problem: str, solution: str, explanation: str):
         """
         Constructor of the CheckResult Class.
+        Would usually be used to specify a sub-problem of a CheckResults object.
+        
+        @param problem: Description of the problem that was found.
         @type problem: str
-        @param problem: String of problems that were found.
-        @type solution: str
         @param solution: A solution in case of problems.
+        @type solution: str
+        @param explanation: An explanation of the algorithm that was used in order to find this problem.
         @type explanation: str
-        @param explanation: An explanation of the used algorithm.
         """
         self.problem = problem
         self.solution = solution
         self.explanation = explanation
         self.page_results = list()  # A List of `PageResult` objects.
 
-    def add_page_result(self, page_result, separator=str()):
+    def add_page_result(self, page_result: PageResult, separator: str=""):
         """
-        Function appends a new page result to the list and checks if it is already in the list.
+        This function appends a new page result to the list and checks if it is already in the list.
+
+        @param page_result: The page result to be appended to our `page_results` list.
         @type page_result: PageResult
-        @param page_result: The page result the function appending.
+        @param separator: Specify a separator which would be used to separate between the different descriptions.
         @type separator: str
-        @param separator: Separates between the different descriptions.
-        @return: None
+        @return: None.
         """
         for page in self.page_results:
             if page.url == page_result.url:
@@ -191,13 +152,14 @@ class CheckResult:
 
 
 class CheckResults:
-    def __init__(self, headline, color):
+    def __init__(self, headline: str, color: str):
         """
         Constructor of the CheckResults Class.
+
+        @param headline: The name of the vulnerability (Will be used in output folder as well).
         @type headline: str
-        @param headline: The name of the vulnerability.
-        @type color: str
         @param color: The color of the message.
+        @type color: str
         """
         self.headline = headline
         self.color = color  # Used in the case of printing to the screen.
@@ -206,3 +168,68 @@ class CheckResults:
         self.error = str()
         self.warning = str()
         self.success = str()
+
+
+class Manager:
+    def logic(self, data: Data):
+        """
+        Abstract function, every manager must override this logic function.
+        
+        @param data: The data object of the program.
+        @type data: Classes.Data
+        @return: None
+        """
+        pass
+
+
+class Browser(webdriver.Chrome):
+    def __init__(self, executable_path: str, options: webdriver.ChromeOptions, remove_alerts:bool=True):
+        """
+        This class is a subclass of the webdriver.Chrome class, it was created to allow alert removal with ease to avoid errors.
+
+        @param executable_path: The path of the browser executable.
+        @type executable_path: str
+        @param options: Options to be passed to the webdriver.
+        @type options: webdriver.ChromeOptions
+        @param remove_alerts: This boolean indicates whether or not we should dump all alerts on `get` and `refresh` methods.
+        @type remove_alerts: bool
+        @return: None.
+        """
+        super(Browser, self).__init__(executable_path=executable_path, options=options)
+        self.__remove_alerts = remove_alerts
+
+    def dump_alerts(self, count: int=-1):
+        """
+        This function clears alerts on a given browser.
+        This is used to avoid unexpected exceptions when getting a page or to 
+        reach a specific alert after a given amount of previous alerts.
+
+        @param count: This specifies how many alerts we should remove from the current session, 
+        > defaults to -1 (any number that is not positive will result in the removal of all alerts from the current page).
+        @type count: int
+        @return: The amount of exceptions successfully dumped.
+        @rtype: int
+        """
+        dumped = 0
+        while count == -1 or count:
+            try:
+                # Check for alert on page.
+                alert = self.switch_to.alert
+                alert.accept() # Clear current alert.
+                count -= 1
+                dumped += 1
+            except Exception:
+                # No more alerts on page.
+                break
+        return dumped
+
+    def get(self, url: str):
+        super(Browser, self).get(url)
+        if self.__remove_alerts:
+            self.dump_alerts()
+
+    def refresh(self):
+        self.dump_alerts()
+        super(Browser, self).refresh()
+        if self.__remove_alerts:
+            self.dump_alerts()
