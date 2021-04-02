@@ -413,7 +413,7 @@ class PageManager(Manager):
             # Getting updated form
             form_details = self.__get_login_form(data, Methods.get_forms(browser.page_source))
             try:
-                Methods.submit_form(form_details["inputs"], browser, data)
+                Methods.submit_form(data, browser, form_details["inputs"])
             except Exception:
                 continue
             new_url = browser.current_url
@@ -455,7 +455,7 @@ class PageManager(Manager):
                     browser.delete_all_cookies()
                     browser.get(page.url)
                     Methods.enter_cookies(data, browser, page.url)
-                    Methods.submit_form(form_details["inputs"], browser, data)
+                    Methods.submit_form(data, browser, form_details["inputs"])
                     # Doing the loop all over again, without the logout page
             break
         # Closing the non session browser
