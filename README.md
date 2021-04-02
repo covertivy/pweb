@@ -19,6 +19,7 @@
 * [Plugins and Config](#plugins-and-config)
   * [The Config File](#the-config-file)
   * [Creating Plugins](#creating-plugins)
+  * [XSS Plugin Information](#xss-information)
 
 
 ## About
@@ -65,7 +66,7 @@ is a plugin and so you can create you own test scripts and add them as plugins.
 Each whitelist and blacklist file operate in the same manner.  
 Separate each value with a comma (all spaces and newlines are ignored).  
 If the file is specified as a `blacklist` then any page with a domain that contains the value specified will be excluded from the search.  
-If the file is specified as a `whitelist` then only the pages who's domains contain the value specified will be included in the search.
+If the file is specified as a `whitelist` then only the pages whose domains contain the value specified will be included in the search.
 
 #### Example file
 
@@ -104,7 +105,7 @@ To write a cookie file you need to create a json file in the following format:
 ]
 ```
 
->**NOTE:** Some websites give the user a default cookie without the user being logged in, make sure to include **all** of the cookies to avoid problems in the future. Also note that depending on the site the cookie might be able to replace a login form and therefor allow you to test the site without logging in and only by using the cookie, test for this to make your life a lot easier.
+>**NOTE:** Some websites give the user a default cookie without the user being logged in, make sure to include **all** of the cookies to avoid problems in the future. Also, note that depending on the site the cookie might be able to replace a login form and therefor allow you to test the site without logging in and only by using the cookie, test for this to make your life a lot easier.
 
 ## Installation And Setup
 
@@ -117,7 +118,7 @@ Here is the installation guide for both:
 git clone "https://gitlab.com/sparroweiss/Kineret-206-pweb.git"
 ```
 
-2. After cloning step into the main folder, Go to the `config` file and make sure the selected plugins are the plugins you wish to use.
+2. After cloning step into the main folder, Go to the `config file` (default name is `pluginconfig.ini`) and make sure the selected plugins are the plugins you wish to use.
 
 <img src="https://media.discordapp.net/attachments/742134324786102382/825689664496861204/unknown.png">  
 
