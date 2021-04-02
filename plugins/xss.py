@@ -219,6 +219,9 @@ def select_payloads(allowed_sources: tuple):
         payloads[i] = payloads[i].lstrip().rstrip()
         if payloads[i] == "":
             payloads.remove(payloads[i])
+        elif INJECTION_IDENTIFIER not in payloads[i]:
+            # Must contain the special injection identifier to inject custom strings into the alert.
+            payloads.remove(payloads[i])
 
     
     if not all(allowed_sources):
