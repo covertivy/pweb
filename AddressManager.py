@@ -20,7 +20,7 @@ class AddressManager(Manager):
         
         @param data: The data object of the program.
         @type data: Data
-        @return: None.
+        @return: None
         """
         port: int = data.port
         url: str = data.url
@@ -40,7 +40,8 @@ class AddressManager(Manager):
                 path = parse.path  # Must have a path (even "/" counts).
                 query = "?" + parse.query if parse.query else query
             except Exception:
-                print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW} The port which was specified in the URL is invalid.{COLOR_MANAGER.ENDC}")
+                print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW}"
+                      f" The port which was specified in the URL is invalid.{COLOR_MANAGER.ENDC}")
             try:
                 ip = socket.gethostbyname(parse.hostname)
             except Exception:
@@ -63,7 +64,8 @@ class AddressManager(Manager):
             port = 0
         else:
             # No port specified and -P was not specified.
-            print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW} Using default port 80.{COLOR_MANAGER.ENDC}")
+            print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW} "
+                  f"Using default port 80.{COLOR_MANAGER.ENDC}")
             port = 80
         # Setting address into the data object.
         data.url = f"{scheme}://{ip}:{port}{path}{query}"
@@ -76,14 +78,16 @@ class AddressManager(Manager):
 
         @param data: The data object of the program.
         @type data: Data
-        @return: None.
+        @return: None
         """
         if data.ip == "127.0.0.1":
             return  # Our computer, there is no need to ping.
 
-        print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW} Pinging {data.ip}.{COLOR_MANAGER.ENDC}")
+        print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW}"
+              f" Pinging {data.ip}.{COLOR_MANAGER.ENDC}")
 
-        result = subprocess.Popen(["ping", "-i", str(self.__TTL), data.ip], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.Popen(["ping", "-i", str(self.__TTL), data.ip],
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         result.wait()  # Wait for the thread to finish the ping.
         out, err = result.communicate()  # out = The output of the ping.
         if out:
@@ -104,7 +108,7 @@ class AddressManager(Manager):
         
         @param data: The data object of the program.
         @type data: Data
-        @return: None.
+        @return: None
         """
         open_ports = list()
         http_ports = list()
@@ -118,7 +122,8 @@ class AddressManager(Manager):
             # If the user used -p or used the default port 80.
             plural = ""
 
-        print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW} Scanning port{plural} {ports_range} for HTTP{COLOR_MANAGER.ENDC}\n")
+        print(f"\t[{COLOR_MANAGER.YELLOW}%{COLOR_MANAGER.ENDC}]{COLOR_MANAGER.YELLOW}"
+              f" Scanning port{plural} {ports_range} for HTTP{COLOR_MANAGER.ENDC}\n")
 
         def scan_port(port: int):
             """
@@ -126,13 +131,13 @@ class AddressManager(Manager):
             
             @param port: The current port number.
             @type port: int
-            @return: None.
+            @return: None
             """
             def print_line():
                 """
                 Prints a line in the table.
 
-                @return: None.
+                @return: None
                 """
                 print(COLOR_MANAGER.YELLOW + " " * 7 + "+" + "-" * 13 + "+" + "-" * 13 + "+" + "-" * 24 + "+")
             
@@ -150,13 +155,15 @@ class AddressManager(Manager):
                     # In case of scanning all ports.
                     mutex.acquire()
                     if not open_ports:
-                        print(f"\t{COLOR_MANAGER.HEADER}{COLOR_MANAGER.YELLOW}List of the open ports on your host:{COLOR_MANAGER.ENDC}")
+                        print(f"\t{COLOR_MANAGER.HEADER}{COLOR_MANAGER.YELLOW}"
+                              f"List of the open ports on your host:{COLOR_MANAGER.ENDC}")
                         print_line()
                     
                     # Set padding to the table rows and columns.
                     port_padding = " " * (5 - len(str(port)))
                     proto_padding = " " * (15 - len(proto))
-                    print(" " * 7 + f"{COLOR_MANAGER.YELLOW}| Port: {port}{port_padding} | State: open | Proto: {proto}{proto_padding} |")
+                    print(" " * 7 + f"{COLOR_MANAGER.YELLOW}| Port: {port}{port_padding}"
+                                    f" | State: open | Proto: {proto}{proto_padding} |")
                     print_line()
                     mutex.release()
                 open_ports.append(port)
@@ -189,14 +196,16 @@ class AddressManager(Manager):
                 print(f"\n\tPlease choose one of the ports above and try again (-p <port>).{COLOR_MANAGER.ENDC}\n")
             else:
                 # If there are no open http ports on the host.
-                raise Exception("There are no open http ports on your host, please check the host or try again.", "\t")
+                raise Exception("There are no open http ports on your host,"
+                                " please check the host or try again.", "\t")
             # If the user asked for ports scan (-P) there is no need to continue the run.
             exit()
         else:
             # If the user used -p or used the default port 80.
             if not http_ports:
                 # If the specified port is not good.
-                raise Exception(f"Port {data.port} isn't open on your host. please try another port or check your host.", "\t")
+                raise Exception(f"Port {data.port} isn't open on your host."
+                                f" please try another port or check your host.", "\t")
 
     def logic(self, data: Data):
         """
@@ -204,7 +213,7 @@ class AddressManager(Manager):
         
         @param data: The data object of the program.
         @type data: Data
-        @return: None.
+        @return: None
         """
         print(f"\n{COLOR_MANAGER.HEADER}{COLOR_MANAGER.YELLOW}Achieving target:{COLOR_MANAGER.ENDC}")
         self.__valid_address(data)  # Validating the specified address.

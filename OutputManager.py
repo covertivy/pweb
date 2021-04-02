@@ -6,7 +6,7 @@ import os
 
 class OutputManager(Classes.Manager):
     def __init__(self):
-        self.__folder = str() # Output folder path.
+        self.__folder = str()  # Output folder path.
         self.__files = dict()
 
     @staticmethod
@@ -56,11 +56,17 @@ class OutputManager(Classes.Manager):
             if page_result.description:
                 output += self.__manage_lines(page_result.description, color, "\t\t- ", "\t\t  ")
         if check_result.problem:
-            output += self.__manage_lines(check_result.problem, color, f"\t{COLOR_MANAGER.BOLD_RED}Problem: {COLOR_MANAGER.ENDC}", "\t" + len("Problem: ") * " ")
+            output += self.__manage_lines(check_result.problem, color,
+                                          f"\t{COLOR_MANAGER.BOLD_RED}Problem: {COLOR_MANAGER.ENDC}",
+                                          "\t" + len("Problem: ") * " ")
         if check_result.solution:
-            output += self.__manage_lines(check_result.solution, color, f"\t{COLOR_MANAGER.BOLD_GREEN}Solution: {COLOR_MANAGER.ENDC}", "\t" + len("Solution: ") * " ")
+            output += self.__manage_lines(check_result.solution, color,
+                                          f"\t{COLOR_MANAGER.BOLD_GREEN}Solution: {COLOR_MANAGER.ENDC}",
+                                          "\t" + len("Solution: ") * " ")
         if check_result.explanation:
-            output += self.__manage_lines(check_result.explanation, color, f"\t{COLOR_MANAGER.BOLD_LIGHT_GREEN}Explanation: {COLOR_MANAGER.ENDC}", "\t" + len("Explanation: ") * " ")
+            output += self.__manage_lines(check_result.explanation, color,
+                                          f"\t{COLOR_MANAGER.BOLD_LIGHT_GREEN}Explanation: {COLOR_MANAGER.ENDC}",
+                                          "\t" + len("Explanation: ") * " ")
         return output + "\n"
 
     def __manage_check_results(self, check_results: Classes.CheckResults, color: str):
@@ -72,7 +78,8 @@ class OutputManager(Classes.Manager):
         @return: The check results output string.
         @rtype: str
         """
-        output = f"{COLOR_MANAGER.BOLD}{color}- {COLOR_MANAGER.UNDERLINE}{check_results.headline}:{COLOR_MANAGER.ENDC}\n"
+        output = f"{COLOR_MANAGER.BOLD}{color}- {COLOR_MANAGER.UNDERLINE}" \
+                 f"{check_results.headline}:{COLOR_MANAGER.ENDC}\n"
         if check_results.warning:
             output += COLOR_MANAGER.warning_message(check_results.warning, "\t", "\n\n")
         if check_results.error:
@@ -81,18 +88,21 @@ class OutputManager(Classes.Manager):
             if check_results.success:
                 output += COLOR_MANAGER.success_message(check_results.success, "\t", "\n\n")
             if not check_results.error and not check_results.warning:
-                output += COLOR_MANAGER.success_message("No vulnerabilities were found on the specified website's pages.", "\t", "\n")
+                output += COLOR_MANAGER.success_message("No vulnerabilities were found"
+                                                        " on the specified website's pages.", "\t", "\n")
             return output
         for check_result in check_results.results:
             output += self.__manage_check_result(check_result, color)
         if check_results.conclusion:
-            output += self.__manage_lines(check_results.conclusion, color, f"\t{COLOR_MANAGER.BOLD_PURPLE}Conclusion: {COLOR_MANAGER.ENDC}", "\t" + len("Conclusion: ") * " ")
+            output += self.__manage_lines(check_results.conclusion, color,
+                                          f"\t{COLOR_MANAGER.BOLD_PURPLE}Conclusion: {COLOR_MANAGER.ENDC}",
+                                          "\t" + len("Conclusion: ") * " ")
         return output
 
     def __save_results(self):
         """
         This function saves the results to the output folder.
-        @return None.
+        @return None
         """
         if not self.__files:
             COLOR_MANAGER.print_error("Looks like there is nothing to save to the files, try again.", "\n\t", "\n")
@@ -109,7 +119,7 @@ class OutputManager(Classes.Manager):
         
         @param check_results: The check results given by the plugins.
         @type check_results: Classes.CheckResults
-        @return: None.
+        @return: None
         """
         color = "" if self.__folder else check_results.color
         output = self.__manage_check_results(check_results, color)
@@ -127,7 +137,7 @@ class OutputManager(Classes.Manager):
         
         @param data: The data object of the program.
         @type data: Classes.Data
-        @return None.
+        @return None
         """
         if data.output:
             # The user specified a directory path.
@@ -141,7 +151,7 @@ class OutputManager(Classes.Manager):
                     os.mkdir(data.output)
                     self.__folder = os.path.abspath(data.output)
                     COLOR_MANAGER.print_success("Successfully created the output folder.", "\t", "\n")
-                except OSError as e:
+                except OSError:
                     COLOR_MANAGER.print_error("Invalid folder path, printing the output instead.", "\t", "\n")
 
         print(f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")

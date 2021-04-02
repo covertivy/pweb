@@ -68,13 +68,13 @@ class Colors:
         This function converts RGB values to ANSI color codes.
 
         @param red: Red value of RGB 0-255.
-        @type red: int.
+        @type red: int
         @param green: Green value of RGB 0-255.
-        @type green: int.
+        @type green: int
         @param blue: Blue value of RGB 0-255.
-        @type blue: int.
+        @type blue: int
         @return: ANSI color code string.
-        @rtype: str.
+        @rtype: str
         """
         return "\033[38;2;{};{};{}m".format(red, green, blue)
 
@@ -83,7 +83,7 @@ class Colors:
         This function returns a random ANSI color code string.
 
         @return: Random ANSI color value string.
-        @rtype: str.
+        @rtype: str
         """
         return self.rgb(
             random.choice(range(255)),
@@ -109,11 +109,11 @@ class Colors:
         This function create a success message.
 
         @param success: The specified success message.
-        @type success: str.
+        @type success: str
         @param begins_with: Optional string to start with.
-        @type begins_with: str.
+        @type begins_with: str
         @param ends_with: Optional string to end with.
-        @type ends_with: str.
+        @type ends_with: str
         @return: success message.
         @rtype: str
         """
@@ -134,12 +134,12 @@ class Colors:
         This function prints a given success message.
 
         @param success: The specified success message.
-        @type success: str.
+        @type success: str
         @param begins_with: Optional string to start with.
-        @type begins_with: str.
+        @type begins_with: str
         @param ends_with: Optional string to end with.
-        @type ends_with: str.
-        @return: None.
+        @type ends_with: str
+        @return: None
         """
         print(self.success_message(success, begins_with, ends_with))
 
@@ -148,11 +148,11 @@ class Colors:
         This function create an information message.
 
         @param info: The specified information message.
-        @type info: str.
+        @type info: str
         @param begins_with: Optional string to start with.
-        @type begins_with: str.
+        @type begins_with: str
         @param ends_with: Optional string to end with.
-        @type ends_with: str.
+        @type ends_with: str
         @return: success message.
         @rtype: str
         """
@@ -173,12 +173,12 @@ class Colors:
         This function prints a given information message.
 
         @param info: The specified information message.
-        @type info: str.
+        @type info: str
         @param begins_with: Optional string to start with.
-        @type begins_with: str.
+        @type begins_with: str
         @param ends_with: Optional string to end with.
-        @type ends_with: str.
-        @return: None.
+        @type ends_with: str
+        @return: None
         """
         print(self.information_message(info, begins_with, ends_with))
 
@@ -187,11 +187,11 @@ class Colors:
         This function create an warning message.
 
         @param warning: The specified warning message.
-        @type warning: str.
+        @type warning: str
         @param begins_with: Optional string to start with.
-        @type begins_with: str.
+        @type begins_with: str
         @param ends_with: Optional string to end with.
-        @type ends_with: str.
+        @type ends_with: str
         @return: success message.
         @rtype: str
         """
@@ -212,12 +212,12 @@ class Colors:
         This function prints a specified warning message.
 
         @param warning: The specified warning.
-        @type warning: str.
+        @type warning: str
         @param begins_with: Optional string to start with.
-        @type begins_with: str.
+        @type begins_with: str
         @param ends_with: Optional string to end with.
-        @type ends_with: str.
-        @return: None.
+        @type ends_with: str
+        @return: None
         """
         print(self.warning_message(warning, begins_with, ends_with))
 
@@ -226,11 +226,11 @@ class Colors:
         This function create an error message.
 
         @param error: The specified error message.
-        @type error: str.
+        @type error: str
         @param begins_with: Optional string to start with.
-        @type begins_with: str.
+        @type begins_with: str
         @param ends_with: Optional string to end with.
-        @type ends_with: str.
+        @type ends_with: str
         @return: success message.
         @rtype: str
         """
@@ -253,10 +253,10 @@ class Colors:
         @param error: The specified error.
         @type error: str
         @param begins_with: Optional string to start with.
-        @type begins_with: str.
+        @type begins_with: str
         @param ends_with: Optional string to end with.
-        @type ends_with: str.
-        @return: None.
+        @type ends_with: str
+        @return: None
         """
         print(self.error_message(error, begins_with, ends_with))
 

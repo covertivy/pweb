@@ -53,8 +53,9 @@ class Data:
 
 
 class Page:
-    def __init__(self, url: str, status: int=200, mime_type: str="html/text",
-                 content: str="", request: selenium_request.Request=None, cookies: list=None, parent=None, is_session: bool=False):
+    def __init__(self, url: str, status: int = 200, mime_type: str = "html/text",
+                 content: str = "", request: selenium_request.Request = None,
+                 cookies: list = None, parent=None, is_session: bool = False):
         """
         Constructor of the Page class.
 
@@ -102,10 +103,11 @@ class Page:
 
 
 class PageResult(Page):
-    def __init__(self, page: Page, description: str=""):
+    def __init__(self, page: Page, description: str = ""):
         """
         Constructor of the PageResult Class.
-        This is the simpelest result class, this will usually be appended to the `page_results` list within the `CheckResult` class.
+        This is the simplest result class,
+        this will usually be appended to the `page_results` list within the `CheckResult` class.
 
         @param page: The problematic page that yielded a result.
         @type page: Page
@@ -134,7 +136,7 @@ class CheckResult:
         self.explanation = explanation
         self.page_results = list()  # A List of `PageResult` objects.
 
-    def add_page_result(self, page_result: PageResult, separator: str=""):
+    def add_page_result(self, page_result: PageResult, separator: str = ""):
         """
         This function appends a new page result to the list and checks if it is already in the list.
 
@@ -183,39 +185,41 @@ class Manager:
 
 
 class Browser(webdriver.Chrome):
-    def __init__(self, executable_path: str, options: webdriver.ChromeOptions, remove_alerts:bool=True):
+    def __init__(self, executable_path: str, options: webdriver.ChromeOptions, remove_alerts: bool = True):
         """
-        This class is a subclass of the webdriver.Chrome class, it was created to allow alert removal with ease to avoid errors.
+        This class is a subclass of the webdriver.Chrome class,
+        it was created to allow alert removal with ease to avoid errors.
 
         @param executable_path: The path of the browser executable.
         @type executable_path: str
         @param options: Options to be passed to the webdriver.
         @type options: webdriver.ChromeOptions
-        @param remove_alerts: This boolean indicates whether or not we should dump all alerts on `get` and `refresh` methods.
+        @param remove_alerts: This boolean indicates whether or not
+        we should dump all alerts on `get` and `refresh` methods.
         @type remove_alerts: bool
-        @return: None.
+        @return: None
         """
         super(Browser, self).__init__(executable_path=executable_path, options=options)
         self.__remove_alerts = remove_alerts
 
-    def dump_alerts(self, count: int=-1):
+    def dump_alerts(self, count: int = -1):
         """
         This function clears alerts on a given browser.
         This is used to avoid unexpected exceptions when getting a page or to 
         reach a specific alert after a given amount of previous alerts.
 
-        @param count: This specifies how many alerts we should remove from the current session, 
-        > defaults to -1 (any number that is not positive will result in the removal of all alerts from the current page).
+        @param count: This specifies how many alerts we should remove from the current session, defaults to -1
+        (any number that is not positive will result in the removal of all alerts from the current page).
         @type count: int
         @return: The amount of exceptions successfully dumped.
         @rtype: int
         """
         dumped = 0
-        while count == -1 or count:
+        while count:
             try:
                 # Check for alert on page.
                 alert = self.switch_to.alert
-                alert.accept() # Clear current alert.
+                alert.accept()  # Clear current alert.
                 count -= 1
                 dumped += 1
             except Exception:
@@ -224,11 +228,25 @@ class Browser(webdriver.Chrome):
         return dumped
 
     def get(self, url: str):
+        """
+        This function overrides the default get() method of the Chrome class,
+        The differance between the functions is the ability to remove alerts automatically.
+
+        @param url: The URL we are getting.
+        @type url: str
+        @return: None
+        """
         super(Browser, self).get(url)
         if self.__remove_alerts:
             self.dump_alerts()
 
     def refresh(self):
+        """
+        This function overrides the default refresh() method of the Chrome class,
+        The differance between the functions is the ability to remove alerts automatically.
+
+        @return: None
+        """
         self.dump_alerts()
         super(Browser, self).refresh()
         if self.__remove_alerts:

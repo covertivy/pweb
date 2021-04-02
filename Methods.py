@@ -15,7 +15,8 @@ TEXT_TYPES = ["text", "password"]
 
 
 # ------------------------- Webdriver methods -------------------------
-def new_browser(data: Classes.Data, page: Classes.Page=None, debug: bool=False, interceptor=None, remove_alerts: bool=True):
+def new_browser(data: Classes.Data, page: Classes.Page = None, debug: bool = False,
+                interceptor=None, remove_alerts: bool = True):
     """
     This function creates a new browser instance with a new session.
 
@@ -155,22 +156,23 @@ def enter_cookies(data: Classes.Data, browser: Classes.Browser, url: str):
     @return: True - The cookies were added, False - The cookies were not added.
     @rtype: bool
     """
-    def add_cookie(cookie: dict):
+    def add_cookie(a_cookies: dict):
         """
-        Inner function that receives one cookie dictionary and checks if it already exists in the browser, if not it adds it.
+        Inner function that receives one cookie dictionary and checks
+        if it already exists in the browser, if not it adds it.
        
-        @param cookie: The cookie to check.
-        @type cookie: dict
-        @return: None.
+        @param a_cookies: The cookie to check.
+        @type a_cookies: dict
+        @return: None
         """
         for existing_cookie in browser.get_cookies():
-            if cookie["name"] == existing_cookie["name"]:
+            if a_cookies["name"] == existing_cookie["name"]:
                 # The cookie is already in the browser.
-                for key in cookie.keys():
-                    existing_cookie[key] = cookie[key]
+                for key in a_cookies.keys():
+                    existing_cookie[key] = a_cookies[key]
             else:
                 # The cookie is not in the browser.
-                browser.add_cookie(cookie)
+                browser.add_cookie(a_cookies)
 
     browser.get(url)
     before = list(browser.get_cookies())  # Cookies before adding our cookies.
@@ -307,8 +309,8 @@ def inject(data: Classes.Data, page: Classes.Page, form: dict, interceptor=None)
     @type form: dict
     @param interceptor: A function pointer to an interceptor function.
     @type interceptor: function
-    @return: Set of (The content of the page, The time it took submit the form, The random string that was used)
-    @rtype: set
+    @return: Tuple of (The content of the page, The time it took submit the form, The random string that was used)
+    @rtype: tuple
     """
     check_string = ""
     # Creating new browser.

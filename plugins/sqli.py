@@ -28,9 +28,10 @@ blind_problem = Classes.CheckResult("", "", "The plugin uses the sleep function 
 
 def check(data):
     """
-    Function checks the website for SQL injection
-    @type data: Classes.Data
+    This function checks the website for SQL injection.
+
     @param data: The data object of the program
+    @type data: Classes.Data
     @return: None
     """
     sqli_results = Classes.CheckResults("SQL Injection", COLOR)
@@ -75,11 +76,12 @@ def check(data):
 
 def filter_forms(page):
     """
-    Function filters the pages that has an action form
-    @type page: Classes.Page
+    This function filters the pages that has an action form.
+
     @param page: The current page
-    @rtype: list
+    @type page: Classes.Page
     @return: List of forms
+    @rtype: list
     """
     filtered_forms = list()
     if "html" in page.type.lower():
@@ -94,13 +96,14 @@ def filter_forms(page):
 
 def sql_injection(page, form, data):
     """
-    Function checks the page for SQL injection
-    @type page: Classes.Page
+    This function checks the page for SQL injection.
+
     @param page: The current page
-    @type form: dict
+    @type page: Classes.Page
     @param form: The page's action form
-    @type data: Classes.Data
+    @type form: dict
     @param data: The data object of the program
+    @type data: Classes.Data
     @return: None
     """
     page_result = Classes.PageResult(page, f"Action form '{form['action']}': ")
@@ -192,9 +195,10 @@ def sql_injection(page, form, data):
 
 def fill_temp_form(form):
     """
-    Function fill the temp form text inputs with the CHANGING_SIGN
-    @type form: dict
+    This function fill the temp form text inputs with the CHANGING_SIGN.
+
     @param form: The temp form
+    @type form: dict
     @return: None
     """
     if len(Methods.get_text_inputs(form["inputs"])) < 3:

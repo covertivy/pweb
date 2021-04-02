@@ -29,9 +29,10 @@ non_blind_problem = Classes.CheckResult("These text inputs *may* have allowed Co
 
 def check(data):
     """
-    Function checks the website for blind/non-blind OS injection
-    @type data: Classes.Data
+    This function checks the website for blind/non-blind OS injection.
+
     @param data: The data object of the program
+    @type data: Classes.Data
     @return: None
     """
     ci_results = Classes.CheckResults("Command Injection", COLOR)
@@ -70,11 +71,12 @@ def check(data):
 
 def filter_forms(page):
     """
-    Function filters the pages that has an action form
-    @type page: Classes.Page
+    This function filters the pages that has an action form.
+
     @param page: The current page
-    @rtype: list
+    @type page: Classes.Page
     @return: List of forms
+    @rtype: list
     """
     filtered_forms = list()
     if "html" in page.type.lower():
@@ -89,13 +91,14 @@ def filter_forms(page):
 
 def command_injection(page, form, data):
     """
-    Function checks the page for blind/non-blind OS injection
-    @type page: Classes.Page
+    This function checks the page for blind/non-blind OS injection.
+
     @param page: The current page
-    @type form: dict
+    @type page: Classes.Page
     @param form: The page's action form
-    @type data: Classes.Data
+    @type form: dict
     @param data: The data object of the program
+    @type data: Classes.Data
     @return: None
     """
     page_result = Classes.PageResult(page, f"Action form '{form['action']}': ")
@@ -156,9 +159,10 @@ def command_injection(page, form, data):
 
 def interceptor(request):
     """
-    Function acts like proxy, it changes the requests header
-    @type request: Methods.selenium_request.Request
+    This function acts like proxy, it changes the requests header.
+
     @param request: The current request
+    @type request: Methods.selenium_request.Request
     @return: None
     """
     # Block PNG, JPEG and GIF images
@@ -176,11 +180,12 @@ def interceptor(request):
 
 def write_vulnerability(results, page_result):
     """
-    Function writes the problem of the form into the page result
-    @type results: dict
+    This function writes the problem of the form into the page result.
+
     @param results: A dictionary of text input and list of chars it didn't filter
-    @type page_result: Classes.PageResult
+    @type results: dict
     @param page_result: page result object of the current page
+    @type page_result: Classes.PageResult
     @return: None
     """
     start_line = ""

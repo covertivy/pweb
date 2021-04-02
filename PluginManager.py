@@ -11,7 +11,8 @@ class PluginManager(Manager):
     def __init__(self):
         self.__THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))  # Get relative path to our folder.
         self.__CONFIG_FILE_NAME = "pluginconfig.ini"  # Plugin configuration file name.
-        self.__CONFIG_FILE_PATH = os.path.join(self.__THIS_FOLDER, self.__CONFIG_FILE_NAME)  # Create path of config file.
+        # Create path of config file.
+        self.__CONFIG_FILE_PATH = os.path.join(self.__THIS_FOLDER, self.__CONFIG_FILE_NAME)
         self.__PLUGINS_FOLDER = "plugins"  # Local plugin folder name.
         self.__PLUGIN_PATH_SECTION = "plugins"  # The config file section in which the plugins are stored.
         self.__GENERIC_FUNC_NAME = "check"  # The name of the generic function each file has to implement.
@@ -37,12 +38,14 @@ class PluginManager(Manager):
         # Check if the paths are stored in the correct section inside of the config file.
         # For more information check out "https://docs.python.org/3/library/configparser.html".
         if self.__PLUGIN_PATH_SECTION not in cfg_parser.sections():
-            raise Exception(f'Section "{self.__PLUGIN_PATH_SECTION}" was not found in config file "{self.__CONFIG_FILE_NAME}"', "\t")
+            raise Exception(f'Section "{self.__PLUGIN_PATH_SECTION}" was not found in config file '
+                            f'"{self.__CONFIG_FILE_NAME}"', "\t")
 
         # Check if the mandatory key CONFIG_PATHS_KEY exists inside the desired section.
         # For more information check out "https://docs.python.org/3/library/configparser.html".
         if self.__CONFIG_PATHS_KEY not in cfg_parser[self.__PLUGIN_PATH_SECTION]:
-            raise Exception(f'Key "{self.__CONFIG_PATHS_KEY}" was not found in section "{self.__PLUGIN_PATH_SECTION}"', "\t")
+            raise Exception(f'Key "{self.__CONFIG_PATHS_KEY}" was not found in section '
+                            f'"{self.__PLUGIN_PATH_SECTION}"', "\t")
 
         # Save paths from the config file.
         plugin_path_list = cfg_parser[self.__PLUGIN_PATH_SECTION][self.__CONFIG_PATHS_KEY].split(",\n")
@@ -85,7 +88,7 @@ class PluginManager(Manager):
         This function generates the `CheckDevice.py` file and imports the plugins that were collected,
         then stores their functions in a list.
 
-        @return None.
+        @return None
         """
         COLOR_MANAGER.print_information(f'Creating Check Device "{CHECK_DEVICE_NAME}.py"...', "\t")
         checker = open(f"{CHECK_DEVICE_NAME}.py", "w")  # Generate a new check device.
@@ -109,7 +112,7 @@ class PluginManager(Manager):
 
         @param data: The data object of the program.
         @type data: Data
-        @return: None.
+        @return: None
         """
         paths: list = self.__fetch_plugins()  # Get all the paths from the plugin config file.
         self.__generate_check_device(paths)

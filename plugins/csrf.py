@@ -29,9 +29,10 @@ success_message = ""
 
 def check(data):
     """
-    Function checks the website for CSRF
-    @type data: Classes.Data
+    This function checks the website for CSRF.
+
     @param data: The data object of the program
+    @type data: Classes.Data
     @return: None
     """
     csrf_results = Classes.CheckResults("CSRF", COLOR)
@@ -73,11 +74,12 @@ def check(data):
 
 def filter_forms(page):
     """
-    Function filters the pages that has an action form
-    @type page: Classes.Page
+    This function filters the pages that has an action form.
+
     @param page: The current page
-    @rtype: list
+    @type page: Classes.Page
     @return: List of forms
+    @rtype: list
     """
     filtered_forms = list()
     if "html" in page.type.lower() and page.is_session:
@@ -90,13 +92,14 @@ def filter_forms(page):
 
 def csrf(page, form, data):
     """
-    Function checks the page for csrf
-    @type page: : Classes.SessionPage
+    This function checks the page for csrf.
+
     @param page: The current page
-    @type form: dict
+    @type page: : Classes.SessionPage
     @param form: The page's action form
-    @type data: Classes.Data
+    @type form: dict
     @param data: The data object of the program
+    @type data: Classes.Data
     @return: None
     """
     page_result = Classes.PageResult(page, f"Action form: '{form['action']}'")
@@ -161,17 +164,18 @@ def csrf(page, form, data):
 
 def get_response(inputs, referer, data, page):
     """
-    Function submits a specified form and gets the result content
-    @type inputs: list
+    This function submits a specified form and gets the result content.
+
     @param inputs: A list of inputs of action form
-    @type referer: str
+    @type inputs: list
     @param referer: A specified referer address
-    @type data: Classes.Data
+    @type referer: str
     @param data: The data object of the program
-    @type page: Classes.SessionPage
+    @type data: Classes.Data
     @param page: The current page
-    @rtype: str
+    @type page: Classes.SessionPage
     @return: The content of the resulted page
+    @rtype: str
     """
     content = ""
     try:
@@ -209,9 +213,10 @@ def get_response(inputs, referer, data, page):
 
 def interceptor(request):
     """
-    Function acts like proxy, it changes the requests header
-    @type request: Methods.selenium_request.Request
+    This function acts like proxy, it changes the requests header.
+
     @param request: The current request
+    @type request: Methods.selenium_request.Request
     @return: None
     """
     # Block PNG, JPEG and GIF images

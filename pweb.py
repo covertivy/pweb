@@ -15,8 +15,8 @@ def print_data(data: Data):
     This function prints the given data object to the console in a nice format.
 
     @param data: The data object of the program.
-    @type data: Data.
-    @return: None.
+    @type data: Data
+    @return: None
     """
     print(f"\n{COLOR_MANAGER.PINK + COLOR_MANAGER.HEADER}Inserted data:{COLOR_MANAGER.ENDC}")
     for line in str(data).split("\n"):
@@ -28,7 +28,7 @@ def main():
     """
     This function connects the different managers together.
     
-    @return: None.
+    @return: None
     """
     try:
         # Initiate manager classes instances.
@@ -46,7 +46,7 @@ def main():
             # Executing every function.
             function(data)
         print(COLOR_MANAGER.ENDC)
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt:
         # The user pressed ctrl+c.
         COLOR_MANAGER.print_warning("You have decided to close the process, please wait few seconds...\n", "\n\t")
     except Exception as e:
@@ -63,7 +63,7 @@ def finishing_up():
     """
     Every time the program has finished we need to remove every instance of ChromeDriver processes from memory.
 
-    @return: None.
+    @return: None
     """
     try:
         # We check if we have deleted every chromedriver instance.
@@ -71,14 +71,14 @@ def finishing_up():
             try:
                 if "chrome" in proc.name() and '--test-type=webdriver' in proc.cmdline():
                     psutil.Process(proc.pid).terminate()  # Deleting chromedriver processes from memory.
-            except Exception as e:
+            except Exception:
                 # In case of required permission.
                 continue
         # Deleting the `check device` file after the program has finished it's run.
         if os.path.exists('CheckDevice.py'):
             os.remove('CheckDevice.py')
         exit()
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt:
         # If we are interrupted we must check again to prevent partial deletion of processes.
         finishing_up()
 

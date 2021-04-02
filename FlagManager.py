@@ -85,7 +85,9 @@ class FlagManager(Manager):
         @rtype: argparse.Namespace
         """
         parser = argparse.ArgumentParser(
-            description=f"{ONE_LINER}{COLOR_MANAGER.UNDERLINE}{COLOR_MANAGER.BLUE}This is a tool for pentesting web security flaws in sites and web servers.{COLOR_MANAGER.ENDC}",
+            description=f"{ONE_LINER}{COLOR_MANAGER.UNDERLINE}{COLOR_MANAGER.BLUE}"
+                        f"This is a tool for pentesting web security flaws in sites and web servers."
+                        f"{COLOR_MANAGER.ENDC}",
             formatter_class=SmartFormatter,
             epilog=self.__examples(),
             add_help=False)
@@ -269,7 +271,7 @@ class FlagManager(Manager):
         
         @param data: The data object of the program
         @type data: Data
-        @return: None.
+        @return: None
         """
         args = self.__parse_args()
         self.__get_final_args(data, args)
