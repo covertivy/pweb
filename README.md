@@ -210,6 +210,7 @@ The xss check file is using different methods to determine wheter a page is vuln
 By default the payloads file is configured to be named `xsspayloads.txt` and to be stored in the same directory as the `xss.py` script, Please make sure you do so.
 The payloads are completely customizable to your liking and you can add or remove payloads as you wish. 
 > **NOTE**: Fewer payloads will result in better runtimes.
+
 The payloads file should look something like this:
 
 ```txt
