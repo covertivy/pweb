@@ -4,7 +4,7 @@ import Classes
 import Methods
 
 # ---------------------------------- {Consts} --------------------------
-COLOR = COLOR_MANAGER.rgb(0, 255, 200)
+COLOR = COLOR_MANAGER.rgb(100, 100, 255)
 OUTSIDE_URL = "https://google.com"
 
 # ---------------------------- {Global variables} ----------------------------
@@ -191,7 +191,8 @@ def get_response(inputs, referer, data, page):
                 # Only if the input has a name
                 if not input_tag["value"]:
                     # There is no value to the input tag
-                    check_string = Methods.get_random_str(browser.page_source)
+                    check_string = Methods.get_random_str(browser.page_source +
+                                                          " ".join(str(x) for x in check_strings))
                     check_strings.append(check_string)
                     input_tag["value"] = check_string
         Methods.submit_form(data, browser, inputs)
