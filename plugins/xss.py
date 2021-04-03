@@ -312,7 +312,7 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
 
             try:
                 # Submit the form that was injected with the payload (in `try` because could raise an error).
-                Methods.submit_form(form_details["inputs"], browser, data)      
+                Methods.submit_form(data, browser, form_details["inputs"])      
             except:
                 pass
             
