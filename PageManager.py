@@ -13,7 +13,7 @@ import zipfile
 
 class PageManager(Manager):
     def __init__(self):
-        # ----------------------------- {Global variables} -----------------------------
+        # ----------------------------- Variables -----------------------------
         self.__type_colors = {
             "HTML": COLOR_MANAGER.BLUE,  # The session is the one that decides
             COLOR_MANAGER.ORANGE + "HTML": COLOR_MANAGER.ORANGE,
@@ -34,19 +34,20 @@ class PageManager(Manager):
         # Word lists
         self.__black_list = list()  # List of words that the user do not want to check.
         self.__white_list = list()  # List of words that the user only wants to check.
-        # ----------------------------- {Consts} -----------------------------
+        # ----------------------------- Constants -----------------------------
         self.__PADDING = 4  # Spaces.
 
     @staticmethod
-    def __get_links(links, url):
+    def __get_links(links: list, url: str):
         """
-        Function returns a filtered list of links that not equal to the current URL but have same domain.
-        @type links: list
+        This function returns a filtered list of links that not equal to the current URL but have same domain.
+
         @param links: The list of every link in the page
-        @type url: str
+        @type links: list
         @param url: The current URL
-        @rtype: list
+        @type url: str
         @return: List of valid links
+        @rtype: list
         """
         valid_links = list()
         for link in [urljoin(url, link) for link in links]:
@@ -60,15 +61,16 @@ class PageManager(Manager):
         return valid_links
 
     @staticmethod
-    def __get_login_form(data, forms):
+    def __get_login_form(data: Data, forms: list):
         """
-        Function gets the login form of the page
-        @type data: Classes.Data
+        This function gets the login form of the page.
+
         @param data: The data object of the program
-        @type forms: list
+        @type data: Classes.Data
         @param forms: The list of the forms of the page
-        @rtype: dict
+        @type forms: list
         @return: Dictionary of the form details
+        @rtype: dict
         """
         for form in forms:
             inputs = form["inputs"]
@@ -94,15 +96,16 @@ class PageManager(Manager):
         return dict()
 
     @staticmethod
-    def __is_session_alive(data, browser):
+    def __is_session_alive(data: Data, browser: Browser):
         """
-        Function checks if the session of the browser is still alive
-        @type data: Classes.Data
+        This function checks if the session of the browser is still alive.
+
         @param data: The data object of the program
-        @type browser: webdriver.Chrome
+        @type data: Classes.Data
         @param browser: Chrome driver object
-        @rtype: bool
+        @type browser: webdriver.Chrome
         @return: True - session still alive, False - session has logged out
+        @rtype: bool
         """
         same_content = 0
         different_content = 0
@@ -122,11 +125,13 @@ class PageManager(Manager):
         return different_content <= same_content
 
     @staticmethod
-    def __set_chromedriver(data):
+    def __set_chromedriver(data: Data):
         """
-        Function sets a browser web driver object
-        @type data: Classes.Data
+        This function sets a browser web driver object for the first time,
+        and downloads chromedriver file in case of first time running the program.
+
         @param data: The data object of the program
+        @type data: Classes.Data
         @return: None
         """
         driver_file = "chromedriver"
@@ -164,31 +169,35 @@ class PageManager(Manager):
         except Exception:
             raise Exception("Setting up the web driver failed, please try again.")
 
-    def __valid_in_list(self, page):
+    def __valid_in_list(self, page: Page):
         """
-        Function checks if a page is valid by the black and white lists
-        @type page: Classes.Page
+        This function checks if a page is valid by the black and white lists.
+
         @param page: A page object
-        @rtype: bool
+        @type page: Classes.Page
         @return: True - valid page, False - otherwise
+        @rtype: bool
         """
         # If there is a white list and the URL does not have any of the words
         # Or there is a black list and the URL have one of the words
         return not ((self.__white_list and all(word not in page.url for word in self.__white_list)) or
                     (self.__black_list and any(word in page.url for word in self.__black_list)))
 
-    def __get_pages(self, data, curr_url, browser, previous, recursive=True):
+    def __get_pages(self, data: Data, curr_url: str, browser: Browser,
+                    previous: Page = None, recursive: bool = True):
         """
-        Function gets the list of pages to the data object
-        @type data: Classes.Data
+        This function gets the list of pages to the data object.
+
         @param data: The data object of the program
-        @type curr_url: str
+        @type data: Classes.Data
         @param curr_url: The current URL the function checks
-        @type browser: Browser
+        @type curr_url: str
         @param browser: The web driver that gets the rendered content
+        @type browser: Browser
         @param previous: The previous page
-        @type recursive: bool
+        @type previous: bool
         @param recursive: True - check all website pages, False - only the first reachable one
+        @type recursive: bool
         @return: None
         """
         if len(data.pages) == data.max_pages:
@@ -296,7 +305,7 @@ class PageManager(Manager):
             try:
                 # Creating a BeautifulSoup object
                 soup = BeautifulSoup(page.content, "html.parser")
-            except Exception as e:
+            except Exception:
                 # Couldn't parse, might be non-html format, like pdf or docx
                 self.__troublesome.append(page.url)
                 return
@@ -382,13 +391,14 @@ class PageManager(Manager):
                     # Page was not checked, it is not troublesome or in the black list
                     self.__get_pages(data, link, browser, page, data.recursive)
 
-    def __get_session_pages(self, data, browser):
+    def __get_session_pages(self, data: Data, browser: Browser):
         """
-        Function looking for login forms and scraping session pages through them
-        @type data: Classes.Data
+        This function looking for login forms and scraping session pages through them.
+
         @param data: The data object of the program
-        @type browser: Browser
+        @type data: Classes.Data
         @param browser: The webdriver browser
+        @type browser: Browser
         @return: None
         """
         if not (data.username and data.password):
@@ -469,21 +479,23 @@ class PageManager(Manager):
                 # No login pages were found.
                 raise Exception("The program did not find any login form in the listed pages.\n", "\n\t")
 
-    def __set_lists(self, data):
+    def __set_lists(self, data: Data):
         """
-        Function sets the black and white lists
-        @type data: Classes.Data
+        This function sets the black and white lists.
+
         @param data: The data object of the program
+        @type data: Classes.Data
         @return: None
         """
-        def set_list(file, black):
+        def set_list(file: str, black: bool):
             """
-            Inner function to set a list
-            @type file: str
+            Inner function to set a list by it's file path.
+
             @param file: The file path of the list
-            @type black: bool
+            @type file: str
             @param black: True - black list, False - white list
-            @return:
+            @type black: bool
+            @return: None
             """
             if not file:
                 # No file was specified
@@ -518,13 +530,14 @@ class PageManager(Manager):
                                         " the pages only by the white list.", "\t")
         print(COLOR_MANAGER.ENDC)
 
-    def __set_cookies(self, data, browser):
+    def __set_cookies(self, data: Data, browser: Browser):
         """
-        Function sets the specified cookies
-        @type data: Classes.Data
+        This function sets the specified cookies to the browser.
+
         @param data: The data object of the program
-        @type browser: Browser
+        @type data: Classes.Data
         @param browser: The webdriver browser
+        @type browser: Browser
         @return: None
         """
         if data.cookies:
@@ -540,11 +553,12 @@ class PageManager(Manager):
                       f"Invalid cookies, check your syntax and try again. {COLOR_MANAGER.ENDC}")
                 data.cookies = None  # There is no need to use them again
 
-    def logic(self, data):
+    def logic(self, data: Data):
         """
-        Function gets the page list
-        @type data: Data
+        This function gets the page list of the specified website.
+
         @param data: The data object of the program
+        @type data: Classes.Data
         @return: None
         """
         print(f"{COLOR_MANAGER.BLUE + COLOR_MANAGER.HEADER}Scraping pages:{COLOR_MANAGER.ENDC}")
@@ -580,11 +594,12 @@ class PageManager(Manager):
         if len(data.pages) == 0:
             raise Exception("Your website doesn't have any web pages that fit your requirements.\n", "\t")
 
-    def __print_result(self, data):
+    def __print_result(self, data: Data):
         """
-        Function prints the result of the web scraper
-        @type data: Classes.Data
+        This function prints the result of the web scraper.
+
         @param data: The data object of the program
+        @type data: Classes.Data
         @return: None
         """
         def print_type(pages: list, sign: str):

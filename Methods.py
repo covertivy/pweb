@@ -57,7 +57,7 @@ def new_browser(data: Classes.Data, page: Classes.Page = None, debug: bool = Fal
         """
         # Block PNG, JPEG and GIF images.
         if request.path.endswith(('.png', '.jpg', '.gif')):
-            request.abort() # Abort the unwanted request.
+            request.abort()  # Abort the unwanted request.
     
     # Setting up request interceptor.
     if interceptor:
