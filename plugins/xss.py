@@ -8,7 +8,7 @@ from seleniumwire import webdriver
 
 COLOR = COLOR_MANAGER.TURQUOISE
 PAYLOADS_PATH = "./plugins/xsspayloads.txt" # Assuming the payloads are in the same directory as this script file.
-INJECTION_IDENTIFIER = "##~##"
+INJECTION_IDENTIFIER = "##~##" # Will be used to customize the payload in the `brute_force_alert` method.
 
 #*-------------------------------------------------------------------
 # >                XSS CONSTANT OUTPUT STRINGS                      |
@@ -81,12 +81,13 @@ def check(data: Classes.Data):
     stored_xss_result: Classes.CheckResult = Classes.CheckResult(STORED_XSS_PROBLEM_STR, STORED_XSS_SOLUTION_STR, STORED_XSS_EXPLANATION_STR)
     all_xss_results: Classes.CheckResults = Classes.CheckResults("XSS", COLOR)
 
-    if not data.aggressive:
-        all_xss_results.warning = "Unfortunately this plugin cannot perform any aggressive checks since the -A flag was not checked, please use -h to learn more about this flag.\n"
-
     data.mutex.acquire()
+    aggressive = data.aggressive
     pages = data.pages
     data.mutex.release()
+
+    if not aggressive:
+        all_xss_results.warning = "Unfortunately this plugin cannot perform any aggressive checks since the -A flag was not checked, please use -h to learn more about this flag.\n"
 
     vulnerable_pages = []
 
@@ -94,20 +95,24 @@ def check(data: Classes.Data):
         # Only check html pages.
         if 'html' not in page.type:
             continue
-
+        
+        # Get Content Security Policy Information.
         csp_info: dict= csp_check(page)
 
         if csp_info is not None:
+            # Get information about the script CSP info.
             allowed_script_sources: dict = {}
             for key, value in csp_info['allow_scripts']:
                 if value:
                     allowed_script_sources[key] = value
-            
+
+            # Get information about the img CSP info.
             allowed_image_sources: dict = {}
             for key, value in csp_info['allow_images']:
                 if value:
                     allowed_image_sources[key] = value
-        
+
+            # Show conclusion of the Content Security Policy evaluation.
             if '*' not in allowed_script_sources.keys() and not '*' in allowed_image_sources.keys():
                 problem_str = "Page is protected by 'Content-Security-Policy' Headers and therefor is protected from general xss vulnerabilities.\nYou should still check for 'Content-Security-Policy' bypass vulnerabilities.\n"
                 if len(allowed_script_sources.keys()) > 0:
@@ -124,36 +129,41 @@ def check(data: Classes.Data):
         xss_result.add_page_result(Classes.PageResult(page, csp_conclusion))
 
         # Do not perform this aggressive method if the aggressive flag is not checked.
-        if not data.aggressive:
+        if not aggressive:
             # Skip this page.
             continue
         else:
             # Perform payload injection and check for stored xss.
+            # Use the Content Security Policy information to select the appropriate payloads.
             allowed_sources: tuple = (True, True)
             if csp_info is not None:
-                allowed_sources = tuple('*' in allowed_script_sources.keys(),
-                                        '*' in allowed_image_sources.keys())
-                
+                allowed_sources = ('*' in allowed_script_sources.keys(), '*' in allowed_image_sources.keys())
+            
+            # Select appropriate payloads according to the CSP information.
             allowed_payloads = select_payloads(allowed_sources)
+            # Try to trigger an alert with all the selected available payloads.
             vulnerable_forms: dict = brute_force_alert(data, page, allowed_payloads)
 
             if vulnerable_forms is None:
                 continue # Page has no forms and therefor we do not check it.
             
             for vulnerable_form_id in vulnerable_forms.keys():
+                # Get information about successful attack.
                 vulnerable_form = vulnerable_forms[vulnerable_form_id][0]
                 vulnerable_input = vulnerable_forms[vulnerable_form_id][1]
                 successful_payload = vulnerable_forms[vulnerable_form_id][2]
                 special_string = vulnerable_forms[vulnerable_form_id][3]
 
                 xss_result.add_page_result(Classes.PageResult(page, f"Found a form that had caused an alert to pop from the following payload: '{successful_payload}'.\nThe Vulnerable Form is (Form Index [{vulnerable_form_id}]):\n{vulnerable_form}\nThe Vulnerable Input is:\n{vulnerable_input}\n"))
-                vulnerable_pages.append((page, special_string))
+                vulnerable_pages.append((page, special_string)) # Will be used by the stored xss checks later.
     
+    # Check each of the already vulnerable pages for stored xss.
     vulnerable_stored: list = check_for_stored(data, vulnerable_pages)
     if vulnerable_stored is not None and len(vulnerable_stored) != 0:
         for page_with_stored in vulnerable_stored:
             stored_xss_result.add_page_result(Classes.PageResult(page_with_stored, f"This page had shown an alert after refreshing it which strongly indicates it may vulnerable to stored xss.\n"))
 
+    # Deliver Analysis.
     all_xss_results.results.append(xss_result)
     all_xss_results.results.append(domxss_result)
     all_xss_results.results.append(stored_xss_result)
@@ -163,6 +173,15 @@ def check(data: Classes.Data):
 
 ##########################################################################! General XSS Recognition Logic !##########################################################################
 def csp_check(page: Classes.Page):
+    """
+    This function receives a page and checks the response headers in order to find Content Security Policy parameters
+    in which case it evaluates the policy and determines which payloads can be run on this specific page.
+
+    @param page: The page who's headers we check for content security policy headers.
+    @type page: Classes.Page
+    @return: The results dictionary {'allow_scripts': {'*': False, 'unsafe_eval': False, 'unsafe_inline': False, 'unsafe_hashes': False}, 'allow_images': {'*': False}}
+    @rtype: dict
+    """
     res_dict = {'allow_scripts': {}, 'allow_images': {}}
     headers: dict = page.request.response.headers
 
@@ -173,6 +192,7 @@ def csp_check(page: Classes.Page):
             res_dict = {'*': False, 'unsafe_eval': False, 'unsafe_inline': False, 'unsafe_hashes': False}
             for arg in param_args[1:]:
                 if arg == '*':
+                    # Are all scripts allowed.
                     res_dict['*'] = True
                 elif arg == 'unsafe_eval': 
                     res_dict['unsafe_eval'] = True
@@ -186,12 +206,13 @@ def csp_check(page: Classes.Page):
             res_dict = {'*': False}
             for arg in param_args[1:]:
                 if arg == '*':
+                    # Are all images allowed.
                     res_dict['*'] = True
             return res_dict
         
         for param in csp_param_str.split('; '):
-            # A param string will be "<param_name> <list of args separated by spaces>"
-            # A param list will be [param_name, args...]
+            # A param string will be "<param_name> <list of args separated by spaces>".
+            # A param list will be [param_name, args...].
             param_args = param.split(' ')
             if param_args[0] == 'script_src':
                 res_dict['allow_scripts'] = analyzeScriptSrcParams(param_args)
@@ -199,6 +220,7 @@ def csp_check(page: Classes.Page):
                 res_dict['allow_images'] = analyzeImageSrcParams(param_args)
         return res_dict
     else: 
+        # No Content Security Policy was present.
         return None
 
 
@@ -206,24 +228,31 @@ def select_payloads(allowed_sources: tuple):
     """
     This function receives a tuple that indicates which payloads are allowed by the CSP and returns a 
     filtered list of all possibly effective payloads.
-    @param allowed_sources (tuple): This is a tuple that contains specifications if we can use the <img> payloads or the <script> payloads. the order is (script, img) so for example (True, False) would mean that only scripts are allowed via the csp.
-    @returns (list): A list where each element is a payload that was selected from the payloads text file.
+
+    @param allowed_sources: This is a tuple that contains specifications if we can use the <img> payloads or the <script> payloads. the order is (script, img) so for example (True, False) would mean that only scripts are allowed via the csp.
+    @type allowed_sources: tuple
+    @return: A list where each element is a payload that was selected from the payloads text file.
+    @rtype: list
     """
     payloads = list()
-    with open(PAYLOADS_PATH, 'r') as file:
-        file_read = file.read()
-        payloads = file_read.split("\n")
+    with open(PAYLOADS_PATH, 'r') as payloads_file:
+        # Read payloads from file.
+        file_read = payloads_file.read()
+        # Separate each payload by newline.
+        payloads = file_read.split("\n") 
     
     # Strip redundant spaces.
     for i in range(len(payloads)):
+        # Remove non important spaces.
         payloads[i] = payloads[i].lstrip().rstrip()
         if payloads[i] == "":
+            # Remove empty payloads.
             payloads.remove(payloads[i])
         elif INJECTION_IDENTIFIER not in payloads[i]:
             # Must contain the special injection identifier to inject custom strings into the alert.
             payloads.remove(payloads[i])
 
-    
+    # Remove all the payloads that are blocked by the CSP.
     if not all(allowed_sources):
         for payload in payloads:
             if not allowed_sources[0]: # Disallow scripts.
@@ -241,10 +270,15 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
     This is a function to check every form input for possible stored xss vulnerability.
     A web browser checks for an alert and if it finds one it is vulnerable!
     !This method is extremely aggressive and should be used with caution!
-    @param data (Classes.Data): The data object.
-    @param page (Classes.Page): The page object of the current page.
-    @param payloads (list): A list where each element is a payload that was selected from the payloads text file.
-    @returns (dict): A dictionary of all vulnerable inputs and their ids, id for key and tuple (form tag: `element.Tag`, payload) as value.
+
+    @param data: The data object.
+    @type data: Classes.Data
+    @param page: The page object of the current page.
+    @type page : Classes.Page
+    @param payloads: A list where each element is a payload that was selected from the payloads text file.
+    @type payloads: list
+    @return: A dictionary of all vulnerable inputs and their ids, id for key and tuple (form tag: `element.Tag`, payload) as value.
+    @rtype: dict
     """
     # A dictionary containing all the results from our check.
     vulnerable_forms = {}
@@ -255,25 +289,33 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
     if len(page_forms) == 0:
         return None
     
+    # The page content, will be used to ensure each payload is different.
     content: str = page.content
     for form_details in page_forms:
         is_vulnerable = False # A boolean indicating whether the current form was vulnerable or not.
-        form_id = index
+        form_id = index # Give an index to each form.
         # Check each known xss payload against input from $PAYLOADS_PATH text file. (more can be added if needed).
         for payload in payloads:
+            # Dump alerts to allow form submission without problem.
             browser.dump_alerts()
+            # A dictionary to which we will save each input tag and it's corresponding random string as a key.
             input_ids = {}
+            # Get all text inputs from the form.
             inputs = Methods.get_text_inputs(form_details["inputs"])
             for input_tag in inputs:
+                # Generate a random string which will serve as the payload string as well as the input key.
                 special_str = Methods.get_random_str(content)
-                content += f"\n{special_str}"
+                content += f"\n{special_str}" # To avoid repetitive payloads (`get_random_str` will take this into consideration).
+                # Modify payload to hold the special string.
                 curr_payload = payload.replace(INJECTION_IDENTIFIER, f"\"{special_str}\"")
+                # Add the input into the inputs dictionary.
                 input_ids[special_str] = input_tag
+                # Fill input with our desired payload.
                 form_details = Methods.fill_input(form_details, input_tag, curr_payload)
 
             try:
                 # Submit the form that was injected with the payload (in `try` because could raise an error).
-                Methods.submit_form(form_details["inputs"], browser, data)      
+                Methods.submit_form(data, browser, form_details["inputs"])      
             except:
                 pass
             
@@ -288,12 +330,16 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
                         vulnerable_input = vulnerable_form.findChild("input", {"name": input_ids[alert.text]["name"]})
                         vulnerable_forms[form_id] = (str(vulnerable_form), str(vulnerable_input), payload, alert.text)
                         is_vulnerable = True
+                    
+                    # Accept the alert to continue to the next alert (if it exists).
                     alert.accept()
             except:
-                pass # No alert and therefor no error.
+                pass # No alert and therefor no problem.
             finally:
+                # Advance the form index.
                 index += 1
                 if is_vulnerable:
+                    # Page was found to be vulnerable and therefor no need to check.
                     break
                 # Refresh current page to prepare for next iteration.
                 browser.refresh()
@@ -304,6 +350,17 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
 
 ##########################################################################! STORED XSS Recognition Logic !###########################################################################
 def check_for_stored(data: Classes.Data, vulnerable_pages: list):
+    """
+    This function receives a list of already known vulnerable pages to XSS and checks if an alert containing the special 
+    string as it's text exists, if so then we know this alert had stayed from our previous injection and therefor this page is vulnerable to Stored XSS.
+
+    @param data: The data object of the program.
+    @type data: Classes.Data
+    @param vulnerable_pages: A list containing each vulnerable page and the special string in the alert which was caused by our xss as a tupple [tuple(Classes.Page, str)].
+    @type vulnerable_pages: list
+    @return: A list of all the pages that were found to be vulnerable to Stored XSS.
+    @rtype: list
+    """
     if len(vulnerable_pages) == 0:
         return
     
@@ -333,6 +390,14 @@ def check_for_stored(data: Classes.Data, vulnerable_pages: list):
 
 ############################################################################! DOM XSS Recognition Logic !############################################################################
 def check_dom(data: Classes.Data):
+    """
+    This function is in charge of running all the DOM XSS checks and scans and to deliver a CheckResult object back to the main `check` method.
+
+    @param data: The data object of the program.
+    @type data: Classes.Data
+    @return: The CheckResult with the DOM XSS analysis.
+    @rtype: Classes.CheckResult
+    """
     dom_xss_result = Classes.CheckResult(DOM_XSS_PROBLEM_STR, DOM_XSS_SOLUTION_STR, DOM_XSS_EXPLANATION_STR)
 
     data.mutex.acquire()
@@ -361,17 +426,14 @@ def check_dom(data: Classes.Data):
             )
         except Exception as e:
             continue # No vulnerability was found.
-
+        
+        # Deliver analysis results.
         if len(vulnerable_dom_scripts.keys()) > 0:
             for script_index in vulnerable_dom_scripts.keys():
                 script_tuple = vulnerable_dom_scripts.get(script_index, None)
                 if script_tuple is None:
                     continue
-                script_result_str = f"Found a quite possibly vulnerable script to DOM based XSS (Script Index [{script_index}]).\n" \
-                                f"The script is: {str(script_tuple[0])}\n" \
-                                f"The sink patterns are: {str(script_tuple[1])}\n" \
-                                f"The source patterns are: {str(script_tuple[2])}\n" \
-                                f"Danger level is {str(script_tuple[3])}\n"
+                script_result_str = f"Found a quite possibly vulnerable script to DOM based XSS (Script Index [{script_index}]).\nThe script is: {str(script_tuple[0])}\nThe sink patterns are: {str(script_tuple[1])}\nThe source patterns are: {str(script_tuple[2])}\nDanger level is {str(script_tuple[3])}\n"
                 dom_xss_result.add_page_result(Classes.PageResult(page, script_result_str), '\n')
 
         if len(vulnerable_input_scripts.keys()) > 0:
@@ -379,11 +441,7 @@ def check_dom(data: Classes.Data):
                 script_tuple = vulnerable_input_scripts.get(script_index, None)
                 if script_tuple is None:
                     continue
-                input_result_str = f"Found a quite possibly vulnerable script to DOM based XSS (Script Index [{script_index}]).\n" \
-                                f"The script is: {str(script_tuple[0])}\n" \
-                                f"The sink patterns are: {str(script_tuple[1])}\n" \
-                                f"The input sources are: {str(script_tuple[2])}\n" \
-                                f"Danger level is {str(script_tuple[3])}\n"
+                input_result_str = f"Found a quite possibly vulnerable script to DOM based XSS (Script Index [{script_index}]).\nThe script is: {str(script_tuple[0])}\nThe sink patterns are: {str(script_tuple[1])}\nThe input sources are: {str(script_tuple[2])}\nDanger level is {str(script_tuple[3])}\n"
                 dom_xss_result.add_page_result(Classes.PageResult(page, input_result_str), '\n')
     
     return dom_xss_result
@@ -393,8 +451,11 @@ def analyse_javascript(javascript_code: str):
     """
     This function looks for sinks and sources within the javascript included code.
     If it finds both at least one source and at least one sink it will return true.
-    @param javascript_code (str): The source javascript page code.
-    @returns bool: is the javascript source code possibly vulnerable (yes/no).
+
+    @param javascript_code: The source javascript page code.
+    @type javascript_code: str
+    @return: A boolean indicating whether the javascript source code is possibly vulnerable (yes/no).
+    @rtype: bool
     """
     match_sources_in_code = regex.finditer(SOURCES_RE, javascript_code, regex.IGNORECASE)
     match_sinks_in_code = regex.finditer(SINKS_RE, javascript_code, regex.IGNORECASE)
@@ -422,9 +483,13 @@ def get_scripts(html: str, src: bool = False):
     """
     This function searches for all the script tags within the page html and
     returns a list of of enumerated script tags.
-    @param html (str): The source html of the page.
-    @param src (bool, optional): Should we search for script tags with src attribute. Defaults to False.
-    @returns (list): enumerated list of script tags.
+
+    @param html: The source html of the page.
+    @type html: str
+    @param src: Should we search for script tags with src attribute. Defaults to False (optional).
+    @type src: bool
+    @return: The enumerated list of script tags.
+    @rtype: list
     """
     html = BeautifulSoup(html, "html.parser")
     source_scripts = html.find_all("script", src=src)
@@ -435,9 +500,13 @@ def find_script_by_src(html: str, page_url:str):
     """
     This function finds a single script that has a src attribute and the source 
     is the specified page url.
-    @param html: (str): The source html of the page in which we want to find the script tag.
-    @param page_url: (str): The url of the source javascript page that will be searched for in the element.
-    @returns (element.Tag): The script tag that contained the page_url as a src attribute.
+
+    @param html: The source html of the page in which we want to find the script tag.
+    @type html: str
+    @param page_url: The url of the source javascript page that will be searched for in the element.
+    @type page_url: str
+    @return: The script tag that contained the page_url as a src attribute.
+    @rtype: Tag
     """
     soup = BeautifulSoup(html, "html.parser")
     def script_filter(tag: element.Tag):
@@ -450,9 +519,14 @@ def find_script_by_src(html: str, page_url:str):
 
 def get_script_by_id(source_html:str, script_id:int):
     """
-    @param source_html (str): The source html of the page in which we want to find the script tag.
-    @param script_id (int): The id of the script tag (it's index from the top).
-    @returns (element.Tag): The script tag of the correct index or None if script was not found.
+    This function finds a script in a specific index in the page source html.
+
+    @param source_html: The source html of the page in which we want to find the script tag.
+    @type source_html: str
+    @param script_id: The id of the script tag (it's index from the top).
+    @type script_id: int
+    @return: The script tag of the correct index or None if script was not found.
+    @rtype: Tag
     """
     soup = BeautifulSoup(source_html, "html.parser")
     all_scripts = soup.find_all("script")
@@ -466,8 +540,11 @@ def determine_possible_vulns(source_html: str):
     """
     A vulnerable script is a script which contains a sink which can be used to execute xss via a source.
     A script cannot be vulnerable without a sink so first we validate the existance of a sink with a regex containing all sinks.
-    @param source_html (str): The source html of the web page to analyze.
-    @returns (dict): A dictionary containing the scripts that has a tuple of sink patterns and their amount as values and the script indexes as keys.
+
+    @param source_html: The source html of the web page to analyze.
+    @type source_html: str
+    @return: A dictionary containing the scripts that has a tuple of sink patterns and their amount as values and the script indexes as keys.
+    @rtype: dict
     """
     # Fetch all source script tags from page html.
     all_scripts = get_scripts(source_html)
@@ -495,15 +572,21 @@ def determine_possible_vulns(source_html: str):
 def find_input_fields(html: str):
     """
     Get all input fields and filter them to only useful input fields that can house text (can contain script tags).
-    @param html (str): The source html of the page to check.
-    @returns (tuple): The tuple containing the results, explanation at the return line.
+
+    @param html: The source html of the page to check.
+    @type html: str
+    @return: The tuple containing the results, explanation at the return line.
+    @rtype: tuple
     """
 
     def input_filter_function(tag: element.Tag):
         """
         A filtering function for beautiful soup's `find_all` function to get all input tags that are of the types: `text`, `url` and `search`.
-        @param tag: (element.Tag): The current tag to filter.
-        @returns (bool): Is the tag appropriate according to our terms.
+
+        @param tag: The current tag to filter.
+        @type tag: Tag
+        @return: Is the tag appropriate according to our terms.
+        @rtype: bool
         """
         # If tag is of `input` type and has a `type` attribute.
         if tag.name != "input" or not tag.has_attr("type"):
@@ -547,9 +630,13 @@ def check_form_inputs(form_inputs: list, suspicious_scripts: dict):
     Go over each script and check if form input is used within it, if so it is possibly vulnerable!
     Different function from `check_all_inputs` since form inputs can be accessed differently.
     Reference: `https://stackoverflow.com/questions/18606305/accessing-formdata-values`
-    @param form_inputs (list): All form inputs.
-    @param suspicious_scripts (dict): A dictionary containing all scripts that contain sources and/or sinks.
-    @returns (dict): The dictionary of possibly very vulnerable scripts and their danger rating.
+
+    @param form_inputs: All form inputs.
+    @type form_inputs: list
+    @param suspicious_scripts: A dictionary containing all scripts that contain sources and/or sinks.
+    @type suspicious_scripts: dict
+    @return: The dictionary of possibly very vulnerable scripts and their danger rating.
+    @rtype: dict
     """
     very_vulnerable = {}
     for script_index in suspicious_scripts.keys():
@@ -610,9 +697,13 @@ def check_all_inputs(all_inputs: list, suspicious_scripts: dict):
     Go over each script and check if non form input is used within it, if so it is possibly vulnerable!
     Different function from `check_form_inputs` since form inputs can be accessed differently.
     Reference: `https://stackoverflow.com/questions/11563638/how-do-i-get-the-value-of-text-input-field-using-javascript`
-    @param all_inputs (list): All input tags.
-    @param suspicious_scripts (dict): A dictionary containing all scripts that contain sources and/or sinks.
-    @returns (dict): The dictionary of possibly very vulnerable scripts and their danger rating.
+
+    @param all_inputs: All input tags.
+    @type all_inputs: list
+    @param suspicious_scripts: A dictionary containing all scripts that contain sources and/or sinks.
+    @type suspicious_scripts: dict
+    @return: The dictionary of possibly very vulnerable scripts and their danger rating.
+    @rtype: dict
     """
     very_vulnerable = {}
     for script_index in suspicious_scripts.keys():
@@ -665,16 +756,20 @@ def further_analyse(suspicious_scripts: dict, input_sources: tuple):
     Further analyse each script that contained sinks,
     Check if any type of user input or a known source is used in any of the suspicious scripts,
     If so, they are way more likely to be vulnerable!
-    @param suspicious_scripts (dict): A dictionary containing all scripts that contain sinks.
-        ? { script_index :  (script_string, regex_sink_patterns), ... }
-    @param input_sources (tuple): The returned tuple from `find_input_fields` function, containing various input fields to check individually.
 
     !Raises:
     !    ValueError: `suspicious_scripts` parameter is empty list.
     !    ValueError: `input_sources` parameter is not in valid format, size should be 3.
     !    ValueError: The first value in `input_sources` parameter is false,
     !        meaning there are no input sources in given page and therefor no possible vulnerabilities.
-    @returns (dict): A dictionary containing the more vulnerable script indexes as keys and the scripts themselves and their final danger levels as values.
+
+    @param suspicious_scripts: A dictionary containing all scripts that contain sinks.
+        ? { script_index :  (script_string, regex_sink_patterns), ... }
+    @type suspicious_scripts: dict
+    @param input_sources: The returned tuple from `find_input_fields` function, containing various input fields to check individually.
+    @type input_sources: tuple
+    @return: A dictionary containing the more vulnerable script indexes as keys and the scripts themselves and their final danger levels as values.
+    @rtype: dict
     """
 
     if len(suspicious_scripts) == 0:

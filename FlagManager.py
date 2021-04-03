@@ -5,7 +5,7 @@ from colors import COLOR_MANAGER, startup
 import datetime
 
 # -------------------------------------------------- CONSTANTS --------------------------------------------------+
-ONE_LINER = "R|"  # For lines which are longer from the default width.                                           |
+ONE_LINER = "R|"  # For lines which are longer than the default width.                                           |
 MAX_LINE = 25  # For the 'epilog' variable.                                                                      |
 PADDING = " " * 3  # For the examples line, instead ot '\t'.                                                     |
 SEPARATOR = f"{PADDING}{COLOR_MANAGER.YELLOW}python{COLOR_MANAGER.LIGHT_GREEN} %(prog)s {COLOR_MANAGER.ENDC}"  # |
@@ -46,8 +46,11 @@ class FlagManager(Manager):
     def __char_arr_to_string(arr: list):
         """
         This function converts a char array to a string.
+
         @param arr: A Character list.
-        @returns str: The string made from the char array.
+        @type arr: list
+        @return: The string made from the char array.
+        @rtype: str
         """
         to_ret = ""
         for item in arr:
@@ -58,8 +61,9 @@ class FlagManager(Manager):
     def __examples():
         """
         This function creates a string of usage examples for the user.
-        @rtype: str
+
         @return: The usage examples.
+        @rtype: str
         """
         return f"{COLOR_MANAGER.UNDERLINE}{COLOR_MANAGER.LIGHT_GREEN}examples of usage:{COLOR_MANAGER.ENDC}\n" \
                + SEPARATOR + \
@@ -76,13 +80,14 @@ class FlagManager(Manager):
     def __parse_args(self):
         """
         This function gets the command line arguments using the argparse module.
-        @rtype: argparse.Namespace
+        
         @return: The namespace of the arguments.
+        @rtype: argparse.Namespace
         """
         parser = argparse.ArgumentParser(
-            description=f"{ONE_LINER}{COLOR_MANAGER.UNDERLINE}{COLOR_MANAGER.BLUE}This is a tool for "
-                        f"pentesting web security "
-                        f"flaws in sites and web servers.{COLOR_MANAGER.ENDC}",
+            description=f"{ONE_LINER}{COLOR_MANAGER.UNDERLINE}{COLOR_MANAGER.BLUE}"
+                        f"This is a tool for pentesting web security flaws in sites and web servers."
+                        f"{COLOR_MANAGER.ENDC}",
             formatter_class=SmartFormatter,
             epilog=self.__examples(),
             add_help=False)
@@ -183,16 +188,17 @@ class FlagManager(Manager):
         args = parser.parse_args()
         return args
 
-    def __get_final_args(self, data, args):
+    def __get_final_args(self, data: Data, args: argparse.Namespace):
         """
         This function gets the arguments from the argparse namespace and inserts
         them into a Data object which is returned to the main program.
-        @type data: Classes.Data
-        @param data: The data object of the program
+        
+        @param data: The data object of the program.
+        @type data: Data
         @param args: All the command line arguments.
         @type args: argparse.Namespace
-        @rtype: Data
         @return: The returned data object, will be processed furthermore in the Main Core.
+        @rtype: Data
         """
         # Set the `Username and Password`.
         if type(args.login) is not None:
@@ -259,11 +265,12 @@ class FlagManager(Manager):
         # Set `aggressive` flag.
         data.aggressive = args.aggressive
 
-    def logic(self, data):
+    def logic(self, data: Data):
         """
-        Function gets the user's arguments and inserts them into the data instance.
-        @type data: Classes.Data
+        This function gets the user's arguments and inserts them into the data object.
+        
         @param data: The data object of the program
+        @type data: Data
         @return: None
         """
         args = self.__parse_args()
