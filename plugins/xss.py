@@ -301,8 +301,12 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
             # A dictionary to which we will save each input tag and it's corresponding random string as a key.
             input_ids = {}
             # Get all text inputs from the form.
-            inputs = Methods.get_text_inputs(form_details["inputs"])
-            for input_tag in inputs:
+            text_inputs = Methods.get_text_inputs(form_details["inputs"])
+
+            if len(text_inputs) == 0:
+                break
+
+            for input_tag in text_inputs:
                 # Generate a random string which will serve as the payload string as well as the input key.
                 special_str = Methods.get_random_str(content)
                 content += f"\n{special_str}" # To avoid repetitive payloads (`get_random_str` will take this into consideration).
@@ -491,8 +495,8 @@ def get_scripts(html: str, src: bool = False):
     @return: The enumerated list of script tags.
     @rtype: list
     """
-    html = BeautifulSoup(html, "html.parser")
-    source_scripts = html.find_all("script", src=src)
+    soup = BeautifulSoup(html, "html.parser")
+    source_scripts = soup.find_all("script", src=src)
     return list(enumerate(source_scripts))
 
 
@@ -648,7 +652,7 @@ def check_form_inputs(form_inputs: list, suspicious_scripts: dict):
             vuln_raises += script_str.count("FormData")
 
         for form_input in form_inputs:
-            form_object = Tag(form_input.parent)
+            form_object: Tag = form_input.parent
 
             if (
                 form_object.get("id") is not None
