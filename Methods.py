@@ -94,26 +94,27 @@ def submit_form(data: Classes.Data, browser: Classes.Browser, inputs: list):
     """
     # In case of multi-threading, we need to make sure that no one is interrupting anyone.
     data.mutex.acquire()
-    # Sending the request.
-    start = time.time()  # Getting time of normal input.
+    # Getting time of normal input.
+    start = time.time()
     # The elements we want to submit.
     elements = list()
     if browser.requests:
         del browser.requests
+    before_submit = browser.page_source  # There are action forms that use js instead of requests.
     for input_tag in inputs:
         if "type" in input_tag.keys() and input_tag['type'] == "hidden":
             continue
         # Using the inserted value.
         if "name" in input_tag.keys():
             # Only if the input has a name attribute.
-            element = browser.find_element_by_name(input_tag["name"])
             try:
+                element = browser.find_element_by_name(input_tag["name"])
                 if input_tag in get_text_inputs(inputs):
                     # You can only send a key to text inputs.
                     element.send_keys(input_tag["value"])
                 elements.append({"element": element,
-                                 "name": input_tag["name"],
-                                 "type": input_tag["type"]})
+                                "name": input_tag["name"],
+                                "type": input_tag["type"]})
             except:
                 # Could not send keys to the form for some reason.
                 continue
@@ -130,17 +131,16 @@ def submit_form(data: Classes.Data, browser: Classes.Browser, inputs: list):
                 continue
             else:
                 break
-        if not len(browser.requests):
+        if not len(browser.requests) and before_submit == browser.page_source:
             # Did not do anything.
             elements[0]["element"].submit()  # Sending the form.
     except Exception as e:
-        if not len(browser.requests):
+        if not len(browser.requests) and before_submit == browser.page_source:
             # Did not do anything.
             raise e
     finally:
         data.mutex.release()
-    run_time = time.time() - start
-    return run_time
+    return time.time() - start
 
 
 def enter_cookies(data: Classes.Data, browser: Classes.Browser, url: str):

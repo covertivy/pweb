@@ -338,8 +338,8 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
                 if is_vulnerable:
                     # Page was found to be vulnerable and therefor no need to check.
                     break
-                # Refresh current page to prepare for next iteration.
-                browser.refresh()
+                # Get the current page to prepare for next iteration.
+                browser.get(page.url)
     # Close the webdriver and return results.
     browser.quit()
     return vulnerable_forms
