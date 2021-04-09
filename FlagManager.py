@@ -181,8 +181,8 @@ class FlagManager(Manager):
         parser.add_argument(
             "-V",
             "--verbose",
-            action="store_false",
-            help=f"Specify this flag when you don't want to print our cool logo.{COLOR_MANAGER.ENDC}",
+            action="store_true",
+            help=f"Specify this flag when you don't want to print extra information.{COLOR_MANAGER.ENDC}",
             dest="verbose")
         # Get the command line arguments.
         args = parser.parse_args()
@@ -257,13 +257,13 @@ class FlagManager(Manager):
 
         # Set `verbose` flag.
         data.verbose = args.verbose
-        if args.verbose:
-            # Print startup logo and current time.
-            print(startup())
-            print(f"{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}")
 
         # Set `aggressive` flag.
         data.aggressive = args.aggressive
+
+        # Print startup logo and current time.
+        print(startup())
+        print(f"{COLOR_MANAGER.GREEN}Started on: {datetime.datetime.now()}{COLOR_MANAGER.ENDC}")
 
     def logic(self, data: Data):
         """
