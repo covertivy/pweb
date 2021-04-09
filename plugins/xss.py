@@ -7,6 +7,7 @@ import re as regex  #? Used `https://regex101.com/` a lot to verify regex string
 from seleniumwire import webdriver
 
 COLOR = COLOR_MANAGER.TURQUOISE
+IMPORTANT_STR_COLOR = COLOR_MANAGER.TURQUOISE_BG + COLOR_MANAGER.BLACK 
 PAYLOADS_PATH = "./plugins/xsspayloads.txt" # Assuming the payloads are in the same directory as this script file.
 INJECTION_IDENTIFIER = "##~##" # Will be used to customize the payload in the `brute_force_alert` method.
 
@@ -114,17 +115,18 @@ def check(data: Classes.Data):
 
             # Show conclusion of the Content Security Policy evaluation.
             if '*' not in allowed_script_sources.keys() and not '*' in allowed_image_sources.keys():
-                problem_str = "Page is protected by 'Content-Security-Policy' Headers and therefor is protected from general xss vulnerabilities.\nYou should still check for 'Content-Security-Policy' bypass vulnerabilities.\n"
+                problem_str = f"{IMPORTANT_STR_COLOR}Page is protected by 'Content-Security-Policy' Headers{COLOR_MANAGER.ENDC + COLOR_MANAGER.TURQUOISE} and therefor is protected from general xss vulnerabilities.{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED}You should still check for 'Content-Security-Policy' bypass vulnerabilities.{COLOR_MANAGER.ENDC}\n"
+
                 if len(allowed_script_sources.keys()) > 0:
-                    problem_str += f"Please also note that some interesting `script-src` CSP Headers were also found: {allowed_script_sources.keys()}\n"
+                    problem_str += f"Please also note that some interesting {IMPORTANT_STR_COLOR}`script-src` CSP Headers{COLOR_MANAGER.ENDC + COLOR_MANAGER.TURQUOISE} were also found: {COLOR_MANAGER.BOLD_RED}{allowed_script_sources.keys()}{COLOR_MANAGER.ENDC}\n"
                 if len(allowed_image_sources.keys()) > 0:
-                    problem_str += f"Please also note that some interesting `img-src` CSP Headers were also found: {allowed_image_sources.keys()}\n"
+                    problem_str += f"Please also note that some interesting {IMPORTANT_STR_COLOR}`img-src` CSP Headers{COLOR_MANAGER.ENDC + COLOR_MANAGER.TURQUOISE} were also found: {COLOR_MANAGER.BOLD_RED}{allowed_image_sources.keys()}{COLOR_MANAGER.ENDC}\n"
                 
                 xss_result.add_page_result(Classes.PageResult(page, problem_str))
                 continue
         
-        csp_conclusion = "The XSS plugin has checked the 'Content-Security-Policy' Headers.\n"
-        str_to_add = str("The response headers did not contain any Content-Security-Policy Headers and therefor all XSS payloads might be effective!\n" if csp_info is None else f"The 'Content-Security-Policy' Headers that were found were in `script-src` {allowed_script_sources.keys()} and in `img-src` {allowed_image_sources.keys()}\n")
+        csp_conclusion = f"The XSS plugin has checked the {IMPORTANT_STR_COLOR}'Content-Security-Policy' Headers.{COLOR_MANAGER.ENDC}\n"
+        str_to_add = str(f"The response headers did not contain any Content-Security-Policy Headers and therefor {IMPORTANT_STR_COLOR}all XSS payloads might be effective!{COLOR_MANAGER.ENDC}\n" if csp_info is None else f"The 'Content-Security-Policy' Headers that were found were in {IMPORTANT_STR_COLOR}`script-src`{COLOR_MANAGER.ENDC} {COLOR_MANAGER.BOLD_RED}{allowed_script_sources.keys()}{COLOR_MANAGER.ENDC} and in {IMPORTANT_STR_COLOR}`img-src`{COLOR_MANAGER.ENDC} {COLOR_MANAGER.BOLD_RED}{allowed_image_sources.keys()}{COLOR_MANAGER.ENDC}\n")
         csp_conclusion += str_to_add
         xss_result.add_page_result(Classes.PageResult(page, csp_conclusion))
 
@@ -154,14 +156,18 @@ def check(data: Classes.Data):
                 successful_payload = vulnerable_forms[vulnerable_form_id][2]
                 special_string = vulnerable_forms[vulnerable_form_id][3]
 
-                xss_result.add_page_result(Classes.PageResult(page, f"Found a form that had caused an alert to pop from the following payload: '{successful_payload}'.\nThe Vulnerable Form is (Form Index [{vulnerable_form_id}]):\n{vulnerable_form}\nThe Vulnerable Input is:\n{vulnerable_input}\n"))
+                payload_text = f"{IMPORTANT_STR_COLOR}Successful Payload:{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED + successful_payload + COLOR_MANAGER.ENDC}\n"
+                input_text = f"{IMPORTANT_STR_COLOR}The Vulnerable Input is:{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED}{vulnerable_input}{COLOR_MANAGER.ENDC}\n"
+                form_text = f"{IMPORTANT_STR_COLOR}The Vulnerable Form is (Form Index [{vulnerable_form_id}]):{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED}{vulnerable_form}{COLOR_MANAGER.ENDC}\n"
+
+                xss_result.add_page_result(Classes.PageResult(page, f"Successful Reflected XSS!\n{payload_text + input_text + form_text}"), '\n')
                 vulnerable_pages.append((page, special_string)) # Will be used by the stored xss checks later.
     
     # Check each of the already vulnerable pages for stored xss.
     vulnerable_stored: list = check_for_stored(data, vulnerable_pages)
     if vulnerable_stored is not None and len(vulnerable_stored) != 0:
         for page_with_stored in vulnerable_stored:
-            stored_xss_result.add_page_result(Classes.PageResult(page_with_stored, f"This page had shown an alert after refreshing it which strongly indicates it may vulnerable to stored xss.\n"))
+            stored_xss_result.add_page_result(Classes.PageResult(page_with_stored, f"{COLOR_MANAGER.BOLD_RED}This page had shown an alert after refreshing it which strongly indicates it may vulnerable to stored xss.{COLOR_MANAGER.ENDC}\n"), '\n')
 
     # Deliver Analysis.
     all_xss_results.results.append(xss_result)
@@ -331,7 +337,7 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
                     # Add to vulnerable forms dictionary.
                     if alert.text in input_ids.keys():
                         vulnerable_form: Tag = form_details['form']
-                        vulnerable_input = vulnerable_form.findChild("input", {"name": input_ids[alert.text]["name"]})
+                        vulnerable_input: Tag = vulnerable_form.findChild("input", {"name": input_ids[alert.text]["name"]})
                         vulnerable_forms[form_id] = (str(vulnerable_form), str(vulnerable_input), payload, alert.text)
                         is_vulnerable = True
                     
