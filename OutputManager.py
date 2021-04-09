@@ -52,7 +52,8 @@ class OutputManager(Classes.Manager):
         if not check_result.page_results:
             return output
         for page_result in check_result.page_results:
-            output += f"\t{COLOR_MANAGER.ENDC}[{color}*{COLOR_MANAGER.ENDC}] {color}{page_result.url}\n"
+            page_color = COLOR_MANAGER.ORANGE if page_result.is_session else COLOR_MANAGER.BLUE
+            output += f"\t{COLOR_MANAGER.ENDC}[{page_color}*{COLOR_MANAGER.ENDC}] {color}{page_result.url}\n"
             if page_result.description:
                 output += self.__manage_lines(page_result.description, color, "\t\t- ", "\t\t  ")
         if verbose:
