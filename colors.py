@@ -48,6 +48,20 @@ class Colors:
         self.BLACK = self.rgb(0, 0, 0)
         self.YELLOW = self.rgb(255, 255, 0)
         self.PINK = self.rgb(255, 0, 255)
+
+        self.RED_BG = self.rgb_background(255, 0, 0)
+        self.GREEN_BG = self.rgb_background(0, 255, 0)
+        self.ORANGE_BG = self.rgb_background(255, 128, 0)
+        self.BLUE_BG = self.rgb_background(0, 128, 255)
+        self.LIGHT_BLUE_BG = self.rgb_background(51, 153, 255)
+        self.LIGHT_GREEN_BG = self.rgb_background(0, 255, 128)
+        self.PURPLE_BG = self.rgb_background(128, 0, 255)
+        self.CYAN_BG = self.rgb_background(0, 255, 255)
+        self.TURQUOISE_BG = self.rgb_background(64, 224, 208)
+        self.WHITE_BG = self.rgb_background(255, 255, 255)
+        self.BLACK_BG = self.rgb_background(0, 0, 0)
+        self.YELLOW_BG = self.rgb_background(255, 255, 0)
+        self.PINK_BG = self.rgb_background(255, 0, 255)
     
         self.BOLD_RED = self.RED + self.BOLD
         self.BOLD_GREEN = self.GREEN + self.BOLD
@@ -63,9 +77,9 @@ class Colors:
         self.BOLD_PINK = self.PINK + self.BOLD
 
     @staticmethod
-    def rgb(red, green, blue):
+    def rgb(red: int, green: int, blue: int):
         """
-        This function converts RGB values to ANSI color codes.
+        This function converts RGB values to ANSI color codes to be use as foreground.
 
         @param red: Red value of RGB 0-255.
         @type red: int
@@ -76,7 +90,27 @@ class Colors:
         @return: ANSI color code string.
         @rtype: str
         """
-        return "\033[38;2;{};{};{}m".format(red, green, blue)
+        if all((-1 < red < 256, -1 < green < 256, -1 < blue < 256)):
+            return "\033[38;2;{};{};{}m".format(red, green, blue)
+        return ""
+    
+    @staticmethod
+    def rgb_background(red: int, green: int, blue: int):
+        """
+        This function converts RGB values to ANSI color codes to be used as a background.
+
+        @param red: Red value of RGB 0-255.
+        @type red: int
+        @param green: Green value of RGB 0-255.
+        @type green: int
+        @param blue: Blue value of RGB 0-255.
+        @type blue: int
+        @return: ANSI color code string.
+        @rtype: str
+        """
+        if all((-1 < red < 256, -1 < green < 256, -1 < blue < 256)):
+            return "\033[48;2;{};{};{}m".format(red, green, blue)
+        return ""
 
     def rand_color(self):
         """
