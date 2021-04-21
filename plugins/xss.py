@@ -14,7 +14,7 @@ INJECTION_IDENTIFIER = "##~##" # Will be used to customize the payload in the `b
 #*-------------------------------------------------------------------
 # >                XSS CONSTANT OUTPUT STRINGS                      |
 #*-------------------------------------------------------------------
-XSS_PROBLEM_STR = """GENERAL XSS:
+XSS_PROBLEM_STR = """Reflected XSS:
 This vulnerability occurs when untrusted data from the user is interpreted and executed as javascript code.
 By running this untrusted code the attacker can manipulate the javascript functions and run whatever code he wishes to.
 This enables a plethora of attacks, one of them being reflected xss.
@@ -56,7 +56,7 @@ To find each javascript source and sink we used regex patterns."""
 #*-------------------------------------------------------------------
 # >              STORED XSS CONSTANT OUTPUT STRINGS                 |
 #*-------------------------------------------------------------------
-STORED_XSS_PROBLEM_STR = """STORED XSS:
+STORED_XSS_PROBLEM_STR = """Stored XSS:
 This vulnerability occurs when untrusted data from the user is interpreted and executed as javascript code but is also stored on the webserver's database.
 This is a very dangerous attack since now not only the user sees the effects of it locally but also everyone that visits that page.
 By running this untrusted code on all client's browsers the attacker can manipulate the javascript functions and run whatever code he wishes to."""
