@@ -7,7 +7,7 @@ import re as regex  #? Used `https://regex101.com/` a lot to verify regex string
 from seleniumwire import webdriver
 
 COLOR = COLOR_MANAGER.TURQUOISE
-IMPORTANT_STR_COLOR = COLOR_MANAGER.TURQUOISE_BG + COLOR_MANAGER.BLACK 
+IMPORTANT_COLOR = COLOR_MANAGER.TURQUOISE_BG + COLOR_MANAGER.BLACK 
 PAYLOADS_PATH = "./plugins/xsspayloads.txt" # Assuming the payloads are in the same directory as this script file.
 INJECTION_IDENTIFIER = "##~##" # Will be used to customize the payload in the `brute_force_alert` method.
 
@@ -59,8 +59,7 @@ To find each javascript source and sink we used regex patterns."""
 STORED_XSS_PROBLEM_STR = """STORED XSS:
 This vulnerability occurs when untrusted data from the user is interpreted and executed as javascript code but is also stored on the webserver's database.
 This is a very dangerous attack since now not only the user sees the effects of it locally but also everyone that visits that page.
-By running this untrusted code on all client's browsers the attacker can manipulate the javascript functions and run whatever code he wishes to.
-"""
+By running this untrusted code on all client's browsers the attacker can manipulate the javascript functions and run whatever code he wishes to."""
 
 STORED_XSS_SOLUTION_STR = """Preventing cross-site scripting is trivial in some cases but can be much harder depending on the complexity of the application and the ways it handles user-controllable data.
 In general, effectively preventing XSS vulnerabilities is likely to involve a combination of the following measures:
@@ -71,8 +70,7 @@ In general, effectively preventing XSS vulnerabilities is likely to involve a co
 
 STORED_XSS_EXPLANATION_STR = """The algorithm that was used to get a general idea of STORED XSS vulnerabilities was to re-visit each page we have found to be vulnerable to regular XSS vulnerabilities,
 By re-visiting each vulnerable page we can check if our page will raise another alert.
-If so then we can conclude that out previous payload had been stored on the server's database and will now be loaded each time we open the page.
-"""
+If so then we can conclude that out previous payload had been stored on the server's database and will now be loaded each time we open the page."""
 
 #*-------------------------------------------------------------------
 
@@ -80,7 +78,7 @@ def check(data: Classes.Data):
     domxss_result: Classes.CheckResult = check_dom(data)
     xss_result: Classes.CheckResult = Classes.CheckResult(XSS_PROBLEM_STR, XSS_SOLUTION_STR, XSS_EXPLANATION_STR)
     stored_xss_result: Classes.CheckResult = Classes.CheckResult(STORED_XSS_PROBLEM_STR, STORED_XSS_SOLUTION_STR, STORED_XSS_EXPLANATION_STR)
-    all_xss_results: Classes.CheckResults = Classes.CheckResults("XSS", COLOR)
+    all_xss_results: Classes.PluginResults = Classes.PluginResults("XSS", COLOR)
 
     data.mutex.acquire()
     aggressive = data.aggressive
@@ -98,7 +96,7 @@ def check(data: Classes.Data):
             continue
         
         # Get Content Security Policy Information.
-        csp_info: dict= csp_check(page)
+        csp_info: dict= get_csp_params(page)
 
         if csp_info is not None:
             # Get information about the script CSP info.
@@ -115,20 +113,20 @@ def check(data: Classes.Data):
 
             # Show conclusion of the Content Security Policy evaluation.
             if '*' not in allowed_script_sources.keys() and not '*' in allowed_image_sources.keys():
-                problem_str = f"{IMPORTANT_STR_COLOR}Page is protected by 'Content-Security-Policy' Headers{COLOR_MANAGER.ENDC + COLOR_MANAGER.TURQUOISE} and therefor is protected from general xss vulnerabilities.{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED}You should still check for 'Content-Security-Policy' bypass vulnerabilities.{COLOR_MANAGER.ENDC}\n"
+                problem_str = f"{IMPORTANT_COLOR}Page is protected by 'Content-Security-Policy' Headers{COLOR_MANAGER.ENDC + COLOR_MANAGER.TURQUOISE} and therefor is protected from general xss vulnerabilities.{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED}You should still check for 'Content-Security-Policy' bypass vulnerabilities.{COLOR_MANAGER.ENDC}\n"
 
                 if len(allowed_script_sources.keys()) > 0:
-                    problem_str += f"Please also note that some interesting {IMPORTANT_STR_COLOR}`script-src` CSP Headers{COLOR_MANAGER.ENDC + COLOR_MANAGER.TURQUOISE} were also found: {COLOR_MANAGER.BOLD_RED}{allowed_script_sources.keys()}{COLOR_MANAGER.ENDC}\n"
+                    problem_str += f"Please also note that some interesting {IMPORTANT_COLOR}`script-src` CSP Headers{COLOR_MANAGER.ENDC + COLOR_MANAGER.TURQUOISE} were also found: {COLOR_MANAGER.BOLD_RED}{allowed_script_sources.keys()}{COLOR_MANAGER.ENDC}\n"
                 if len(allowed_image_sources.keys()) > 0:
-                    problem_str += f"Please also note that some interesting {IMPORTANT_STR_COLOR}`img-src` CSP Headers{COLOR_MANAGER.ENDC + COLOR_MANAGER.TURQUOISE} were also found: {COLOR_MANAGER.BOLD_RED}{allowed_image_sources.keys()}{COLOR_MANAGER.ENDC}\n"
+                    problem_str += f"Please also note that some interesting {IMPORTANT_COLOR}`img-src` CSP Headers{COLOR_MANAGER.ENDC + COLOR_MANAGER.TURQUOISE} were also found: {COLOR_MANAGER.BOLD_RED}{allowed_image_sources.keys()}{COLOR_MANAGER.ENDC}\n"
                 
-                xss_result.add_page_result(Classes.PageResult(page, problem_str))
+                xss_result.add_page_result(page, problem_str)
                 continue
         
-        csp_conclusion = f"The XSS plugin has checked the {IMPORTANT_STR_COLOR}'Content-Security-Policy' Headers.{COLOR_MANAGER.ENDC}\n"
-        str_to_add = str(f"The response headers did not contain any Content-Security-Policy Headers and therefor {IMPORTANT_STR_COLOR}all XSS payloads might be effective!{COLOR_MANAGER.ENDC}\n" if csp_info is None else f"The 'Content-Security-Policy' Headers that were found were in {IMPORTANT_STR_COLOR}`script-src`{COLOR_MANAGER.ENDC} {COLOR_MANAGER.BOLD_RED}{allowed_script_sources.keys()}{COLOR_MANAGER.ENDC} and in {IMPORTANT_STR_COLOR}`img-src`{COLOR_MANAGER.ENDC} {COLOR_MANAGER.BOLD_RED}{allowed_image_sources.keys()}{COLOR_MANAGER.ENDC}\n")
+        csp_conclusion = f"The XSS plugin has checked the {IMPORTANT_COLOR}'Content-Security-Policy' Headers.{COLOR_MANAGER.ENDC}\n"
+        str_to_add = str(f"The response headers did not contain any Content-Security-Policy Headers and therefor {IMPORTANT_COLOR}all XSS payloads might be effective!{COLOR_MANAGER.ENDC}\n" if csp_info is None else f"The 'Content-Security-Policy' Headers that were found were in {IMPORTANT_COLOR}`script-src`{COLOR_MANAGER.ENDC} {COLOR_MANAGER.BOLD_RED}{allowed_script_sources.keys()}{COLOR_MANAGER.ENDC} and in {IMPORTANT_COLOR}`img-src`{COLOR_MANAGER.ENDC} {COLOR_MANAGER.BOLD_RED}{allowed_image_sources.keys()}{COLOR_MANAGER.ENDC}\n")
         csp_conclusion += str_to_add
-        xss_result.add_page_result(Classes.PageResult(page, csp_conclusion))
+        xss_result.add_page_result(page, csp_conclusion)
 
         # Do not perform this aggressive method if the aggressive flag is not checked.
         if not aggressive:
@@ -151,23 +149,23 @@ def check(data: Classes.Data):
             
             for vulnerable_form_id in vulnerable_forms.keys():
                 # Get information about successful attack.
-                vulnerable_form = vulnerable_forms[vulnerable_form_id][0]
-                vulnerable_input = vulnerable_forms[vulnerable_form_id][1]
-                successful_payload = vulnerable_forms[vulnerable_form_id][2]
-                special_string = vulnerable_forms[vulnerable_form_id][3]
+                vulnerable_form_tag: Tag = vulnerable_forms[vulnerable_form_id][0]
+                vulnerable_input_tag: Tag = vulnerable_forms[vulnerable_form_id][1]
+                successful_payload: str = vulnerable_forms[vulnerable_form_id][2]
+                special_string: str = vulnerable_forms[vulnerable_form_id][3]
 
-                payload_text = f"{IMPORTANT_STR_COLOR}Successful Payload:{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED + successful_payload + COLOR_MANAGER.ENDC}\n"
-                input_text = f"{IMPORTANT_STR_COLOR}The Vulnerable Input is:{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED}{vulnerable_input}{COLOR_MANAGER.ENDC}\n"
-                form_text = f"{IMPORTANT_STR_COLOR}The Vulnerable Form is (Form Index [{vulnerable_form_id}]):{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED}{vulnerable_form}{COLOR_MANAGER.ENDC}\n"
+                payload_text = f"{IMPORTANT_COLOR}Successful Payload:{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED + successful_payload + COLOR_MANAGER.ENDC}\n"
+                input_text = f"{IMPORTANT_COLOR}The Vulnerable Input is:{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED}{str(vulnerable_input_tag)}{COLOR_MANAGER.ENDC}\n"
+                form_text = f"{IMPORTANT_COLOR}The Vulnerable Form is (Form Index [{vulnerable_form_id}]):{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED}{str(vulnerable_form_tag)}{COLOR_MANAGER.ENDC}\n"
 
-                xss_result.add_page_result(Classes.PageResult(page, f"Successful Reflected XSS!\n{payload_text + input_text + form_text}"), '\n')
+                xss_result.add_page_result(page, f"Successful Reflected XSS!\n{payload_text + input_text + form_text}")
                 vulnerable_pages.append((page, special_string)) # Will be used by the stored xss checks later.
     
     # Check each of the already vulnerable pages for stored xss.
     vulnerable_stored: list = check_for_stored(data, vulnerable_pages)
     if vulnerable_stored is not None and len(vulnerable_stored) != 0:
         for page_with_stored in vulnerable_stored:
-            stored_xss_result.add_page_result(Classes.PageResult(page_with_stored, f"{COLOR_MANAGER.BOLD_RED}This page had shown an alert after refreshing it which strongly indicates it may vulnerable to stored xss.{COLOR_MANAGER.ENDC}\n"), '\n')
+            stored_xss_result.add_page_result(page_with_stored, f"{COLOR_MANAGER.BOLD_RED}This page had shown an alert after refreshing it which strongly indicates it may vulnerable to stored xss.{COLOR_MANAGER.ENDC}\n")
 
     # Deliver Analysis.
     all_xss_results.results.append(xss_result)
@@ -177,15 +175,15 @@ def check(data: Classes.Data):
     data.results_queue.put(all_xss_results)
     data.mutex.release()
 
-##########################################################################! General XSS Recognition Logic !##########################################################################
-def csp_check(page: Classes.Page):
+##########################################################################! Reflected XSS Recognition Logic !##########################################################################
+def get_csp_params(page: Classes.Page):
     """
     This function receives a page and checks the response headers in order to find Content Security Policy parameters
     in which case it evaluates the policy and determines which payloads can be run on this specific page.
 
     @param page: The page who's headers we check for content security policy headers.
     @type page: Classes.Page
-    @return: The results dictionary {'allow_scripts': {'*': False, 'unsafe_eval': False, 'unsafe_inline': False, 'unsafe_hashes': False}, 'allow_images': {'*': False}}
+    @return: The results dictionary, for example {'allow_scripts': {'*': False, 'unsafe_eval': False, 'unsafe_inline': False, 'unsafe_hashes': False}, 'allow_images': {'*': False}}.
     @rtype: dict
     """
     res_dict = {'allow_scripts': {}, 'allow_images': {}}
@@ -283,7 +281,7 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
     @type page : Classes.Page
     @param payloads: A list where each element is a payload that was selected from the payloads text file.
     @type payloads: list
-    @return: A dictionary of all vulnerable inputs and their ids, id for key and tuple (form tag: `element.Tag`, payload) as value.
+    @return: A dictionary of all important parameters {form_id : (form tag: `element.Tag`, input tag: `element.Tag`, successful payload: str, special alert string: str), ...}.
     @rtype: dict
     """
     # A dictionary containing all the results from our check.
@@ -300,18 +298,21 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
     for form_details in page_forms:
         is_vulnerable = False # A boolean indicating whether the current form was vulnerable or not.
         form_id = index # Give an index to each form.
-        # Check each known xss payload against input from $PAYLOADS_PATH text file. (more can be added if needed).
+        
+        # Get all text inputs from the form.
+        text_inputs = Methods.get_text_inputs(form_details["inputs"])
+
+        if len(text_inputs) == 0:
+            continue # Continue to next form if there are no inputs in this one.
+
+        # Check each known xss payload from the $PAYLOADS_PATH text file against the form . (more can be added if needed).
         for payload in payloads:
             # Dump alerts to allow form submission without problem.
             browser.dump_alerts()
-            # A dictionary to which we will save each input tag and it's corresponding random string as a key.
-            input_ids = {}
-            # Get all text inputs from the form.
-            text_inputs = Methods.get_text_inputs(form_details["inputs"])
+            
+            input_ids = {} # A dictionary to which we will save each input tag and it's corresponding random string as a key.
 
-            if len(text_inputs) == 0:
-                break
-
+            # Fill each input with data.
             for input_tag in text_inputs:
                 # Generate a random string which will serve as the payload string as well as the input key.
                 special_str = Methods.get_random_str(content)
@@ -333,12 +334,12 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
                 while not is_vulnerable:
                     # Check for alert on page.
                     alert = browser.switch_to.alert
-                    # If did not catch an error then page has popped an alert.
+                    # If did not raise an error then page has popped an alert.
                     # Add to vulnerable forms dictionary.
                     if alert.text in input_ids.keys():
                         vulnerable_form: Tag = form_details['form']
                         vulnerable_input: Tag = vulnerable_form.findChild("input", {"name": input_ids[alert.text]["name"]})
-                        vulnerable_forms[form_id] = (str(vulnerable_form), str(vulnerable_input), payload, alert.text)
+                        vulnerable_forms[form_id] = (vulnerable_form, vulnerable_input, payload, alert.text)
                         is_vulnerable = True
                     
                     # Accept the alert to continue to the next alert (if it exists).
@@ -351,14 +352,14 @@ def brute_force_alert(data: Classes.Data, page: Classes.Page, payloads: list):
                 if is_vulnerable:
                     # Page was found to be vulnerable and therefor no need to check.
                     break
-                # Get the current page to prepare for next iteration.
+                # Get an updated instance of the current page to prepare for next iteration.
                 browser.get(page.url)
     # Close the webdriver and return results.
     browser.quit()
     return vulnerable_forms
 
 
-##########################################################################! STORED XSS Recognition Logic !###########################################################################
+##########################################################################! Stored XSS Recognition Logic !###########################################################################
 def check_for_stored(data: Classes.Data, vulnerable_pages: list):
     """
     This function receives a list of already known vulnerable pages to XSS and checks if an alert containing the special 
@@ -375,25 +376,27 @@ def check_for_stored(data: Classes.Data, vulnerable_pages: list):
         return
     
     stored_xss_pages = list()
+    # Create new browser.
+    browser: Classes.Browser = Methods.new_browser(data, remove_alerts=False)
     for page, special_string in vulnerable_pages:
-        # Create new browser.
-        browser: Classes.Browser = Methods.new_browser(data, page, remove_alerts=False)
+        browser.get(page.url) # Get the current page.
         found = False
         try:
             while not found:
                 # Check for alert on page.
                 alert = browser.switch_to.alert
-                # If did not catch an error then page has popped an alert.
-                # Add to vulnerable forms dictionary.
+                # If did not raise an error then page has popped an alert.
+                # Check if the alert text is the same as the special string.
                 if alert.text == special_string:
+                    # Add to vulnerable pages list.
                     stored_xss_pages.append(page)
                     found = True
                 alert.accept()
         except:
-            pass # No alert and therefor not vulnerable.
-        finally:
-            # Close opened browser to prepare for next iteration.
-            browser.quit()
+            continue # No more alerts on the page.
+            
+    # Close browser.
+    browser.quit()
 
     return stored_xss_pages
 
@@ -419,10 +422,10 @@ def check_dom(data: Classes.Data):
             if "javascript" in page.type:
                 # Look for sources and sinks in javascript source code.
                 if analyse_javascript(page.content):
-                    javascript_page_result_str = f"Found javascript code that is quite possibly vulnerable to DOM based XSS:\n" \
+                    javascript_page_result_str = f"Found javascript code that is possibly vulnerable to DOM based XSS:\n" \
                                   f"The Line is: {find_script_by_src(page.parent.content, page.url)}\n" \
                                   f"From page {page.parent.url}\n"
-                    dom_xss_result.add_page_result(Classes.PageResult(page.parent, javascript_page_result_str), '\n')
+                    dom_xss_result.add_page_result(page.parent, javascript_page_result_str)
             else:
                  continue  # Ignore non javascript pages.       
 
@@ -443,16 +446,16 @@ def check_dom(data: Classes.Data):
                 script_tuple = vulnerable_dom_scripts.get(script_index, None)
                 if script_tuple is None:
                     continue
-                script_result_str = f"Found a quite possibly vulnerable script to DOM based XSS (Script Index [{script_index}]).\nThe script is: {str(script_tuple[0])}\nThe sink patterns are: {str(script_tuple[1])}\nThe source patterns are: {str(script_tuple[2])}\nDanger level is {str(script_tuple[3])}\n"
-                dom_xss_result.add_page_result(Classes.PageResult(page, script_result_str), '\n')
+                script_result_str = f"Found a possibly vulnerable script to DOM based XSS.\nThe script is (Script Index [{script_index}]): {str(script_tuple[0])}\nThe sink patterns are: {str(script_tuple[1])}\nThe source patterns are: {str(script_tuple[2])}\nDanger level is {str(script_tuple[3])}\n"
+                dom_xss_result.add_page_result(page, script_result_str)
 
         if len(vulnerable_input_scripts.keys()) > 0:
             for script_index in vulnerable_input_scripts.keys():
                 script_tuple = vulnerable_input_scripts.get(script_index, None)
                 if script_tuple is None:
                     continue
-                input_result_str = f"Found a quite possibly vulnerable script to DOM based XSS (Script Index [{script_index}]).\nThe script is: {str(script_tuple[0])}\nThe sink patterns are: {str(script_tuple[1])}\nThe input sources are: {str(script_tuple[2])}\nDanger level is {str(script_tuple[3])}\n"
-                dom_xss_result.add_page_result(Classes.PageResult(page, input_result_str), '\n')
+                input_result_str = f"Found a possibly vulnerable script to DOM based XSS.\nThe script is (Script Index [{script_index}]): {str(script_tuple[0])}\nThe sink patterns are: {str(script_tuple[1])}\nThe input sources are: {str(script_tuple[2])}\nDanger level is {str(script_tuple[3])}\n"
+                dom_xss_result.add_page_result(page, input_result_str)
     
     return dom_xss_result
 
@@ -467,22 +470,8 @@ def analyse_javascript(javascript_code: str):
     @return: A boolean indicating whether the javascript source code is possibly vulnerable (yes/no).
     @rtype: bool
     """
-    match_sources_in_code = regex.finditer(SOURCES_RE, javascript_code, regex.IGNORECASE)
-    match_sinks_in_code = regex.finditer(SINKS_RE, javascript_code, regex.IGNORECASE)
-
-    sources = []
-    # Look for sources in code.
-    for match in match_sources_in_code:
-        match_groups = tuple(group for group in match.groups() if group is not None)
-        sources.append(match_groups)
-    # Look for sinks in code.
-    sinks = []
-    for match in match_sinks_in_code:
-        match_groups = tuple(group for group in match.groups() if group is not None)
-        sinks.append(match_groups)
-    
-    sources = list(set(sources))
-    sinks = list(set(sinks))
+    sources = get_sources(javascript_code)
+    sinks = get_sinks(javascript_code)
 
     if len(sinks) > 0 and len(sources) > 0:
         return True
@@ -546,6 +535,48 @@ def get_script_by_id(source_html:str, script_id:int):
         return None
 
 
+def get_sources(script_str: str):
+    """
+    This function uses regex to find known javascript functions that may access user input sources
+    and returns all successful mathces.
+
+    @param script_str: A string containing the script itself.
+    @type script_str: str
+    @return: All the regex match groups that were found.
+    @rtype: list
+    """
+    regex_source_matches = regex.finditer(SOURCES_RE, script_str, regex.IGNORECASE)
+    # Look for dom sources in the script.
+    source_patterns = []
+    for match in regex_source_matches:
+        match_groups = tuple(group for group in match.groups() if group is not None)
+        source_patterns.append(match_groups)
+
+    # Get rid of duplicate regex matches and return.
+    return list(set(source_patterns))
+
+def get_sinks(script_str: str):
+    """
+    This function uses regex to find known javascript functions that may access user input sources
+    and returns all successful mathces.
+
+    @param script_str: A string containing the script itself.
+    @type script_str: str
+    @return: All the regex match groups that were found.
+    @rtype: list
+    """
+    sink_patterns = []
+
+    regex_sink_matches = regex.finditer(SINKS_RE, script_str, regex.IGNORECASE)
+
+    # Look for sinks in script.
+    for match in regex_sink_matches:
+        match_groups = tuple(group for group in match.groups() if group is not None)
+        sink_patterns.append(match_groups)
+
+    # Get rid of duplicate regex matches and return.
+    return list(set(sink_patterns))
+
 def determine_possible_vulns(source_html: str):
     """
     A vulnerable script is a script which contains a sink which can be used to execute xss via a source.
@@ -561,17 +592,7 @@ def determine_possible_vulns(source_html: str):
     sinks = {}  # Initialize empty dictionary for sinks.
 
     for script_index, script in all_scripts:
-        sink_patterns = []
-
-        regex_sink_matches = regex.finditer(SINKS_RE, str(script), regex.IGNORECASE)
-
-        # Look for sinks in script.
-        for match in regex_sink_matches:
-            match_groups = tuple(group for group in match.groups() if group is not None)
-            sink_patterns.append(match_groups)
-
-        # Get rid of duplicate regex matches.
-        sink_patterns = list(set(sink_patterns))
+        sink_patterns = get_sinks(str(script))
 
         if len(sink_patterns) > 0:
             sinks[script_index] = (script, sink_patterns)
@@ -790,21 +811,10 @@ def further_analyse(suspicious_scripts: dict, input_sources: tuple):
     # Find all vulnerable scripts to dom xss sources and sinks.
     vulnerable_scripts = {}
     for script_index in suspicious_scripts.keys():
-        regex_source_matches = regex.finditer(
-            SOURCES_RE, str(suspicious_scripts[script_index][0]), regex.IGNORECASE
-        )
-        # Look for dom_sources in script.
-        source_patterns = []
-        for match in regex_source_matches:
-            match_groups = tuple(group for group in match.groups() if group is not None)
-            source_patterns.append(match_groups)
-
-        # Get rid of duplicate regex matches.
-        source_patterns = list(set(source_patterns))
+        source_patterns = get_sources(suspicious_scripts[script_index][0])
 
         if len(source_patterns) > 0:
             vulnerable_scripts[script_index] = (suspicious_scripts[script_index][0],suspicious_scripts[script_index][1] , source_patterns)
-
 
     # Check if there are input fields that might be sources.
     are_there_inputs, form_inputs, all_inputs = input_sources
