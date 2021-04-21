@@ -54,8 +54,9 @@ class OutputManager(Classes.Manager):
         for page_result in check_result.page_results:
             page_color = COLOR_MANAGER.ORANGE if page_result.is_session else COLOR_MANAGER.BLUE
             output += f"\t{COLOR_MANAGER.ENDC}[{page_color}*{COLOR_MANAGER.ENDC}] {color}{page_result.url}\n"
-            if page_result.description:
-                output += self.__manage_lines(page_result.description, color, "\t\t- ", "\t\t  ")
+            if len(page_result.problems) > 0:
+                for problem in page_result.problems:
+                    output += self.__manage_lines(problem, color, "\t\t- ", "\t\t  ")
         if verbose:
             if check_result.problem:
                 output += self.__manage_lines(check_result.problem, color,
@@ -71,30 +72,30 @@ class OutputManager(Classes.Manager):
                                             "\t" + len("Explanation: ") * " ")
         return output + "\n"
 
-    def __manage_check_results(self, check_results: Classes.CheckResults, color: str, verbose: bool=False):
+    def __manage_plugin_results(self, plugin_results: Classes.PluginResults, color: str, verbose: bool=False):
         """
-        This function formats the latest check results to a string.
+        This function formats the latest plugin results to a string.
         
-        @param check_results: The check results given by the plugins.
-        @type check_results: Classes.CheckResults
-        @return: The check results output string.
+        @param plugin_results: The plugin results given by the plugins.
+        @type plugin_results: Classes.PluginResults
+        @return: The plugin results output string.
         @rtype: str
         """
-        output = f"{COLOR_MANAGER.BOLD}{color}- {COLOR_MANAGER.UNDERLINE}{check_results.headline}:{COLOR_MANAGER.ENDC}\n"
-        if check_results.warning:
-            output += COLOR_MANAGER.warning_message(check_results.warning, "\t", "\n\n")
-        if check_results.error:
-            output += COLOR_MANAGER.error_message(check_results.error, "\t", "\n\n")
-        if all(not check_result.page_results for check_result in check_results.results):
-            if check_results.success:
-                output += COLOR_MANAGER.success_message(check_results.success, "\t", "\n\n")
-            if not check_results.error and not check_results.warning:
+        output = f"{COLOR_MANAGER.BOLD}{color}- {COLOR_MANAGER.UNDERLINE}{plugin_results.headline}:{COLOR_MANAGER.ENDC}\n"
+        if plugin_results.warning:
+            output += COLOR_MANAGER.warning_message(plugin_results.warning, "\t", "\n\n")
+        if plugin_results.error:
+            output += COLOR_MANAGER.error_message(plugin_results.error, "\t", "\n\n")
+        if all(not check_result.page_results for check_result in plugin_results.results):
+            if plugin_results.success:
+                output += COLOR_MANAGER.success_message(plugin_results.success, "\t", "\n\n")
+            if not plugin_results.error and not plugin_results.warning:
                 output += COLOR_MANAGER.success_message("No vulnerabilities were found on the specified website's pages.", "\t", "\n")
             return output
-        for check_result in check_results.results:
+        for check_result in plugin_results.results:
             output += self.__manage_check_result(check_result, color, verbose)
-        if check_results.conclusion:
-            output += self.__manage_lines(check_results.conclusion, color, f"\t{COLOR_MANAGER.BOLD_PURPLE}Conclusion: {COLOR_MANAGER.ENDC}", "\t" + len("Conclusion: ") * " ")
+        if plugin_results.conclusion:
+            output += self.__manage_lines(plugin_results.conclusion, color, f"\t{COLOR_MANAGER.BOLD_PURPLE}Conclusion: {COLOR_MANAGER.ENDC}", "\t" + len("Conclusion: ") * " ")
         return output
 
     def __save_results(self):
@@ -112,27 +113,27 @@ class OutputManager(Classes.Manager):
             with open(path, "w") as f:
                 f.write(self.__files[file])
 
-    def __manage_output(self, check_results: Classes.CheckResults, verbose: bool=False):
+    def __manage_output(self, plugin_results: Classes.PluginResults, verbose: bool=False):
         """
-        This function takes the current check results, generates its output string and prints it or saves it to a file.
+        This function takes the current plugin results, generates its output string and prints it or saves it to a file.
         
-        @param check_results: The check results given by the plugins.
-        @type check_results: Classes.CheckResults
+        @param plugin_results: The plugin results given by the plugins.
+        @type plugin_results: Classes.PluginResults
         @return: None
         """
-        color = "" if self.__folder else check_results.color
-        output = self.__manage_check_results(check_results, color, verbose)
+        color = "" if self.__folder else plugin_results.color
+        output = self.__manage_plugin_results(plugin_results, color, verbose)
         if not self.__folder:
             # Printing the message to the screen.
             print(output)
         else:
             # Adding the file name and it's content to the dictionary.
-            self.__files[check_results.headline] = COLOR_MANAGER.remove_colors(output)
+            self.__files[plugin_results.headline] = COLOR_MANAGER.remove_colors(output)
 
     def logic(self, data: Classes.Data):
         """
         This function controls the general output of the plugins to the screen,
-        prints the check results to the screen or to an output folder.
+        prints the plugin results to the screen or to an output folder.
         
         @param data: The data object of the program.
         @type data: Classes.Data
@@ -156,10 +157,10 @@ class OutputManager(Classes.Manager):
         print(f"\t{COLOR_MANAGER.PURPLE}Waiting for the plugins to finish their run...{COLOR_MANAGER.ENDC}")
 
         def empty_the_queue():
-            # Check if there are any check results to print.
+            # Check if there are any plugin results to print.
             data.mutex.acquire()
             while not data.results_queue.empty():
-                # Print the check results queue.
+                # Print the plugin results queue.
                 self.__manage_output(data.results_queue.get(), data.verbose)
             data.mutex.release()
 

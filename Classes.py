@@ -103,7 +103,7 @@ class Page:
 
 
 class PageResult(Page):
-    def __init__(self, page: Page, description: str = ""):
+    def __init__(self, page: Page):
         """
         Constructor of the PageResult Class.
         This is the simplest result class,
@@ -111,15 +111,13 @@ class PageResult(Page):
 
         @param page: The problematic page that yielded a result.
         @type page: Page
-        @param description: A description of the problem on the current page.
-        @type description: str
         """
         super(PageResult, self).__init__(page.url)
-        self.description = description
+        self.problems = []
 
 
 class CheckResult:
-    def __init__(self, problem: str, solution: str, explanation: str):
+    def __init__(self, problem: str, solution: str, explanation: str, warning: str = ""):
         """
         Constructor of the CheckResult Class.
         Would usually be used to specify a sub-problem of a CheckResults object.
@@ -134,29 +132,33 @@ class CheckResult:
         self.problem = problem
         self.solution = solution
         self.explanation = explanation
+        self.warning = warning
         self.page_results = list()  # A List of `PageResult` objects.
 
-    def add_page_result(self, page_result: PageResult, separator: str = ""):
+    def add_page_result(self, page: Page, problem: str):
         """
         This function appends a new page result to the list and checks if it is already in the list.
 
-        @param page_result: The page result to be appended to our `page_results` list.
-        @type page_result: PageResult
-        @param separator: Specify a separator which would be used to separate between the different descriptions.
-        @type separator: str
+        @param page: The page to be appended to our `page_results` list.
+        @type page: Page
+        @param problem: Specify a problem within the given page.
+        @type problem: str
         @return: None.
         """
-        for page in self.page_results:
-            if page.url == page_result.url:
-                page.description += separator + page_result.description
+        for page_res in self.page_results:
+            if page_res.url == page.url:
+                page_res.problems.append(problem)
                 return
-        self.page_results.append(page_result)
+        # No existing page result for this page, create a new one.
+        new_res = PageResult(page)
+        new_res.problems.append(problem)
+        self.page_results.append(new_res)
 
 
-class CheckResults:
+class PluginResults:
     def __init__(self, headline: str, color: str):
         """
-        Constructor of the CheckResults Class.
+        Constructor of the PluginResults Class.
 
         @param headline: The name of the vulnerability (Will be used in output folder as well).
         @type headline: str
