@@ -102,10 +102,10 @@ def submit_form(data: Classes.Data, browser: Classes.Browser, inputs: list):
         del browser.requests
     before_submit = browser.page_source  # There are action forms that use js instead of requests.
     for input_tag in inputs:
-        if "type" in input_tag.keys() and input_tag['type'] == "hidden":
+        if input_tag.attrs.get("type", None) is not None and input_tag["type"] == "hidden":
             continue
         # Using the inserted value.
-        if "name" in input_tag.keys():
+        if input_tag.attrs.get("name", None) is not None:
             # Only if the input has a name attribute.
             try:
                 element = browser.find_element_by_name(input_tag["name"])
@@ -232,7 +232,7 @@ def get_text_inputs(inputs: list):
     text_inputs = list()
     for input_tag in inputs:
         # Using the specified value.
-        if "name" and "type" in input_tag.keys():
+        if input_tag.attrs.get("name", None) is not None and input_tag.attrs.get("type", None) is not None:
             # Only if the input has a name.
             if input_tag["type"] and any(input_tag["type"] == input_type for input_type in TEXT_TYPES):
                 # It is a text input tag.
@@ -360,9 +360,9 @@ def fill_input(form: dict, curr_text_input: dict, string: str):
     new_form["form"] = form["form"]  # Same form.
     new_form["inputs"] = list()
     for input_tag in form["inputs"]:
-        new_input_tag = dict(input_tag)  # Deep copy to the input tag.
-        if curr_text_input == new_input_tag:
+        temp_input_tag = input_tag
+        if curr_text_input == temp_input_tag:
             # This is the input we are looking for.
-            new_input_tag["value"] = string
-        new_form["inputs"].append(new_input_tag)
+            temp_input_tag["value"] = string
+        new_form["inputs"].append(temp_input_tag)
     return new_form
