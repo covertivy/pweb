@@ -7,7 +7,7 @@ import re as regex  #? Used `https://regex101.com/` a lot to verify regex string
 from seleniumwire import webdriver
 
 COLOR = COLOR_MANAGER.TURQUOISE
-IMPORTANT_COLOR = COLOR_MANAGER.TURQUOISE_BG + COLOR_MANAGER.BLACK 
+IMPORTANT_COLOR = COLOR_MANAGER.TURQUOISE_BG + COLOR_MANAGER.BLACK
 PAYLOADS_PATH = "./plugins/xsspayloads.txt" # Assuming the payloads are in the same directory as this script file.
 INJECTION_IDENTIFIER = "##~##" # Will be used to customize the payload in the `brute_force_alert` method.
 
@@ -78,7 +78,7 @@ def check(data: Classes.Data):
     domxss_result: Classes.CheckResult = check_dom(data)
     xss_result: Classes.CheckResult = Classes.CheckResult(XSS_PROBLEM_STR, XSS_SOLUTION_STR, XSS_EXPLANATION_STR)
     stored_xss_result: Classes.CheckResult = Classes.CheckResult(STORED_XSS_PROBLEM_STR, STORED_XSS_SOLUTION_STR, STORED_XSS_EXPLANATION_STR)
-    all_xss_results: Classes.PluginResults = Classes.PluginResults("XSS", COLOR)
+    xss_plugin_results: Classes.PluginResults = Classes.PluginResults("XSS", COLOR)
 
     data.mutex.acquire()
     aggressive = data.aggressive
@@ -86,7 +86,7 @@ def check(data: Classes.Data):
     data.mutex.release()
 
     if not aggressive:
-        all_xss_results.warning = "Unfortunately this plugin cannot perform any aggressive checks since the -A flag was not checked, please use -h to learn more about this flag.\n"
+        xss_plugin_results.warning = f"The `XSS` plugin check routine requires aggressive injection into text inputs.\n{Classes.MISSING_AGGRESSIVE_MSG}"
 
     vulnerable_pages = []
 
@@ -113,12 +113,12 @@ def check(data: Classes.Data):
 
             # Show conclusion of the Content Security Policy evaluation.
             if '*' not in allowed_script_sources.keys() and not '*' in allowed_image_sources.keys():
-                problem_str = f"{IMPORTANT_COLOR}Page is protected by 'Content-Security-Policy' Headers{COLOR_MANAGER.ENDC + COLOR_MANAGER.TURQUOISE} and therefor is protected from general xss vulnerabilities.{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED}You should still check for 'Content-Security-Policy' bypass vulnerabilities.{COLOR_MANAGER.ENDC}\n"
+                problem_str = f"{IMPORTANT_COLOR}Page is protected by 'Content-Security-Policy' Headers{COLOR_MANAGER.ENDC + COLOR} and therefor is protected from general xss vulnerabilities.{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED}You should still check for 'Content-Security-Policy' bypass vulnerabilities.{COLOR_MANAGER.ENDC}\n"
 
                 if len(allowed_script_sources.keys()) > 0:
-                    problem_str += f"Please also note that some interesting {IMPORTANT_COLOR}`script-src` CSP Headers{COLOR_MANAGER.ENDC + COLOR_MANAGER.TURQUOISE} were also found: {COLOR_MANAGER.BOLD_RED}{allowed_script_sources.keys()}{COLOR_MANAGER.ENDC}\n"
+                    problem_str += f"Please also note that some interesting {IMPORTANT_COLOR}`script-src` CSP Headers{COLOR_MANAGER.ENDC + COLOR} were also found: {COLOR_MANAGER.BOLD_RED}{allowed_script_sources.keys()}{COLOR_MANAGER.ENDC}\n"
                 if len(allowed_image_sources.keys()) > 0:
-                    problem_str += f"Please also note that some interesting {IMPORTANT_COLOR}`img-src` CSP Headers{COLOR_MANAGER.ENDC + COLOR_MANAGER.TURQUOISE} were also found: {COLOR_MANAGER.BOLD_RED}{allowed_image_sources.keys()}{COLOR_MANAGER.ENDC}\n"
+                    problem_str += f"Please also note that some interesting {IMPORTANT_COLOR}`img-src` CSP Headers{COLOR_MANAGER.ENDC + COLOR} were also found: {COLOR_MANAGER.BOLD_RED}{allowed_image_sources.keys()}{COLOR_MANAGER.ENDC}\n"
                 
                 xss_result.add_page_result(page, problem_str)
                 continue
@@ -156,7 +156,7 @@ def check(data: Classes.Data):
 
                 payload_text = f"{IMPORTANT_COLOR}Successful Payload:{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED + successful_payload + COLOR_MANAGER.ENDC}\n"
                 input_text = f"{IMPORTANT_COLOR}The Vulnerable Input is:{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED}{str(vulnerable_input_tag)}{COLOR_MANAGER.ENDC}\n"
-                form_text = f"{IMPORTANT_COLOR}The Vulnerable Form is (Form Index [{vulnerable_form_id}]):{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED}{str(vulnerable_form_tag)}{COLOR_MANAGER.ENDC}\n"
+                form_text = f"{IMPORTANT_COLOR}The Vulnerable Form is (Form Index [{vulnerable_form_id}]):{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED + str(vulnerable_form_tag) + COLOR_MANAGER.ENDC}\n"
 
                 xss_result.add_page_result(page, f"Successful Reflected XSS!\n{payload_text + input_text + form_text}")
                 vulnerable_pages.append((page, special_string)) # Will be used by the stored xss checks later.
@@ -168,11 +168,11 @@ def check(data: Classes.Data):
             stored_xss_result.add_page_result(page_with_stored, f"{COLOR_MANAGER.BOLD_RED}This page had shown an alert after refreshing it which strongly indicates it may vulnerable to stored xss.{COLOR_MANAGER.ENDC}\n")
 
     # Deliver Analysis.
-    all_xss_results.results.append(xss_result)
-    all_xss_results.results.append(domxss_result)
-    all_xss_results.results.append(stored_xss_result)
+    xss_plugin_results.results.append(xss_result)
+    xss_plugin_results.results.append(domxss_result)
+    xss_plugin_results.results.append(stored_xss_result)
     data.mutex.acquire()
-    data.results_queue.put(all_xss_results)
+    data.results_queue.put(xss_plugin_results)
     data.mutex.release()
 
 ##########################################################################! Reflected XSS Recognition Logic !##########################################################################
@@ -421,6 +421,7 @@ def check_dom(data: Classes.Data):
         if "html" not in page.type:
             if "javascript" in page.type:
                 # Look for sources and sinks in javascript source code.
+                # !> Very inaccurate, should try to improve or remove completely.
                 if analyse_javascript(page.content):
                     javascript_page_result_str = f"Found javascript code that is possibly vulnerable to DOM based XSS:\n" \
                                   f"The Line is: {find_script_by_src(page.parent.content, page.url)}\n" \
@@ -432,30 +433,37 @@ def check_dom(data: Classes.Data):
         possible_vulns = {}
         vulnerable_dom_scripts = {}
         vulnerable_input_scripts = {}
-        try:
-            possible_vulns = determine_possible_vulns(page.content)
-            vulnerable_dom_scripts, vulnerable_input_scripts = further_analyse(
-                possible_vulns, find_input_fields(page.content)
-            )
-        except Exception as e:
-            continue # No vulnerability was found.
+        possible_vulns = determine_possible_vulns(page.content)
         
+        if len(possible_vulns) == 0:
+            # No suspicious scripts.
+            continue
+
+        input_fields = find_input_fields(page.content)
+        vulnerable_dom_scripts, vulnerable_input_scripts = further_analyse(possible_vulns, input_fields)
+
         # Deliver analysis results.
         if len(vulnerable_dom_scripts.keys()) > 0:
             for script_index in vulnerable_dom_scripts.keys():
                 script_tuple = vulnerable_dom_scripts.get(script_index, None)
                 if script_tuple is None:
                     continue
-                script_result_str = f"Found a possibly vulnerable script to DOM based XSS.\nThe script is (Script Index [{script_index}]): {str(script_tuple[0])}\nThe sink patterns are: {str(script_tuple[1])}\nThe source patterns are: {str(script_tuple[2])}\nDanger level is {str(script_tuple[3])}\n"
-                dom_xss_result.add_page_result(page, script_result_str)
+                script_text = f"Found a possibly vulnerable script to DOM based XSS (not 100% guaranteed).\n{IMPORTANT_COLOR}Script (Script Index [{script_index}]):{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED + str(script_tuple[0]) + COLOR_MANAGER.ENDC}\n"
+                sink_patterns_text = f"{IMPORTANT_COLOR}Sink Patterns:{COLOR_MANAGER.ENDC}\n{', '.join([f'{COLOR_MANAGER.BOLD_RED + pattern + COLOR_MANAGER.ENDC}' for pattern in script_tuple[1]])}\n"
+                source_patterns_text = f"{IMPORTANT_COLOR}Source Patterns:{COLOR_MANAGER.ENDC}\n{', '.join([f'{COLOR_MANAGER.BOLD_RED + pattern + COLOR_MANAGER.ENDC}' for pattern in script_tuple[2]])}\n"
+                danger_level_text = f"{IMPORTANT_COLOR}Danger Level:{COLOR_MANAGER.ENDC} {COLOR_MANAGER.BOLD_RED + str(script_tuple[3]) + COLOR_MANAGER.ENDC}\n"
+                dom_xss_result.add_page_result(page, script_text + sink_patterns_text + source_patterns_text + danger_level_text)
 
         if len(vulnerable_input_scripts.keys()) > 0:
             for script_index in vulnerable_input_scripts.keys():
                 script_tuple = vulnerable_input_scripts.get(script_index, None)
                 if script_tuple is None:
                     continue
-                input_result_str = f"Found a possibly vulnerable script to DOM based XSS.\nThe script is (Script Index [{script_index}]): {str(script_tuple[0])}\nThe sink patterns are: {str(script_tuple[1])}\nThe input sources are: {str(script_tuple[2])}\nDanger level is {str(script_tuple[3])}\n"
-                dom_xss_result.add_page_result(page, input_result_str)
+                script_text = f"Found a possibly vulnerable script to DOM based XSS (not 100% guaranteed).\n{IMPORTANT_COLOR}Script (Script Index [{script_index}]):{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED + str(script_tuple[0]) + COLOR_MANAGER.ENDC}\n"
+                sink_patterns_text = f"{IMPORTANT_COLOR}Sink Patterns:{COLOR_MANAGER.ENDC}\n{', '.join([f'{COLOR_MANAGER.BOLD_RED + pattern + COLOR_MANAGER.ENDC}' for pattern in script_tuple[1]])}\n"
+                input_sources_text = f"{IMPORTANT_COLOR}Input Sources:{COLOR_MANAGER.ENDC}\n{', '.join([f'{COLOR_MANAGER.BOLD_RED + source + COLOR_MANAGER.ENDC}' for source in script_tuple[2]])}\n"
+                danger_level_text = f"{IMPORTANT_COLOR}Danger Level:{COLOR_MANAGER.ENDC} {COLOR_MANAGER.BOLD_RED + str(script_tuple[3]) + COLOR_MANAGER.ENDC}\n"
+                dom_xss_result.add_page_result(page, script_text + sink_patterns_text + input_sources_text + danger_level_text)
     
     return dom_xss_result
 
@@ -788,12 +796,6 @@ def further_analyse(suspicious_scripts: dict, input_sources: tuple):
     Check if any type of user input or a known source is used in any of the suspicious scripts,
     If so, they are way more likely to be vulnerable!
 
-    !Raises:
-    !    ValueError: `suspicious_scripts` parameter is empty list.
-    !    ValueError: `input_sources` parameter is not in valid format, size should be 3.
-    !    ValueError: The first value in `input_sources` parameter is false,
-    !        meaning there are no input sources in given page and therefor no possible vulnerabilities.
-
     @param suspicious_scripts: A dictionary containing all scripts that contain sinks.
         ? { script_index :  (script_string, regex_sink_patterns), ... }
     @type suspicious_scripts: dict
@@ -802,12 +804,6 @@ def further_analyse(suspicious_scripts: dict, input_sources: tuple):
     @return: A dictionary containing the more vulnerable script indexes as keys and the scripts themselves and their final danger levels as values.
     @rtype: dict
     """
-
-    if len(suspicious_scripts) == 0:
-        raise ValueError("No suspicious scripts were given to further analyse!")
-    elif len(input_sources) != 3:
-        raise ValueError("Input sources were given in wrong format!")
-
     # Find all vulnerable scripts to dom xss sources and sinks.
     vulnerable_scripts = {}
     for script_index in suspicious_scripts.keys():

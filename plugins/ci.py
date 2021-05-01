@@ -5,6 +5,7 @@ import Methods
 
 # --------------- {Consts} ---------------
 COLOR = COLOR_MANAGER.rgb(255, 255, 0)
+IMPORTANT_COLOR = COLOR_MANAGER.rgb_background(255, 255, 0) + COLOR_MANAGER.BLACK 
 
 # -------------------------------- {Global variables} ---------------------------------
 curr_text_input = dict()
@@ -35,37 +36,35 @@ def check(data):
     @type data: Classes.Data
     @return: None
     """
-    ci_results = Classes.CheckResults("Command Injection", COLOR)
+    ci_plugin_results = Classes.PluginResults("Command Injection", COLOR)
+    
     try:
         data.mutex.acquire()
         pages = data.pages  # Achieving the pages.
         aggressive = data.aggressive
         data.mutex.release()
-        for page in pages:
-            # Getting the forms of each page.
-            forms = filter_forms(page)
-            if forms and not aggressive:
-                # The user did not specified his agreement.
-                # and there is a vulnerable page.
-                ci_results.warning = "The plugin check routine requires injecting text boxes," \
-                                          " read about (-A) in our manual and try again."
-                break
-            for form in forms:
-                try:
-                    command_injection(page, form, data)
-                except Exception:
-                    continue
+        if not aggressive:
+            ci_plugin_results.warning = f"The `Command Injection` plugin check routine requires aggressive injection into text inputs.\n{Classes.MISSING_AGGRESSIVE_MSG}"
+        else:
+            for page in pages:
+                # Getting the forms of each page.
+                forms = filter_forms(page)
+                for form in forms:
+                    try:
+                        command_injection(page, form, data)
+                    except Exception:
+                        continue
     except Exception as e:
-        ci_results.error = "Something went wrong..."
+        ci_plugin_results.error = "Something went wrong..."
 
-    ci_results.results.append(blind_problem)
-    ci_results.results.append(non_blind_problem)
-    ci_results.conclusion = f"You can validate the input from the " \
+    ci_plugin_results.results.append(blind_problem)
+    ci_plugin_results.results.append(non_blind_problem)
+    ci_plugin_results.conclusion = f"You can validate the input from the " \
                             f"vulnerable parameters, by checking for " \
                             f"vulnerable characters or wrong input type."
 
     data.mutex.acquire()
-    data.results_queue.put(ci_results)  # Adding the results to the data object.
+    data.results_queue.put(ci_plugin_results)  # Adding the results to the data object.
     data.mutex.release()
 
 
@@ -122,7 +121,7 @@ def command_injection(page, form, data):
             normal_attempts += 1
             if content.count(check_string) > content.count(f"echo {check_string}"):
                 # The web page printed the echo message.
-                results[curr_text_input["name"]].append(curr_char)
+                results[str(curr_text_input)].append(curr_char)
                 found_vulnerability = True
     if found_vulnerability:
         # Found non blind injection in the form.
@@ -146,7 +145,7 @@ def command_injection(page, form, data):
                     # It did not took too much time.
                     if difference > Methods.WAITING_TIME - 2:
                         # The injection slowed down the server response.
-                        results[curr_text_input["name"]].append(char)
+                        results[str(curr_text_input)].append(char)
                         found_vulnerability = True
                         break
                     if difference < 2:
@@ -170,15 +169,14 @@ def interceptor(request):
     if request.path.endswith(('.png', '.jpg', '.gif')):
         # Save run time.
         request.abort()
-    elif curr_text_input and request.params \
-            and curr_text_input["name"] in request.params.keys():
+    elif curr_text_input and request.params and curr_text_input["name"] in request.params.keys():
         # In case of params.
         params = dict(request.params)
         params[curr_text_input["name"]] = curr_char + params[curr_text_input["name"]]
         request.params = params
 
 
-def write_vulnerability(results, page_result):
+def write_vulnerability(page: Classes.Page, check_result: Classes.CheckResult, results: dict):
     """
     This function writes the problem of the form into the page result.
 
@@ -188,21 +186,16 @@ def write_vulnerability(results, page_result):
     @type page_result: Classes.PageResult
     @return: None
     """
-    start_line = ""
-    for key in results.keys():
+    for text_input_str in results.keys():
         # For every text input.
-        if len(results[key]):
-            # If the input is vulnerable.
-            page_result.description += f"{start_line}The parameter '{key}' did not filter the character"
-            start_line = ". "  # For the next lines, we want to separate with '. '.
-            if len(results[key]) == 1:
-                page_result.description += ": "
-            else:
-                page_result.description += "s: "
+        if len(results[text_input_str]):
+            # The input is vulnerable.
+            problem_str =  f"{IMPORTANT_COLOR}The Vulnerable Input:{COLOR_MANAGER.ENDC + COLOR} '{COLOR_MANAGER.BOLD_RED + text_input_str + COLOR}' did not filter the character{': ' if len(results[text_input_str]) == 1 else 's: '}"
             # Adding the vulnerable chars.
-            for char in results[key]:
+            vulnerable_chars = []
+            for char in results[text_input_str]:
                 if char == "\n":
                     char = "\\n"
-                page_result.description += f"'{char}', "
-            # Removing last ", ".
-            page_result.description = page_result.description[:-2]
+                vulnerable_chars.append(f"'{COLOR_MANAGER.BOLD_RED + char + COLOR}'")
+            problem_str += ", ".join(vulnerable_chars)
+            check_result.add_page_result(page, problem_str)

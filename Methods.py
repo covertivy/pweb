@@ -3,7 +3,7 @@ import time
 import Classes
 from seleniumwire import webdriver, request as selenium_request
 from selenium.webdriver.common.keys import Keys
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, element
 import json
 
 
@@ -242,7 +242,10 @@ def get_text_inputs(inputs: list):
 
 def get_forms(content: str):
     """
-    This function gets all the forms from a page source html.
+    This function gets all the forms from a page source html and turns each
+    of them into a dictionary which makes the access to the forms and their
+    attributes a lot easier. It also contains the inputs within the form to help
+    minimize interaction with the bs4 module while working with the output of this function.
 
     @param content: The page content.
     @type content: str
@@ -253,30 +256,20 @@ def get_forms(content: str):
     for form in BeautifulSoup(content, "html.parser").find_all("form"):
         try:
             # Get the form action (requested URL).
-            action = form.attrs.get("action", "").lower()
+            if form.attrs.get("action", None) is not None:
+                action = form["action"].lower()
+            else:
+                action = ""
             # Get the form method (POST, GET, DELETE, etc).
             # If not specified, GET is the default in HTML.
-            method = form.attrs.get("method", "get").lower()
+            if form.attrs.get("method", None) is not None:
+                method = form["method"].lower()
+            else:
+                method = ""
             # Get all form inputs.
-            inputs = []
-            for input_tag in form.find_all("input"):
-                input_dict = dict()
-                # Get type of input form control.
-                input_type = input_tag.attrs.get("type")
-                # Get name attribute.
-                input_name = input_tag.attrs.get("name")
-                # Get the default value of that input tag.
-                input_dict["value"] = input_tag.attrs.get("value", "")
-                # Add all the attributes to the input dictionary.
-                if input_type:
-                    input_dict["type"] = input_type
-                if input_name:
-                    input_dict["name"] = input_name
-                
-                # Add the input dictionary object to the list of inputs.
-                inputs.append(input_dict)
+            inputs = [input_tag for input_tag in form.find_all("input")]
             # Adding the form to the list.
-            forms.append({"action": action, "method": method, "inputs": inputs, "form": form})
+            forms.append({"form": form, "action": action, "method": method, "inputs": inputs})
         except:
             continue
     return forms

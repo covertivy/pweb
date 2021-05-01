@@ -3,7 +3,10 @@ from threading import Lock, Event
 from queue import Queue
 from seleniumwire import webdriver, request as selenium_request
 
+# --------------- Constants --------------- 
+MISSING_AGGRESSIVE_MSG = "Unfortunately this plugin cannot perform any aggressive checks since the `-A` (aka `--aggressive`) flag was not checked, please use -h to learn more about this flag."
 
+# ---------------- Classes ---------------- 
 class Data:
     def __init__(self):
         """
