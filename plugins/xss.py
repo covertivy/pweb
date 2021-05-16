@@ -449,8 +449,8 @@ def check_dom(data: Classes.Data):
                 if script_tuple is None:
                     continue
                 script_text = f"Found a possibly vulnerable script to DOM based XSS (not 100% guaranteed).\n{IMPORTANT_COLOR}Script (Script Index [{script_index}]):{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED + str(script_tuple[0]) + COLOR_MANAGER.ENDC}\n"
-                sink_patterns_text = f"{IMPORTANT_COLOR}Sink Patterns:{COLOR_MANAGER.ENDC}\n{', '.join([f'{COLOR_MANAGER.BOLD_RED + pattern + COLOR_MANAGER.ENDC}' for pattern in script_tuple[1]])}\n"
-                source_patterns_text = f"{IMPORTANT_COLOR}Source Patterns:{COLOR_MANAGER.ENDC}\n{', '.join([f'{COLOR_MANAGER.BOLD_RED + pattern + COLOR_MANAGER.ENDC}' for pattern in script_tuple[2]])}\n"
+                sink_patterns_text = f"{IMPORTANT_COLOR}Sink Patterns:{COLOR_MANAGER.ENDC}\n{', '.join([f'{COLOR_MANAGER.BOLD_RED + str(pattern) + COLOR_MANAGER.ENDC}' for pattern in script_tuple[1]])}\n"
+                source_patterns_text = f"{IMPORTANT_COLOR}Source Patterns:{COLOR_MANAGER.ENDC}\n{', '.join([f'{COLOR_MANAGER.BOLD_RED + str(pattern) + COLOR_MANAGER.ENDC}' for pattern in script_tuple[2]])}\n"
                 danger_level_text = f"{IMPORTANT_COLOR}Danger Level:{COLOR_MANAGER.ENDC} {COLOR_MANAGER.BOLD_RED + str(script_tuple[3]) + COLOR_MANAGER.ENDC}\n"
                 dom_xss_result.add_page_result(page, script_text + sink_patterns_text + source_patterns_text + danger_level_text)
 
@@ -460,8 +460,8 @@ def check_dom(data: Classes.Data):
                 if script_tuple is None:
                     continue
                 script_text = f"Found a possibly vulnerable script to DOM based XSS (not 100% guaranteed).\n{IMPORTANT_COLOR}Script (Script Index [{script_index}]):{COLOR_MANAGER.ENDC}\n{COLOR_MANAGER.BOLD_RED + str(script_tuple[0]) + COLOR_MANAGER.ENDC}\n"
-                sink_patterns_text = f"{IMPORTANT_COLOR}Sink Patterns:{COLOR_MANAGER.ENDC}\n{', '.join([f'{COLOR_MANAGER.BOLD_RED + pattern + COLOR_MANAGER.ENDC}' for pattern in script_tuple[1]])}\n"
-                input_sources_text = f"{IMPORTANT_COLOR}Input Sources:{COLOR_MANAGER.ENDC}\n{', '.join([f'{COLOR_MANAGER.BOLD_RED + source + COLOR_MANAGER.ENDC}' for source in script_tuple[2]])}\n"
+                sink_patterns_text = f"{IMPORTANT_COLOR}Sink Patterns:{COLOR_MANAGER.ENDC}\n{', '.join([f'{COLOR_MANAGER.BOLD_RED + str(pattern) + COLOR_MANAGER.ENDC}' for pattern in script_tuple[1]])}\n"
+                input_sources_text = f"{IMPORTANT_COLOR}Input Sources:{COLOR_MANAGER.ENDC}\n{', '.join([f'{COLOR_MANAGER.BOLD_RED + str(source) + COLOR_MANAGER.ENDC}' for source in script_tuple[2]])}\n"
                 danger_level_text = f"{IMPORTANT_COLOR}Danger Level:{COLOR_MANAGER.ENDC} {COLOR_MANAGER.BOLD_RED + str(script_tuple[3]) + COLOR_MANAGER.ENDC}\n"
                 dom_xss_result.add_page_result(page, script_text + sink_patterns_text + input_sources_text + danger_level_text)
     
@@ -807,7 +807,7 @@ def further_analyse(suspicious_scripts: dict, input_sources: tuple):
     # Find all vulnerable scripts to dom xss sources and sinks.
     vulnerable_scripts = {}
     for script_index in suspicious_scripts.keys():
-        source_patterns = get_sources(suspicious_scripts[script_index][0])
+        source_patterns = get_sources(str(suspicious_scripts[script_index][0]))
 
         if len(source_patterns) > 0:
             vulnerable_scripts[script_index] = (suspicious_scripts[script_index][0],suspicious_scripts[script_index][1] , source_patterns)
