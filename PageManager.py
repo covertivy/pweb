@@ -74,25 +74,25 @@ class PageManager(Manager):
         """
         for form in forms:
             inputs = form["inputs"]
-            login_input = [False, False]  # Check if the form is login form.
+            input_state = [False, False]  # States wether we filled both username and password (state[0] = username, state[1] = password).
             for input_tag in inputs:
-                if "name" in input_tag.keys():
+                if input_tag.attrs.get("name", None) is not None:
                     # If there is an input name.
                     if input_tag["name"].lower() == "username":
                         # Username input.
                         value = data.username
-                        login_input[0] = True
+                        input_state[0] = True
                     elif input_tag["name"].lower() == "password":
                         # Password input.
                         value = data.password
-                        login_input[1] = True
-                    else:
-                        # At least one of the 2 text input is not valid.
-                        break
+                        input_state[1] = True
+                    
                     input_tag["value"] = value
-            if login_input[0] and login_input[1]:
-                # There both username and password in the form.
-                return form
+                
+                if input_state[0] and input_state[1]:
+                    # There both username and password in the form.
+                    return form
+        
         return dict()
 
     @staticmethod
